@@ -212,7 +212,8 @@ class TextImageGenerator(keras.callbacks.Callback):
         self.blank_label = self.get_output_size() - 1
         self.absolute_max_string_len = absolute_max_string_len
 
-        # Previously included in self.on_train_begin
+        # Moved from self.on_train_begin() to allow self.next_train() to be
+        # called immediately after initialization, as it relies on these steps
         self.build_word_list(16000, 4, 1)
         self.paint_func = lambda text: paint_text(
             text, self.img_w, self.img_h,
