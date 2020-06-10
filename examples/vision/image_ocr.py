@@ -211,13 +211,7 @@ class TextImageGenerator(keras.callbacks.Callback):
         self.val_split = val_split
         self.blank_label = self.get_output_size() - 1
         self.absolute_max_string_len = absolute_max_string_len
-
-        # Moved from self.on_train_begin() to allow self.next_train() to be
-        # called immediately after initialization, as it relies on these steps
-        self.build_word_list(16000, 4, 1)
-        self.paint_func = lambda text: paint_text(
-            text, self.img_w, self.img_h,
-            rotate=False, ud=False, multi_fonts=False)
+        self._train_was_initialized = False
 
     def get_output_size(self):
         return len(alphabet) + 1
@@ -323,6 +317,9 @@ class TextImageGenerator(keras.callbacks.Callback):
         return (inputs, outputs)
 
     def next_train(self):
+        # on_train_begin() sets cur_train_index and paint_func, needed here
+        if not self._train_was_initialized:
+            self.on_train_begin()
         while 1:
             ret = self.get_batch(self.cur_train_index,
                                  self.minibatch_size, train=True)
@@ -341,6 +338,13 @@ class TextImageGenerator(keras.callbacks.Callback):
             if self.cur_val_index >= self.num_words:
                 self.cur_val_index = self.val_split + self.cur_val_index % 32
             yield ret
+
+    def on_train_begin(self, logs={}):
+        self.build_word_list(16000, 4, 1)
+        self.paint_func = lambda text: paint_text(
+            text, self.img_w, self.img_h,
+            rotate=False, ud=False, multi_fonts=False)
+        self._train_was_initialized = True
 
     def on_epoch_begin(self, epoch, logs={}):
         # rebind the paint function to implement curriculum learning
