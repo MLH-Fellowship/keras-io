@@ -52,17 +52,18 @@ import editdistance
 import numpy as np
 from scipy import ndimage
 import pylab
-from keras import backend as K
-from keras.layers.convolutional import Conv2D, MaxPooling2D
-from keras.layers import Input, Dense, Activation
-from keras.layers import Reshape, Lambda
-from keras.layers.merge import add, concatenate
-from keras.models import Model
-from keras.layers.recurrent import GRU
-from keras.optimizers import SGD
-from keras.utils.data_utils import get_file
-from keras.preprocessing import image
-import keras.callbacks
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Input, Dense, Activation
+from tensorflow.keras.layers import Reshape, Lambda
+from tensorflow.keras.layers import add, concatenate
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import GRU
+from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.utils import get_file
+from tensorflow.keras.preprocessing import image
+import tensorflow.keras.callbacks
+from tensorflow import keras
 
 
 OUTPUT_DIR = 'image_ocr'
@@ -210,6 +211,7 @@ class TextImageGenerator(keras.callbacks.Callback):
         self.val_split = val_split
         self.blank_label = self.get_output_size() - 1
         self.absolute_max_string_len = absolute_max_string_len
+        self._train_was_initialized = False
 
     def get_output_size(self):
         return len(alphabet) + 1
@@ -309,12 +311,15 @@ class TextImageGenerator(keras.callbacks.Callback):
                   'the_labels': labels,
                   'input_length': input_length,
                   'label_length': label_length,
-                  'source_str': source_str  # used for visualization only
+                  'source_str': np.array(source_str)  # used for visualization only
                   }
         outputs = {'ctc': np.zeros([size])}  # dummy data for dummy loss function
         return (inputs, outputs)
 
     def next_train(self):
+        # on_train_begin() sets cur_train_index and paint_func, needed here
+        if not self._train_was_initialized:
+            self.on_train_begin()
         while 1:
             ret = self.get_batch(self.cur_train_index,
                                  self.minibatch_size, train=True)
@@ -339,6 +344,7 @@ class TextImageGenerator(keras.callbacks.Callback):
         self.paint_func = lambda text: paint_text(
             text, self.img_w, self.img_h,
             rotate=False, ud=False, multi_fonts=False)
+        self._train_was_initialized = True
 
     def on_epoch_begin(self, epoch, logs={}):
         # rebind the paint function to implement curriculum learning
