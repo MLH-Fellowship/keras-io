@@ -71,7 +71,14 @@ OUTPUT_DIR = 'image_ocr'
 regex = r'^[a-z ]+$'
 alphabet = u'abcdefghijklmnopqrstuvwxyz '
 
-np.random.seed(55)
+
+import tensorflow as tf
+SEED = 23
+
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 
 # this creates larger "blotches" of noise which look
