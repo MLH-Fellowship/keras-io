@@ -52,6 +52,7 @@ import editdistance
 import numpy as np
 from scipy import ndimage
 import pylab
+from tensorflow import keras
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Input, Dense, Activation
@@ -62,8 +63,6 @@ from tensorflow.keras.layers import GRU
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.utils import get_file
 from tensorflow.keras.preprocessing import image
-import tensorflow.keras.callbacks
-from tensorflow import keras
 
 
 OUTPUT_DIR = 'image_ocr'
