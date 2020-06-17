@@ -232,7 +232,7 @@ class TextImageGenerator(keras.callbacks.Callback):
         tmp_string_list = []
         self.max_string_len = max_string_len
         self.Y_data = np.ones([self.num_words, self.absolute_max_string_len]) * -1
-        self.X_text = []
+        self.X_text = [''] * self.num_words
         self.Y_len = [0] * self.num_words
 
         def _is_length_of_word_valid(word):
@@ -269,7 +269,7 @@ class TextImageGenerator(keras.callbacks.Callback):
         for i, word in enumerate(self.string_list):
             self.Y_len[i] = len(word)
             self.Y_data[i, 0:len(word)] = text_to_labels(word)
-            self.X_text.append(word)
+            self.X_text[i] = word
         self.Y_len = np.expand_dims(np.array(self.Y_len), 1)
 
         self.cur_val_index = self.val_split
