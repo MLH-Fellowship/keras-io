@@ -52,6 +52,7 @@ import editdistance
 import numpy as np
 from scipy import ndimage
 import pylab
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
@@ -71,8 +72,6 @@ OUTPUT_DIR = 'image_ocr'
 regex = r'^[a-z ]+$'
 alphabet = u'abcdefghijklmnopqrstuvwxyz '
 
-
-import tensorflow as tf
 SEED = 23
 
 np.random.seed(SEED)
