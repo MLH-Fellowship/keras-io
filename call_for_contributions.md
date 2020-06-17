@@ -4,6 +4,13 @@ This is a constantly-updated list of code examples that we're currently interest
 
 ## Timeseries forecasting with LSTM for weather prediction
 
+
+This is a work in Progress by 
+[@yashika51](https://github.com/yashika51),[@ktakattack](https://github.com/ktakattack) and [@PrabhanshuAttri](https://github.com/PrabhanshuAttri). 
+
+
+The draft code notebook can be found [here](https://github.com/MLH-Fellowship/keras-io/blob/timeseries/model/examples/timeseries/ipynb/timeseries_weather_forcasting.ipynb).
+
 Recommendations:
 
 - Use `timeseries_dataset_from_array` for data processing
