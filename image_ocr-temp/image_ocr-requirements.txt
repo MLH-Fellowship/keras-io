@@ -1,4 +1,0 @@
-# Additional requirements for examples/vision/image_ocr.py
-cairocffi
-editdistance
-matplotlib
