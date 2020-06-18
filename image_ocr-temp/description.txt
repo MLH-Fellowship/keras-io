@@ -1,0 +1,7 @@
+"""
+Title: Text Recognition using CRNN and CTC Loss
+Author: [Joshua Newton](https://github.com/joshuacwnewton) and [Parthiv Chigurupati](https://github.com/parthivc), based on the work of [Mike Henry](https://github.com/mbhenry/)
+Date created: 2020/06/18
+Last modified: 2020/06/18
+Description: End-to-end text recognition using a recurrent model trained on synthetic data.
+"""
