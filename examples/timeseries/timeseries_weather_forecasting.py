@@ -1,41 +1,14 @@
 """
 Title: Timeseries forecasting for weather prediction
-
-**Authors:**
-
- - [Prabhanshu Attri](https://prabhanshu.com/github),
- - [Yashika Sharma](https://github.com/yashika51),
- - [Kristi Takach](https://github.com/ktakattack),
- - [Falak Shah](https://github.com/falaktheoptimist)
-<br>
-
-**Date created:** 2020/06/23  <br>
-**Last modified:** 2020/06/30  <br>
-**Description:** This notebook demonstrates how to do timeseries forecasting
-using a LSTM model.
+Authors: [Prabhanshu Attri](https://prabhanshu.com/github), [Yashika Sharma](https://github.com/yashika51), [Kristi Takach](https://github.com/ktakattack), [Falak Shah](https://github.com/falaktheoptimist)
+Date created: 2020/06/23
+Last modified: 2020/06/30
+Description: This notebook demonstrates how to do timeseries forecasting using a LSTM model.
 """
 
 """
 ## Setup
-
-
-As of 25/6/20, `timeseries_dataset_from_array()` is available with TensorFlow nightly.
-
-If the following cell doesn't work, try uninstalling Tensorflow and Keras using
-this command.
-
-```
-!pip uninstall tf-nightly keras -y
-```
-
-# install tf-nightly for timeseries_dataset_from_array
-!pip install 'tf-nightly==2.3.0.dev20200623'
-!pip install 'keras==2.4.0'
-
-**Note**: Please restart the runtime using the button above in order to load
-installed Tensorflow and Keras versions.
-
-Let's do the necessary imports in the next cell.
+This example requires TensorFlow 2.3 or higher.
 """
 
 import pandas as pd
@@ -48,9 +21,7 @@ from tensorflow import keras
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
 
-
-print("Num GPUs Available: ", len(
-    tf.config.experimental.list_physical_devices('GPU')))
+print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices("GPU")))
 
 config = ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.6
@@ -60,15 +31,15 @@ session = InteractiveSession(config=config)
 """
 ## Climate Data Time-Series
 
-We would be using Jena Climate dataset recorded by the [Max Planck Institute
-for Biogeochemistry](https://www.bgc-jena.mpg.de/wetter/). The dataset consists
-of 14 features such as temperature, pressure, humidity etc, recorded once per
-10 minutes. <br/><br/>
+We would be using Jena Climate dataset recorded by the
+[Max Planck Institute for Biogeochemistry](https://www.bgc-jena.mpg.de/wetter/).
+The dataset consists of 14 features such as temperature, pressure, humidity etc, recorded once per
+10 minutes.
 
 **Location**: Weather Station, Max Planck Institute for Biogeochemistry
 in Jena, Germany
 
-**Time-frame Considered**: Jan 10, 2009 - December 31, 2016 <br/><br/>
+**Time-frame Considered**: Jan 10, 2009 - December 31, 2016 
 
 
 The table below shows the column names, their value formats and description.
@@ -103,11 +74,9 @@ Index| Features      |Format             |Description
 """
 
 uri = "https://storage.googleapis.com/tensorflow/tf-keras-datasets/jena_climate_2009_2016.csv.zip"
-
-zip_path = tf.keras.utils.get_file(
-    origin=uri, fname="jena_climate_2009_2016.csv.zip", extract=True
+csv_path = keras.utils.get_file(
+    origin=uri, fname="jena_climate_2009_2016.csv", extract=True
 )
-csv_path, _ = os.path.splitext(zip_path)
 
 # checking out the first 5 rows of the dataset
 df = pd.read_csv(csv_path)
@@ -115,7 +84,7 @@ df = df.iloc[:-1]
 df.head()
 
 """
-## Raw Visualizations
+## Raw Data Visualization
 
 We are visualizing the features against time to check the sequence and patterns.
 """
@@ -229,11 +198,11 @@ def show_time_based_visualizations(data, idx):
 
 
 # plot pressure
-#show_time_based_visualizations(df, 0)
+show_time_based_visualizations(df, 0)
 # plot temperature
-#show_time_based_visualizations(df, 1)
+show_time_based_visualizations(df, 1)
 # plot specific humidity
-#show_time_based_visualizations(df, 8)
+show_time_based_visualizations(df, 8)
 
 """
 ## Data Preprocessing
@@ -249,7 +218,7 @@ training a neural network.
 It is done by subtracting the mean and dividing by the standard deviation of each feature
 """
 
-train_split = 300000
+train_split = int(0.715 * int(df.shape[0]))
 past = 720
 future = 72
 step = 6
@@ -269,9 +238,8 @@ def normalize(data, train_split):
 
 
 """
-We will be using selecting few parameters from the dataset to avoid complete memory(RAM)
-usage. Moreover, we can see from the correlation heatmap, few parameters like
-Relative Humidity and Specific Humidity are redundant.
+We can see from the correlation heatmap, few parameters like Relative Humidity and
+Specific Humidity are redundant. Hence we would be using few features, not all.
 """
 
 feature_idx = [0, 1, 5, 7, 8, 10, 11]
@@ -297,14 +265,13 @@ y_train = features.iloc[start:end][[1]]
 
 sequence_length = int(past / step)
 
-dataset_train = tf.keras.preprocessing.timeseries_dataset_from_array(
+dataset_train = keras.preprocessing.timeseries_dataset_from_array(
     x_train,
     y_train,
     sequence_length=sequence_length,
     sampling_rate=step,
     batch_size=batch_size,
 )
-
 
 # validation dataset
 start = train_split + past + future
@@ -313,7 +280,7 @@ end = len(val_data) - past - future
 x_val = val_data.iloc[:end][[i for i in range(7)]].values
 y_val = features.iloc[start:][[1]]
 
-dataset_val = tf.keras.preprocessing.timeseries_dataset_from_array(
+dataset_val = keras.preprocessing.timeseries_dataset_from_array(
     x_val,
     y_val,
     sequence_length=sequence_length,
@@ -334,13 +301,11 @@ print("Target shape:", targets.numpy().shape)
 """
 
 inputs = keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2]))
-lstm_out = keras.layers.LSTM(32, return_sequences=False)(inputs)
+lstm_out = keras.layers.LSTM(32)(inputs)
 outputs = keras.layers.Dense(1)(lstm_out)
 
-model = tf.keras.Model(inputs=inputs, outputs=outputs)
+model = keras.Model(inputs=inputs, outputs=outputs)
 model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate), loss="mse")
-
-
 model.summary()
 
 """
@@ -349,11 +314,9 @@ model again and again whenever new runtime is started.
 """
 
 path_checkpoint = "model_checkpoint.keras"
-es_callback = tf.keras.callbacks.EarlyStopping(
-    monitor="val_loss", min_delta=0, patience=5
-)
+es_callback = keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=0, patience=5)
 
-modelckpt_callback = tf.keras.callbacks.ModelCheckpoint(
+modelckpt_callback = keras.callbacks.ModelCheckpoint(
     monitor="val_loss",
     filepath=path_checkpoint,
     verbose=1,
