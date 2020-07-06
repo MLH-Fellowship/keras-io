@@ -38,14 +38,24 @@ installed Tensorflow and Keras versions.
 Let's do the necessary imports in the next cell.
 """
 
-import numpy as np
 import pandas as pd
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import os
 import seaborn as sns
 import tensorflow as tf
 from tensorflow import keras
+
+from tensorflow.compat.v1 import ConfigProto
+from tensorflow.compat.v1 import InteractiveSession
+
+
+print("Num GPUs Available: ", len(
+    tf.config.experimental.list_physical_devices('GPU')))
+
+config = ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.6
+config.gpu_options.allow_growth = False
+session = InteractiveSession(config=config)
 
 """
 ## Climate Data Time-Series
@@ -219,11 +229,11 @@ def show_time_based_visualizations(data, idx):
 
 
 # plot pressure
-show_time_based_visualizations(df, 0)
+#show_time_based_visualizations(df, 0)
 # plot temperature
-show_time_based_visualizations(df, 1)
+#show_time_based_visualizations(df, 1)
 # plot specific humidity
-show_time_based_visualizations(df, 8)
+#show_time_based_visualizations(df, 8)
 
 """
 ## Data Preprocessing
