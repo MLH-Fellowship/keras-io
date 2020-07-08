@@ -14,9 +14,9 @@ This example requires TensorFlow 2.3 or higher.
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-import seaborn as sns
 import tensorflow as tf
 from tensorflow import keras
+import seaborn as sns
 
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
@@ -86,7 +86,9 @@ df.head()
 """
 ## Raw Data Visualization
 
-We are visualizing the features against time to check the sequence and patterns.
+To give us an easy visual of the data we are working with, each feature has been plotted.
+This shows the distinct pattern per feature over the timeperiod of 2009 to 2016.
+It also easily shows where anomalies are present, which will be addressed during normalization.
 """
 
 titles = [
@@ -165,9 +167,18 @@ show_raw_visualization(df)
 """
 This heat map shows the correlation between different features.
 """
+def show_heatmap(data):
+    plt.matshow(data.corr())
+    plt.xticks(range(data.shape[1]), data.columns, fontsize=14, rotation=90)
+    plt.gca().xaxis.tick_bottom()
+    plt.yticks(range(data.shape[1]), data.columns, fontsize=14)
 
-corr = df.corr()
-sns.heatmap(corr)
+    cb = plt.colorbar()
+    cb.ax.tick_params(labelsize=14)
+    plt.title('Feature Correlation Heatmap', fontsize=14)
+    plt.show()
+
+show_heatmap(df)
 
 """
 The input data will include pressure, temperature (in Celsius) and specific humidity.
@@ -239,7 +250,7 @@ def normalize(data, train_split):
 
 """
 We can see from the correlation heatmap, few parameters like Relative Humidity and
-Specific Humidity are redundant. Hence we would be using few features, not all.
+Specific Humidity are redundant. Hence we will be using select features, not all.
 """
 
 feature_idx = [0, 1, 5, 7, 8, 10, 11]
@@ -265,6 +276,8 @@ y_train = features.iloc[start:end][[1]]
 
 sequence_length = int(past / step)
 
+#The Keras timeseries method "creates dataset of sliding windows over the timeseries" in dataset_train. (Source: https://keras.io/api/preprocessing/timeseries/ )
+#This is what allows batching between different timeseries.
 dataset_train = keras.preprocessing.timeseries_dataset_from_array(
     x_train,
     y_train,
@@ -371,7 +384,7 @@ def show_plot(plot_data, delta, title):
         future = 0
 
     plt.title(title)
-    for i, x in enumerate(plot_data):
+    for i in enumerate(plot_data):
         if i:
             plt.plot(future, plot_data[i], marker[i], markersize=10, label=labels[i])
         else:
