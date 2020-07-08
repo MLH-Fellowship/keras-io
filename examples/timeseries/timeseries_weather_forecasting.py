@@ -14,7 +14,6 @@ This example requires TensorFlow 2.3 or higher.
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-import seaborn as sns
 import tensorflow as tf
 from tensorflow import keras
 
@@ -173,10 +172,10 @@ def show_heatmap(data):
 
     cb = plt.colorbar()
     cb.ax.tick_params(labelsize=14)
-    plt.title('Feature Correlation Heatmap', fontsize=14);
+    plt.title('Feature Correlation Heatmap', fontsize=14)
     plt.show()
 
-show_heatmap(df)
+# show_heatmap(df)
 
 """
 The input data will include pressure, temperature (in Celsius) and specific humidity.
@@ -248,7 +247,7 @@ def normalize(data, train_split):
 
 """
 We can see from the correlation heatmap, few parameters like Relative Humidity and
-Specific Humidity are redundant. Hence we would be using few features, not all.
+Specific Humidity are redundant. Hence we will be using select features, not all.
 """
 
 feature_idx = [0, 1, 5, 7, 8, 10, 11]
@@ -380,7 +379,7 @@ def show_plot(plot_data, delta, title):
         future = 0
 
     plt.title(title)
-    for i, x in enumerate(plot_data):
+    for i in enumerate(plot_data):
         if i:
             plt.plot(future, plot_data[i], marker[i], markersize=10, label=labels[i])
         else:
