@@ -6,7 +6,7 @@ Last modified: 2020/05/01
 Description: Predict the next frame in a sequence using a Conv-LSTM model.
 """
 """
-## Introduction
+# Introduction
 
 This script demonstrates the use of a convolutional LSTM model.
 The model is used to predict the next frame of an artificially
@@ -14,23 +14,19 @@ generated movie which contains moving squares.
 """
 
 """
-## Setup
+# Setup
 """
 
-from tensorflow import keras
-from tensorflow.keras import layers
-import numpy as np
-import pylab as plt
 
 """
-## Build a model
+# Build a model
 
 We create a model which take as input movies of shape
 `(n_frames, width, height, channels)` and returns a movie
 of identical shape.
 """
 
-seq = keras.Sequential(
+""" seq = keras.Sequential(
     [
         keras.Input(
             shape=(None, 40, 40, 1)
@@ -55,20 +51,54 @@ seq = keras.Sequential(
             filters=1, kernel_size=(3, 3, 3), activation="sigmoid", padding="same"
         ),
     ]
-)
-seq.compile(loss="binary_crossentropy", optimizer="adadelta")
+) """
+
+
+from tensorflow import keras
+from tensorflow.keras import layers
+from keras import models
+from keras.layers.convolutional import Conv3D
+from keras.layers.convolutional_recurrent import ConvLSTM2D
+from keras.layers.normalization import BatchNormalization
+
+#libraries I'm adding
+import numpy as np
+import pylab as plt
+import os
+
+
+#really only changed the amount of frames in the shape
+def create_model():
+    model = keras.Sequential()
+
+    model.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
+                         # 60 frames, 200x200 pi, 1 channel for black & white
+                         input_shape=(60, 40, 40, 1),
+                         padding='same', return_sequences=True))
+
+    model.add(BatchNormalization())
+
+    model.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
+                         padding='same', return_sequences=True))
+    model.add(BatchNormalization())
+
+    model.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
+                        padding='same', return_sequences=True))
+    model.add(BatchNormalization())
+
+    model.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
+                         padding='same', return_sequences=True))
+    model.add(BatchNormalization())
+
+    model.add(Conv3D(filters=1, kernel_size=(3, 3, 3),
+                     activation='sigmoid',
+                     padding='same', data_format='channels_last'))
+                  
+    model.compile(loss='binary_crossentropy', optimizer='adadelta')
+    return model
+
 
 """
-## Generate artificial data
-
-Generate movies with 3 to 7 moving squares inside.
-The squares are of shape 1x1 or 2x2 pixels,
-and move linearly over time.
-For convenience, we first create movies with bigger width and height (80x80)
-and at the end we select a 40x40 window.
-"""
-
-
 def generate_movies(n_samples=1200, n_frames=15):
     row = 80
     col = 80
@@ -125,16 +155,49 @@ def generate_movies(n_samples=1200, n_frames=15):
     noisy_movies[noisy_movies >= 1] = 1
     shifted_movies[shifted_movies >= 1] = 1
     return noisy_movies, shifted_movies
+"""
 
 
+#how to understand sample size
+def generate_movies(n_samples=600, n_frames=60):
+    row = 80
+    col = 80
+    noisy_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float)
+    shifted_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float)
+
+    # path=getBasePathOfProject()
+    # print(path)
+
+    #use relative filepath to grab the frames
+    dirname = os.path.dirname(__file__)
+    filename = os.path.join(dirname + '/img/moving_square')
+    
+    #test filename
+    print('directory name  ' + dirname)
+    print('filename  ' + filename)
+    #open filepath
+
+
+    #Do I still add noise? 
+
+    #do I need to shift the ground truth by 1?
+
+
+
+
+#test function call
+generate_movies()  
+
+
+#planning to use the same training...
 """
-## Train the model
-"""
+# Train the model
+
 
 epochs = 1  # In practice, you would need hundreds of epochs.
-
+#need to figure out how to feed in the gif
 noisy_movies, shifted_movies = generate_movies(n_samples=1200)
-seq.fit(
+model.fit(
     noisy_movies[:1000],
     shifted_movies[:1000],
     batch_size=10,
@@ -143,12 +206,12 @@ seq.fit(
     validation_split=0.1,
 )
 
-"""
-## Test the model on one movie
+
+
+# Test the model on one movie
 
 Feed it with the first 7 positions and then
 predict the new positions.
-"""
 
 movie_index = 1004
 test_movie = noisy_movies[movie_index]
@@ -161,3 +224,4 @@ for j in range(16):
     new_pos = seq.predict(track[np.newaxis, ::, ::, ::, ::])
     new = new_pos[::, -1, ::, ::, ::]
     track = np.concatenate((track, new), axis=0)
+"""
