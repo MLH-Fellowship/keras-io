@@ -163,10 +163,8 @@ def generate_movies(n_samples=600, n_frames=60):
     row = 80
     col = 80
     noisy_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float)
+    #this just moves the squares, might not need
     shifted_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float)
-
-    # path=getBasePathOfProject()
-    # print(path)
 
     #use relative filepath to grab the frames
     dirname = os.path.dirname(__file__)
@@ -178,9 +176,9 @@ def generate_movies(n_samples=600, n_frames=60):
     #open filepath
 
 
-    #Do I still add noise? 
+    #start training 100 copies without noise, if not perfect there's a problem. see if it memorizes.
 
-    #do I need to shift the ground truth by 1?
+    
 
 
 
