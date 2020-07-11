@@ -72,6 +72,12 @@ Index| Features      |Format             |Description
 15   |wd (deg)       |152.3              |Wind direction in degrees
 """
 
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+import tensorflow as tf
+from tensorflow import keras
+
 uri = "https://storage.googleapis.com/tensorflow/tf-keras-datasets/jena_climate_2009_2016.csv.zip"
 csv_path = keras.utils.get_file(
     origin=uri, fname="jena_climate_2009_2016.csv", extract=True
