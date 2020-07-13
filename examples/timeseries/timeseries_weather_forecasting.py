@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import os
 import tensorflow as tf
 from tensorflow import keras
+import seaborn as sns
 
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
@@ -175,7 +176,7 @@ def show_heatmap(data):
     plt.title('Feature Correlation Heatmap', fontsize=14)
     plt.show()
 
-# show_heatmap(df)
+show_heatmap(df)
 
 """
 The input data will include pressure, temperature (in Celsius) and specific humidity.
