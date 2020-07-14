@@ -86,7 +86,9 @@ df.head()
 """
 ## Raw Data Visualization
 
-We are visualizing the features against time to check the sequence and patterns.
+To give us an easy visual of the data we are working with, each feature has been plotted.
+This shows the distinct pattern per feature over the timeperiod of 2009 to 2016.
+It also easily shows where anomalies are present, which will be addressed during normalization.
 """
 
 titles = [
@@ -274,6 +276,8 @@ y_train = features.iloc[start:end][[1]]
 
 sequence_length = int(past / step)
 
+#The Keras timeseries method "creates dataset of sliding windows over the timeseries" in dataset_train. (Source: https://keras.io/api/preprocessing/timeseries/ )
+#This is what allows batching between different timeseries.
 dataset_train = keras.preprocessing.timeseries_dataset_from_array(
     x_train,
     y_train,
