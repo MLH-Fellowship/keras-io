@@ -54,20 +54,25 @@ of identical shape.
 ) """
 
 
+# libraries I'm adding
+
+
+# really only changed the amount of frames in the shape
+
+
+
+
 from tensorflow import keras
 from tensorflow.keras import layers
 from keras import models
 from keras.layers.convolutional import Conv3D
 from keras.layers.convolutional_recurrent import ConvLSTM2D
 from keras.layers.normalization import BatchNormalization
-
-#libraries I'm adding
 import numpy as np
 import pylab as plt
 import os
+import cv2 as cv2
 
-
-#really only changed the amount of frames in the shape
 def create_model():
     model = keras.Sequential()
 
@@ -83,7 +88,7 @@ def create_model():
     model.add(BatchNormalization())
 
     model.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
-                        padding='same', return_sequences=True))
+                         padding='same', return_sequences=True))
     model.add(BatchNormalization())
 
     model.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
@@ -93,7 +98,7 @@ def create_model():
     model.add(Conv3D(filters=1, kernel_size=(3, 3, 3),
                      activation='sigmoid',
                      padding='same', data_format='channels_last'))
-                  
+
     model.compile(loss='binary_crossentropy', optimizer='adadelta')
     return model
 
@@ -157,37 +162,43 @@ def generate_movies(n_samples=1200, n_frames=15):
     return noisy_movies, shifted_movies
 """
 
+# frame generation
 
-#how to understand sample size
-def generate_movies(n_samples=600, n_frames=60):
+# only have one sample
+def generate_movies(n_frames=60):
     row = 80
     col = 80
-    noisy_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float)
-    #this just moves the squares, might not need
-    shifted_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float)
+    #features
+    noisy_movies = np.zeros((n_frames, row, col, 1), dtype=np.float)
+    # keep this for labels
+    shifted_movies = np.zeros((n_frames, row, col, 1), dtype=np.float)
 
-    #use relative filepath to grab the frames
+    # use relative filepath to grab the frames
     dirname = os.path.dirname(__file__)
-    filename = os.path.join(dirname + '/img/moving_square')
-    
-    #test filename
-    print('directory name  ' + dirname)
-    print('filename  ' + filename)
-    #open filepath
+    filename = os.path.join(dirname + '/img/moving_square/')
+
+    #colored image to test
+    filename = os.path.join(dirname + '/img/moving_square/color-wheel.jpg')
+
+    img=cv2.imread(filename, 0)
+    cv2.imshow('image',img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
-    #start training 100 copies without noise, if not perfect there's a problem. see if it memorizes.
+    # test filename
+    #print('directory name  ' + dirname)
+    #print('filename  ' + filename)
+    # open filepath
 
-    
-
-
-
-
-#test function call
-generate_movies()  
+    # start training 100 copies without noise, if not perfect there's a problem. see if it memorizes.
 
 
-#planning to use the same training...
+# test function call
+generate_movies()
+
+
+# planning to use the same training...
 """
 # Train the model
 
@@ -196,8 +207,8 @@ epochs = 1  # In practice, you would need hundreds of epochs.
 #need to figure out how to feed in the gif
 noisy_movies, shifted_movies = generate_movies(n_samples=1200)
 model.fit(
-    noisy_movies[:1000],
-    shifted_movies[:1000],
+    noisy_movies[:1000],   #features to predict on
+    shifted_movies[:1000],  #labels
     batch_size=10,
     epochs=epochs,
     verbose=2,
