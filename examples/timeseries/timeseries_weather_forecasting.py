@@ -2,7 +2,7 @@
 Title: Timeseries forecasting for weather prediction
 Authors: [Prabhanshu Attri](https://prabhanshu.com/github), [Yashika Sharma](https://github.com/yashika51), [Kristi Takach](https://github.com/ktakattack), [Falak Shah](https://github.com/falaktheoptimist)
 Date created: 2020/06/23
-Last modified: 2020/06/30
+Last modified: 2020/07/20
 Description: This notebook demonstrates how to do timeseries forecasting using a LSTM model.
 """
 
@@ -13,7 +13,6 @@ This example requires TensorFlow 2.3 or higher.
 
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
 import tensorflow as tf
 from tensorflow import keras
 import seaborn as sns
@@ -39,7 +38,7 @@ The dataset consists of 14 features such as temperature, pressure, humidity etc,
 **Location**: Weather Station, Max Planck Institute for Biogeochemistry
 in Jena, Germany
 
-**Time-frame Considered**: Jan 10, 2009 - December 31, 2016 
+**Time-frame Considered**: Jan 10, 2009 - December 31, 2016
 
 
 The table below shows the column names, their value formats and description.
@@ -50,25 +49,25 @@ Index| Features      |Format             |Description
 2    |p (mbar)       |996.52             |The pascal SI derived unit of pressure used to
      |               |                   |quantify internal pressure. Meteorological
      |               |                   |reports typically state atmospheric pressure
-     |				 |					 |in millibars.
+     |               |                   |in millibars.
 3    |T (degC)       |-8.02              |Temperature in Celsius
 4    |Tpot (K)       |265.4              |Temperature in Kelvin
 5    |Tdew (degC)    |-8.9               |Temperature in Celsius relative to humidity.
-	 |				 |					 |Dew Point is a measure of the absolute amount
-	 |				 |					 |of water in the air, the DP is the temperature
-	 |				 |					 |at which the air cannot hold all the moisture in
-	 |				 |					 |it and water condenses. 
+     |               |                   |Dew Point is a measure of the absolute amount
+     |               |                   |of water in the air, the DP is the temperature
+     |               |                   |at which the air cannot hold all the moisture in
+     |               |                   |it and water condenses.
 6    |rh (%)         |93.3               |Relative Humidity is a measure of how saturated
-	 |				 |					 |the air is with water vapor, the %RH determines
-	 |				 |					 |the amount of water contained within collection
-	 |				 |					 |objects. 
+     |               |                   |the air is with water vapor, the %RH determines
+     |               |                   |the amount of water contained within collection
+     |               |                   |objects.
 7    |VPmax (mbar)   |3.33               |Saturation vapor pressure
 8    |VPact (mbar)   |3.11               |Vapor pressure
 9    |VPdef (mbar)   |0.22               |Vapor pressure deficit
 10   |sh (g/kg)      |1.94               |Specific humidity
 11   |H2OC (mmol/mol)|3.12               |Water vapor concentration
 12   |rho (g/m ** 3) |1307.75            |Airtight
-13   |wv (m/s)       |1.03               |Wind speed 
+13   |wv (m/s)       |1.03               |Wind speed
 14   |max. wv (m/s)  |1.75               |Maximum wind speed
 15   |wd (deg)       |152.3              |Wind direction in degrees
 """
@@ -188,7 +187,6 @@ The below line graphs show each feature graphed by hour, month and year.
 
 def show_time_based_visualizations(data, idx):
     selected_feature = feature_keys[idx]
-    time_data = data[date_time_key]
     fig, axes = plt.subplots(
         nrows=1, ncols=3, figsize=(15, 5), dpi=80, facecolor="w", edgecolor="k"
     )
@@ -227,9 +225,19 @@ Raw data is normalized using a z score formula. Since every feature has values w
 varying ranges, normalization is done to confine the values in a range of [0,1] before
 training a neural network.
 It is done by subtracting the mean and dividing by the standard deviation of each feature
+
+71.5 % of the data will be used to train the model, i.e. 300693 rows
 """
 
-train_split = int(0.715 * int(df.shape[0]))
+split_fraction = 0.715
+train_split = int(split_fraction * int(df.shape[0]))
+
+"""
+The model is shown data for first 5 days i.e. 720 observations, that are sampled every
+hour. The temperature after 72 (12 hours * 6 observation per hour) observation will be
+used as a label.
+"""
+
 past = 720
 future = 72
 step = 6
@@ -253,9 +261,11 @@ We can see from the correlation heatmap, few parameters like Relative Humidity a
 Specific Humidity are redundant. Hence we will be using select features, not all.
 """
 
-feature_idx = [0, 1, 5, 7, 8, 10, 11]
-print("The selected parameters are:", ", ".join([titles[i] for i in feature_idx]))
-selected_features = [feature_keys[i] for i in feature_idx]
+print(
+    "The selected parameters are:",
+    ", ".join([titles[i] for i in [0, 1, 5, 7, 8, 10, 11]]),
+)
+selected_features = [feature_keys[i] for i in [0, 1, 5, 7, 8, 10, 11]]
 features = df[selected_features]
 features.index = df[date_time_key]
 features.head()
@@ -267,7 +277,12 @@ features.head()
 train_data = features.loc[0 : train_split - 1]
 val_data = features.loc[train_split:]
 
-# training dataset
+"""
+# Training dataset
+
+The training dataset labels starts from 792nd observation(720 + 72) to start + train_split
+"""
+
 start = past + future
 end = start + train_split
 
@@ -276,8 +291,13 @@ y_train = features.iloc[start:end][[1]]
 
 sequence_length = int(past / step)
 
-#The Keras timeseries method "creates dataset of sliding windows over the timeseries" in dataset_train. (Source: https://keras.io/api/preprocessing/timeseries/ )
-#This is what allows batching between different timeseries.
+"""
+`timeseries_dataset_from_array` function takes in a sequence of data-points gathered at
+equal intervals, along with time series parameters such as length of the
+sequences/windows, spacing between two sequence/windows, etc., to produce batches of
+timeseries inputs and targets.
+"""
+
 dataset_train = keras.preprocessing.timeseries_dataset_from_array(
     x_train,
     y_train,
@@ -286,12 +306,22 @@ dataset_train = keras.preprocessing.timeseries_dataset_from_array(
     batch_size=batch_size,
 )
 
-# validation dataset
-start = train_split + past + future
-end = len(val_data) - past - future
+"""
+# Validation dataset
 
-x_val = val_data.iloc[:end][[i for i in range(7)]].values
-y_val = features.iloc[start:][[1]]
+The validation dataset must be not contain last 792 rows as we won't have label data for
+those records, hence 792 must be subtracted from the x_end.
+
+The validation label dataset must start from 792 after train_split, hence we must add
+past + future (792) to label_start
+"""
+
+x_end = len(val_data) - past - future
+
+label_start = train_split + past + future
+
+x_val = val_data.iloc[:x_end][[i for i in range(7)]].values
+y_val = features.iloc[label_start:][[1]]
 
 dataset_val = keras.preprocessing.timeseries_dataset_from_array(
     x_val,
@@ -384,7 +414,7 @@ def show_plot(plot_data, delta, title):
         future = 0
 
     plt.title(title)
-    for i in enumerate(plot_data):
+    for i, val in enumerate(plot_data):
         if i:
             plt.plot(future, plot_data[i], marker[i], markersize=10, label=labels[i])
         else:
