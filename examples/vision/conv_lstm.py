@@ -71,8 +71,7 @@ from keras.layers.normalization import BatchNormalization
 import numpy as np
 import pylab as plt
 import os
-import cv2 as cv2
-
+import cv2
 def create_model():
     model = keras.Sequential()
 
@@ -165,34 +164,59 @@ def generate_movies(n_samples=1200, n_frames=15):
 # frame generation
 
 # only have one sample
+
+
 def generate_movies(n_frames=60):
     row = 80
     col = 80
-    #features
+    # features
     noisy_movies = np.zeros((n_frames, row, col, 1), dtype=np.float)
     # keep this for labels
     shifted_movies = np.zeros((n_frames, row, col, 1), dtype=np.float)
 
     # use relative filepath to grab the frames
+    # returns directory path of file
     dirname = os.path.dirname(__file__)
-    filename = os.path.join(dirname + '/img/moving_square/')
+    # joins directory and filename
+    filename = os.path.join(
+        dirname + '/img/moving_square/frame_18.png')
 
-    #colored image to test
-    filename = os.path.join(dirname + '/img/moving_square/color-wheel.jpg')
+    # colored image to test
+    # filename = os.path.join(dirname + '/img/moving_square/color-wheel.jpg')
+    img = cv2.imread(filename)
 
-    img=cv2.imread(filename, 0)
-    cv2.imshow('image',img)
+    grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    (thresh, blackAndWhiteImage) = cv2.threshold(
+        grayImage, 0, 255, cv2.THRESH_BINARY)
+    # loads image from file
+    # img = cv2.imread(filename, 0)
+    counter = 0
+
+    # while (counter < n_frames):
+    #     filename = os.path.join(dirname + '/img/moving_square/frame_'+ str(counter) +'.png')
+    #     #0 stands for grayscale
+    #     img = cv2.imread(filename, 0)
+    #     counter = counter +1
+
+    # display img
+    # cv2.imshow('image'+ str(counter), img)
+
+    cv2.imshow('image', grayImage)
+    cv2.imshow('image', blackAndWhiteImage)
+    print (blackAndWhiteImage[40,60])
+    # need this or window automatically closes
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
 
+# colored image to test
+    # filename = os.path.join(dirname + '/img/moving_square/color-wheel.jpg')
     # test filename
     #print('directory name  ' + dirname)
     #print('filename  ' + filename)
     # open filepath
 
     # start training 100 copies without noise, if not perfect there's a problem. see if it memorizes.
-
 
 # test function call
 generate_movies()
