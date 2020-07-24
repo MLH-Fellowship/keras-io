@@ -54,24 +54,18 @@ of identical shape.
 ) """
 
 
-# libraries I'm adding
-
-
-# really only changed the amount of frames in the shape
-
-
-
-
+#double check you need all the keras
 from tensorflow import keras
 from tensorflow.keras import layers
 from keras import models
+from cv2 import cv2   #gets rid of pylint errors
 from keras.layers.convolutional import Conv3D
 from keras.layers.convolutional_recurrent import ConvLSTM2D
 from keras.layers.normalization import BatchNormalization
 import numpy as np
 import pylab as plt
 import os
-import cv2
+from cv2 import cv2
 def create_model():
     model = keras.Sequential()
 
@@ -177,46 +171,53 @@ def generate_movies(n_frames=60):
     # use relative filepath to grab the frames
     # returns directory path of file
     dirname = os.path.dirname(__file__)
-    # joins directory and filename
-    filename = os.path.join(
-        dirname + '/img/moving_square/frame_18.png')
 
-    # colored image to test
-    # filename = os.path.join(dirname + '/img/moving_square/color-wheel.jpg')
-    img = cv2.imread(filename)
 
-    grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    (thresh, blackAndWhiteImage) = cv2.threshold(
-        grayImage, 0, 255, cv2.THRESH_BINARY)
+    # ================TESTING WITH COLOR WHEEL JPG =====================================================
+    filename = os.path.join(dirname + '/img/moving_square/color-wheel.jpg')
     # loads image from file
-    # img = cv2.imread(filename, 0)
-    counter = 0
+    img = cv2.imread(filename)
+    grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    (thresh, blackAndWhiteImage) = cv2.threshold(grayImage, 249, 255, cv2.THRESH_BINARY)
 
-    # while (counter < n_frames):
-    #     filename = os.path.join(dirname + '/img/moving_square/frame_'+ str(counter) +'.png')
-    #     #0 stands for grayscale
-    #     img = cv2.imread(filename, 0)
-    #     counter = counter +1
+    # test to see if values are 0 or 255
+    # print (blackAndWhiteImage[10,33])
+    # cv2.imshow('bw image', blackAndWhiteImage)
 
-    # display img
-    # cv2.imshow('image'+ str(counter), img)
+    path='/img/moving_square/bw-wheel.jpg'
+    cv2.imwrite(path, blackAndWhiteImage)
 
-    cv2.imshow('image', grayImage)
-    cv2.imshow('image', blackAndWhiteImage)
-    print (blackAndWhiteImage[40,60])
-    # need this or window automatically closes
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+#====================ONCE TEST IMAGE IS WORKING, USE BELOW=========================================
+    counter = 0
 
-# colored image to test
-    # filename = os.path.join(dirname + '/img/moving_square/color-wheel.jpg')
-    # test filename
-    #print('directory name  ' + dirname)
-    #print('filename  ' + filename)
-    # open filepath
+    # while (counter < n_frames):
+    #     filename = os.path.join(dirname + '/img/moving_square/frame_' + str(counter) + '.png')
+        
+    #     # 0 stands for grayscale
+    #     img = cv2.imread(filename)
+    #     grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #     (thresh, blackAndWhiteImage) = cv2.threshold(grayImage, 0, 255, cv2.THRESH_BINARY)
+    #     #save B&W image
+    #     path='moving_square/frameee_' + str(counter)+ '.png'
+    #     cv2.imwrite(path, blackAndWhiteImage)
+    #     # blackAndWhiteImage.save('/img/moving_square/frameee_' + str(counter)+ '.png')
+    #     counter += 1
+
+    # display img
+    # cv2.imshow('image' + str(counter), img)
+
+    # cv2.imshow('grey image'+ str(counter), grayImage)
+    # cv2.imshow('bw image'+ str(counter), blackAndWhiteImage)
+   
+#    # need this or window automatically closes
+#     cv2.waitKey(0)
+#     cv2.destroyAllWindows()
 
     # start training 100 copies without noise, if not perfect there's a problem. see if it memorizes.
+
 
 # test function call
 generate_movies()
