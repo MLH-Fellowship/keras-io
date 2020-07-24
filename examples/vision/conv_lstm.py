@@ -184,7 +184,7 @@ def generate_movies(n_frames=60):
     # print (blackAndWhiteImage[10,33])
     # cv2.imshow('bw image', blackAndWhiteImage)
 
-    path='/img/moving_square/bw-wheel.jpg'
+    path='./examples/vision/img/moving_square/bw-wheel2.jpg'
     cv2.imwrite(path, blackAndWhiteImage)
 
     cv2.waitKey(0)
