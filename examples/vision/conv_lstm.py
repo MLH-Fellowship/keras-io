@@ -174,37 +174,37 @@ def generate_movies(n_frames=60):
 
 
     # ================TESTING WITH COLOR WHEEL JPG =====================================================
-    filename = os.path.join(dirname + '/img/moving_square/color-wheel.jpg')
-    # loads image from file
-    img = cv2.imread(filename)
-    grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    (thresh, blackAndWhiteImage) = cv2.threshold(grayImage, 249, 255, cv2.THRESH_BINARY)
+    # filename = os.path.join(dirname + '/img/moving_square/color-wheel.jpg')
+    # # loads image from file
+    # img = cv2.imread(filename)
+    # grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # (thresh, blackAndWhiteImage) = cv2.threshold(grayImage, 249, 255, cv2.THRESH_BINARY)
 
-    # test to see if values are 0 or 255
-    # print (blackAndWhiteImage[10,33])
-    # cv2.imshow('bw image', blackAndWhiteImage)
+    # # test to see if values are 0 or 255
+    # # print (blackAndWhiteImage[10,33])
+    # # cv2.imshow('bw image', blackAndWhiteImage)
 
-    path='./examples/vision/img/moving_square/bw-wheel2.jpg'
-    cv2.imwrite(path, blackAndWhiteImage)
+    # path='./examples/vision/img/moving_square/bw-wheel2.jpg'
+    # cv2.imwrite(path, blackAndWhiteImage)
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # #uncomment to see image
+    # # cv2.waitKey(0)
+    # # cv2.destroyAllWindows()
 
 #====================ONCE TEST IMAGE IS WORKING, USE BELOW=========================================
     counter = 0
 
-    # while (counter < n_frames):
-    #     filename = os.path.join(dirname + '/img/moving_square/frame_' + str(counter) + '.png')
+    while (counter < n_frames):
+        filename = os.path.join(dirname + '/img/moving_square/frame_' + str(counter) + '.png')
         
-    #     # 0 stands for grayscale
-    #     img = cv2.imread(filename)
-    #     grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #     (thresh, blackAndWhiteImage) = cv2.threshold(grayImage, 0, 255, cv2.THRESH_BINARY)
-    #     #save B&W image
-    #     path='moving_square/frameee_' + str(counter)+ '.png'
-    #     cv2.imwrite(path, blackAndWhiteImage)
-    #     # blackAndWhiteImage.save('/img/moving_square/frameee_' + str(counter)+ '.png')
-    #     counter += 1
+        # 0 stands for grayscale
+        img = cv2.imread(filename)
+        grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        (thresh, blackAndWhiteImage) = cv2.threshold(grayImage, 0, 255, cv2.THRESH_BINARY)
+        #save B&W image
+        cv2.imwrite('./examples/vision/img/moving_square/bw_frame_'+ str(counter)+ '.png', blackAndWhiteImage)
+        # blackAndWhiteImage.save('/img/moving_square/frameee_' + str(counter)+ '.png')
+        counter += 1
 
     # display img
     # cv2.imshow('image' + str(counter), img)
