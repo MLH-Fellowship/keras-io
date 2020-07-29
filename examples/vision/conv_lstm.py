@@ -144,24 +144,25 @@ for layer in model1.layers:
 def generate_movies(n_samples=10, n_frames=60):
     row = 80
     col = 80
-    noisy_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float) # features
-    shifted_movies = np.zeros((n_samples, n_frames, row, col, 1), dtype=np.float)  # labels
+    noisy_movies = np.zeros(
+        (n_samples, n_frames, row, col, 1), dtype=np.float)  # features
+    shifted_movies = np.zeros(
+        (n_samples, n_frames, row, col, 1), dtype=np.float)  # labels
 
     dirname = os.path.dirname(__file__)
 
     counter = 0
-    counter2=0
     # wrap in for-loop going over samples=10; have a bunch of identical instances in the batch;
     # make add noise func(after prediction works)
-    # while (counter2 in n_samples):
     while (counter < n_frames):
         filename = os.path.join(
             dirname + '/img/moving_square/frame_' + str(counter) + '.png')
 
         img = cv2.imread(filename)
         grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        (thresh, blackAndWhiteImage) = cv2.threshold(grayImage, 0, 255, cv2.THRESH_BINARY)
-        #save B&W image
+        (thresh, blackAndWhiteImage) = cv2.threshold(
+            grayImage, 0, 255, cv2.THRESH_BINARY)
+        # save B&W image
         cv2.imwrite('./examples/vision/img/moving_square/bw_frame_' +
                     str(counter) + '.png', blackAndWhiteImage)
         counter += 1
@@ -173,7 +174,24 @@ def generate_movies(n_samples=10, n_frames=60):
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
 
-        # Cut to a 40x40 window
+    # ==========AUGMENTATION===========================
+    # create a loop that duplicates frames
+    counter = 0
+    counter2=60
+
+    while (counter2 < 120):
+        #read in converted files
+        filename = os.path.join(
+            dirname + '/img/moving_square/bw_frame_' + str(counter) + '.png')
+
+        img = cv2.imread(filename)
+        
+        cv2.imwrite('./examples/vision/img/moving_square/bw_frame_' +
+                    str(counter2) + '.png', img)
+        counter += 1
+        counter2 += 1
+
+    # Cut to a 40x40 window
     noisy_movies = noisy_movies[::, ::, 20:60, 20:60, ::]
     shifted_movies = shifted_movies[::, ::, 20:60, 20:60, ::]
     noisy_movies[noisy_movies >= 1] = 1
