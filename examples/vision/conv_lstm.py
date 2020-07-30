@@ -69,13 +69,13 @@ def create_model():
     # # loads image from file
     # img = cv2.imread(filename)
     # grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # (thresh, blackAndWhiteImage) = cv2.threshold(grayImage, 249, 255, cv2.THRESH_BINARY)
+    # (thresh, binaryImage) = cv2.threshold(grayImage, 249, 255, cv2.THRESH_BINARY)
 
     # # test to see if values are 0 or 255
-    # # print (blackAndWhiteImage[10,33])
-    # # cv2.imshow('bw image', blackAndWhiteImage)
+    # # print (binaryImage[10,33])
+    # # cv2.imshow('bw image', binaryImage)
     # path='./examples/vision/img/moving_square/bw-wheel2.jpg'
-    # cv2.imwrite(path, blackAndWhiteImage)
+    # cv2.imwrite(path, binaryImage)
 
     # #uncomment to see image
     # # cv2.waitKey(0)
@@ -128,7 +128,8 @@ def create_model():
     model.add(Conv3D(filters=1, kernel_size=(3, 3, 3),
                      activation='sigmoid',
                      padding='same', data_format='channels_last'))
-    model.compile(loss="binary_crossentropy", optimizer="adadelta")
+
+    model.compile(loss="binary_crossentropy", optimizer="adadelta", learning_rate=0.001)
     return model
 
 
@@ -137,72 +138,62 @@ def create_model():
 model1 = create_model()
 print(model1.name, model1.input_shape)
 
-for layer in model1.layers:
-    print(layer.name, layer.output_shape, layer.input_shape)
+# for layer in model1.layers:
+#     print(layer.name, layer.output_shape, layer.input_shape)
 
+def getFrame(dirname, counter, row, col):
+    filename = os.path.join(
+        dirname + '/img/moving_square/frame_' + str(counter) + '.png')
+
+    img = cv2.imread(filename)
+    grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    (thresh, binaryImage) = cv2.threshold(
+        grayImage, 0, 1, cv2.THRESH_BINARY)
+
+    dim = (80, 80)
+    resizedImage = cv2.resize(binaryImage, dim)
+    return resizedImage
 
 def generate_movies(n_samples=10, n_frames=60):
-    row = 80
-    col = 80
-    noisy_movies = np.zeros(
-        (n_samples, n_frames, row, col, 1), dtype=np.float)  # features
+    rows = 80
+    columns = 80
+    movies = np.zeros(
+        (n_samples, n_frames, rows, columns, 1), dtype=np.float)  # features
     shifted_movies = np.zeros(
-        (n_samples, n_frames, row, col, 1), dtype=np.float)  # labels
+        (n_samples, n_frames, rows, columns, 1), dtype=np.float)  # labels
 
     dirname = os.path.dirname(__file__)
 
-    counter = 0
+    frame = 0
     # wrap in for-loop going over samples=10; have a bunch of identical instances in the batch;
     # make add noise func(after prediction works)
-    while (counter < n_frames):
-        filename = os.path.join(
-            dirname + '/img/moving_square/frame_' + str(counter) + '.png')
-
-        img = cv2.imread(filename)
-        grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        (thresh, blackAndWhiteImage) = cv2.threshold(
-            grayImage, 0, 255, cv2.THRESH_BINARY)
-        # save B&W image
-        cv2.imwrite('./examples/vision/img/moving_square/bw_frame_' +
-                    str(counter) + '.png', blackAndWhiteImage)
-        counter += 1
-
-        # #old testing
-        # #display img
-        # cv2.imshow('bw image'+ str(counter), blackAndWhiteImage)
-        # #need this or window automatically closes
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-
-    # ==========AUGMENTATION===========================
-    # create a loop that duplicates frames
-    counter = 0
-    counter2=60
-
-    while (counter2 < 120):
-        #read in converted files
-        filename = os.path.join(
-            dirname + '/img/moving_square/bw_frame_' + str(counter) + '.png')
-
-        img = cv2.imread(filename)
+    while (frame < n_frames - 1):
+        currentFrame = getFrame(dirname, frame, rows, columns)
         
-        cv2.imwrite('./examples/vision/img/moving_square/bw_frame_' +
-                    str(counter2) + '.png', img)
-        counter += 1
-        counter2 += 1
+
+    # add to dataset; need to put all the values from the [frame, x-val, y-val, binary value]
+        for row in range(len(currentFrame)):
+            for col in range(len(currentFrame[row])):
+                movies[0, frame + 1, row, col] = currentFrame[row][col]
+                shifted_movies[0, frame, row, col] = currentFrame[row][col]
+
+        frame += 1
+
+      # ==========AUGMENTATION===========================
+    # create a loop that duplicates frames
+
 
     # Cut to a 40x40 window
-    noisy_movies = noisy_movies[::, ::, 20:60, 20:60, ::]
+    movies = movies[::, ::, 20:60, 20:60, ::]
     shifted_movies = shifted_movies[::, ::, 20:60, 20:60, ::]
-    noisy_movies[noisy_movies >= 1] = 1
+    movies[movies >= 1] = 1
     shifted_movies[shifted_movies >= 1] = 1
-    return noisy_movies, shifted_movies
+    return movies, shifted_movies
+
+
 # start training 100 copies without noise, if not perfect there's a problem. see if it memorizes.
 
-# make identical batches, wrap in for loop,
-
-# test function call
-# generate_movies(n_frames)
+# make identical batches, wrap in for loop
 
 
 # ================= Train the model=========================================
