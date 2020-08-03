@@ -81,14 +81,7 @@ def create_model():
     # # cv2.waitKey(0)
     # # cv2.destroyAllWindows()
 
-
-
-
-
-
 """
-
-
 
 
 import os
@@ -129,17 +122,22 @@ def create_model():
                      activation='sigmoid',
                      padding='same', data_format='channels_last'))
 
-    model.compile(loss="binary_crossentropy", optimizer="adadelta", learning_rate=0.001)
+    # model.compile(loss="binary_crossentropy", optimizer="adadelta", learning_rate=0.001)
     return model
 
 
 # create_model()
 # trouble-shooting
 model1 = create_model()
+opt = tf.keras.optimizers.Adadelta(learning_rate=0.001, rho=0.95, epsilon=1e-07, name='Adadelta')
+model1.compile(opt, loss="binary_crossentropy")
+
+
 print(model1.name, model1.input_shape)
 
 # for layer in model1.layers:
 #     print(layer.name, layer.output_shape, layer.input_shape)
+
 
 def getFrame(dirname, counter, row, col):
     filename = os.path.join(
@@ -153,6 +151,7 @@ def getFrame(dirname, counter, row, col):
     dim = (80, 80)
     resizedImage = cv2.resize(binaryImage, dim)
     return resizedImage
+
 
 def generate_movies(n_samples=10, n_frames=60):
     rows = 80
@@ -169,7 +168,6 @@ def generate_movies(n_samples=10, n_frames=60):
     # make add noise func(after prediction works)
     while (frame < n_frames - 1):
         currentFrame = getFrame(dirname, frame, rows, columns)
-        
 
     # add to dataset; need to put all the values from the [frame, x-val, y-val, binary value]
         for row in range(len(currentFrame)):
@@ -181,7 +179,6 @@ def generate_movies(n_samples=10, n_frames=60):
 
       # ==========AUGMENTATION===========================
     # create a loop that duplicates frames
-
 
     # Cut to a 40x40 window
     movies = movies[::, ::, 20:60, 20:60, ::]
@@ -198,7 +195,7 @@ def generate_movies(n_samples=10, n_frames=60):
 
 # ================= Train the model=========================================
 # epochs = 1  # In practice, you would need hundreds of epochs.
-epochs = 10
+epochs = 20
 # need to figure out how to feed in the gif
 noisy_movies, shifted_movies = generate_movies(n_frames=60)
 print(np.array(noisy_movies).shape)
