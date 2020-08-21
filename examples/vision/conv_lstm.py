@@ -83,7 +83,6 @@ def create_model():
 
 """
 
-
 import os
 import pylab as plt
 import numpy as np
@@ -95,6 +94,8 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from keras import models
 from cv2 import cv2  # gets rid of pylint errors
+
+
 def create_model():
     model = keras.Sequential()
 
@@ -129,7 +130,8 @@ def create_model():
 # create_model()
 # trouble-shooting
 model1 = create_model()
-opt = tf.keras.optimizers.Adadelta(learning_rate=0.001, rho=0.95, epsilon=1e-07, name='Adadelta')
+opt = tf.keras.optimizers.Adadelta(
+    learning_rate=0.001, rho=0.95, epsilon=1e-07, name='Adadelta')
 model1.compile(opt, loss="binary_crossentropy")
 
 
@@ -140,13 +142,11 @@ print(model1.name, model1.input_shape)
 
 
 def getFrame(dirname, counter, row, col):
-    filename = os.path.join(
-        dirname + '/img/moving_square/frame_' + str(counter) + '.png')
+    filename = os.path.join(dirname + '/img/moving_square/frame_' + str(counter) + '.png')
 
     img = cv2.imread(filename)
     grayImage = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    (thresh, binaryImage) = cv2.threshold(
-        grayImage, 0, 1, cv2.THRESH_BINARY)
+    (thresh, binaryImage) = cv2.threshold(grayImage, 0, 1, cv2.THRESH_BINARY)
 
     dim = (80, 80)
     resizedImage = cv2.resize(binaryImage, dim)
@@ -156,18 +156,14 @@ def getFrame(dirname, counter, row, col):
 def generate_movies(n_samples=10, n_frames=60):
     rows = 80
     columns = 80
-    movies = np.zeros(
-        (n_samples, n_frames, rows, columns, 1), dtype=np.float)  # features
-    shifted_movies = np.zeros(
-        (n_samples, n_frames, rows, columns, 1), dtype=np.float)  # labels
-
-    dirname = os.path.dirname(__file__)
+    movies = np.zeros((n_samples, n_frames, rows, columns, 1), dtype=np.float)  # features
+    shifted_movies = np.zeros((n_samples, n_frames, rows, columns, 1), dtype=np.float)  # labels
 
     frame = 0
     # wrap in for-loop going over samples=10; have a bunch of identical instances in the batch;
     # make add noise func(after prediction works)
     while (frame < n_frames - 1):
-        currentFrame = getFrame(dirname, frame, rows, columns)
+        currentFrame = getFrame(dirname, counter, row, col)
 
     # add to dataset; need to put all the values from the [frame, x-val, y-val, binary value]
         for row in range(len(currentFrame)):
@@ -177,12 +173,25 @@ def generate_movies(n_samples=10, n_frames=60):
 
         frame += 1
 
+
       # ==========AUGMENTATION===========================
     # create a loop that duplicates frames
+    augmented_movies = np.zeros(
+    (n_samples, n_frames, rows, columns, 1), dtype=np.float)  # duplicated frames
 
-    # Cut to a 40x40 window
-    movies = movies[::, ::, 20:60, 20:60, ::]
-    shifted_movies = shifted_movies[::, ::, 20:60, 20:60, ::]
+    dupeFrame = 0
+    while (dupeFrame < 10000):
+        currentFrame = getFrame(dirname, dupeFrame, rows, columns)
+        for row in range(len(currentFrame)):
+            for col in range(len(currentFrame[row])):
+                augmented_movies[0, frame, row, col] = currentFrame[row][col]
+        dupeFrame += 1
+
+    # Cut to a 80x80 window
+    movies = movies[::, ::, 20:100, 20:100, ::]
+    shifted_movies = shifted_movies[::, ::, 20:100, 20:100, ::]
+    augmented_movies= augmented_movies[::, ::, 20:100, 20:100, ::]
+
     movies[movies >= 1] = 1
     shifted_movies[shifted_movies >= 1] = 1
     return movies, shifted_movies
@@ -202,7 +211,7 @@ print(np.array(noisy_movies).shape)
 
 
 model1.fit(
-    noisy_movies,  # features to predict on
+    augmented_movies,  # features to predict on
     shifted_movies,  # labels
     batch_size=10,
     epochs=epochs,
