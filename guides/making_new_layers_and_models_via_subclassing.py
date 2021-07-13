@@ -181,7 +181,7 @@ y = linear_layer(x)
 """
 ## Layers are recursively composable
 
-If you assign a Layer instance as attribute of another Layer, the outer layer
+If you assign a Layer instance as an attribute of another Layer, the outer layer
 will start tracking the weights of the inner layer.
 
 We recommend creating such sublayers in the `__init__()` method (since the
@@ -320,7 +320,7 @@ inputs = keras.Input(shape=(3,))
 outputs = ActivityRegularizationLayer()(inputs)
 model = keras.Model(inputs, outputs)
 
-# If there is a loss passed in `compile`, thee regularization
+# If there is a loss passed in `compile`, the regularization
 # losses get added to it
 model.compile(optimizer="adam", loss="mse")
 model.fit(np.random.random((2, 3)), np.random.random((2, 3)))
@@ -569,7 +569,7 @@ a `Model` that we could train with `fit()`, and that we could save with
 ```python
 class ResNet(tf.keras.Model):
 
-    def __init__(self):
+    def __init__(self, num_classes=1000):
         super(ResNet, self).__init__()
         self.block_1 = ResNetBlock()
         self.block_2 = ResNetBlock()

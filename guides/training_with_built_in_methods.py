@@ -19,12 +19,12 @@ from tensorflow.keras import layers
 ## Introduction
 
 This guide covers training, evaluation, and prediction (inference) models
-when using built-in APIs for training & validation (such as `model.fit()`,
-`model.evaluate()`, `model.predict()`).
+when using built-in APIs for training & validation (such as `Model.fit()`,
+`Model.evaluate()` and `Model.predict()`).
 
 If you are interested in leveraging `fit()` while specifying your
-own training step function, see the guide
-["customizing what happens in `fit()`"](/guides/customizing_what_happens_in_fit/).
+own training step function, see the
+[Customizing what happens in `fit()` guide](/guides/customizing_what_happens_in_fit/).
 
 If you are interested in writing your own training & evaluation loops from
 scratch, see the guide
@@ -35,8 +35,8 @@ evaluation works strictly in the same way across every kind of Keras model --
 Sequential models, models built with the Functional API, and models written from
 scratch via model subclassing.
 
-This guide doesn't cover distributed training. For distributed training, see
-our [guide to multi-gpu & distributed training](/guides/distributed_training/).
+This guide doesn't cover distributed training, which is covered in our
+[guide to multi-GPU & distributed training](https://keras.io/guides/distributed_training/).
 """
 
 """
@@ -97,8 +97,8 @@ model.compile(
 
 """
 We call `fit()`, which will train the model by slicing the data into "batches" of size
-"batch_size", and repeatedly iterating over the entire dataset for a given number of
-"epochs".
+`batch_size`, and repeatedly iterating over the entire dataset for a given number of
+`epochs`.
 """
 
 print("Fit model on training data")
@@ -114,7 +114,7 @@ history = model.fit(
 )
 
 """
-The returned "history" object holds a record of the loss values and metric values
+The returned `history` object holds a record of the loss values and metric values
 during training:
 """
 
@@ -159,8 +159,8 @@ The `metrics` argument should be a list -- your model can have any number of met
 
 If your model has multiple outputs, you can specify different losses and metrics for
 each output, and you can modulate the contribution of each output to the total loss of
-the model. You will find more details about this in the section **"Passing data to
-multi-input, multi-output models"**.
+the model. You will find more details about this in the **Passing data to multi-input,
+multi-output models** section.
 
 Note that if you're satisfied with the default settings, in many cases the optimizer,
 loss, and metrics can be specified via string identifiers as a shortcut:
@@ -200,8 +200,8 @@ def get_compiled_model():
 """
 ### Many built-in optimizers, losses, and metrics are available
 
-In general, you won't have to create from scratch your own losses, metrics, or
-optimizers, because what you need is likely already part of the Keras API:
+In general, you won't have to create your own losses, metrics, or optimizers
+from scratch, because what you need is likely to be already part of the Keras API:
 
 Optimizers:
 
@@ -228,10 +228,11 @@ Metrics:
 """
 ### Custom losses
 
-There are two ways to provide custom losses with Keras. The first example creates a
-function that accepts inputs `y_true` and `y_pred`. The following example shows a loss
-function that computes the mean squared error between the real data and the
-predictions:
+If you need to create a custom loss, Keras provides two ways to do so.
+
+The first method involves creating a function that accepts inputs `y_true` and
+`y_pred`. The following example shows a loss function that computes the mean squared
+error between the real data and the predictions:
 """
 
 
@@ -295,10 +296,10 @@ y_true and the model predictions y_pred to update the state variables.
 - `reset_states(self)`, which reinitializes the state of the metric.
 
 State update and results computation are kept separate (in `update_state()` and
-`result()`, respectively) because in some cases, results computation might be very
-expensive, and would only be done periodically.
+`result()`, respectively) because in some cases, the results computation might be very
+expensive and would only be done periodically.
 
-Here's a simple example showing how to implement a `CategoricalTruePositives` metric,
+Here's a simple example showing how to implement a `CategoricalTruePositives` metric
 that counts how many samples were correctly classified as belonging to a given class:
 """
 
@@ -337,7 +338,7 @@ model.fit(x_train, y_train, batch_size=64, epochs=3)
 ### Handling losses and metrics that don't fit the standard signature
 
 The overwhelming majority of losses and metrics can be computed from `y_true` and
-`y_pred`, where `y_pred` is an output of your model. But not all of them. For
+`y_pred`, where `y_pred` is an output of your model -- but not all of them. For
 instance, a regularization loss may only require the activation of a layer (there are
 no targets in this case), and this activation may not be a model output.
 
@@ -503,7 +504,7 @@ the data for validation", and `validation_split=0.6` means "use 60% of the data 
 validation".
 
 The way the validation is computed is by taking the last x% samples of the arrays
-received by the fit call, before any shuffling.
+received by the `fit()` call, before any shuffling.
 
 Note that you can only use `validation_split` when training with NumPy data.
 """
@@ -516,7 +517,7 @@ model.fit(x_train, y_train, batch_size=64, validation_split=0.2, epochs=1)
 
 In the past few paragraphs, you've seen how to handle losses, metrics, and optimizers,
 and you've seen how to use the `validation_data` and `validation_split` arguments in
-fit, when your data is passed as NumPy arrays.
+`fit()`, when your data is passed as NumPy arrays.
 
 Let's now take a look at the case where your data comes in the form of a
 `tf.data.Dataset` object.
@@ -626,7 +627,7 @@ Note that the validation dataset will be reset after each use (so that you will 
 be evaluating on the same samples from epoch to epoch).
 
 The argument `validation_split` (generating a holdout set from the training data) is
-not supported when training from `Dataset` objects, since this features requires the
+not supported when training from `Dataset` objects, since this feature requires the
 ability to index the samples of the datasets, which is not possible in general with
 the `Dataset` API.
 """
@@ -700,7 +701,7 @@ model.fit(sequence, epochs=10)
 """
 ## Using sample weighting and class weighting
 
-With the default settings the weight of a sample is decided by its frequency 
+With the default settings the weight of a sample is decided by its frequency
 in the dataset. There are two methods to weight the data, independent of
 sample frequency:
 
@@ -713,12 +714,12 @@ sample frequency:
 
 This is set by passing a dictionary to the `class_weight` argument to
 `Model.fit()`. This dictionary maps class indices to the weight that should
-be used for samples belonging to this class.  
+be used for samples belonging to this class.
 
 This can be used to balance classes without resampling, or to train a
-model that has a gives more importance to a particular class.
+model that gives more importance to a particular class.
 
-For instance, if class "0" is half as represented as class "1" in your data, 
+For instance, if class "0" is half as represented as class "1" in your data,
 you could use `Model.fit(..., class_weight={0: 1., 1: 0.5})`.
 """
 
@@ -751,8 +752,9 @@ model.fit(x_train, y_train, class_weight=class_weight, batch_size=64, epochs=1)
 
 """
 ### Sample weights
+
 For fine grained control, or if you are not building a classifier,
-you can use "sample weights". 
+you can use "sample weights".
 
 - When training from NumPy data: Pass the `sample_weight`
   argument to `Model.fit()`.
@@ -801,7 +803,7 @@ shape `(764,)`) and a single output (a prediction tensor of shape `(10,)`). But 
 about models that have multiple inputs or outputs?
 
 Consider the following model, which has an image input of shape `(32, 32, 3)` (that's
-`(height, width, channels)`) and a timeseries input of shape `(None, 10)` (that's
+`(height, width, channels)`) and a time series input of shape `(None, 10)` (that's
 `(timesteps, features)`). Our model will have two outputs computed from the
 combination of these inputs: a "score" (of shape `(1,)`) and a probability
 distribution over five classes (of shape `(5,)`).
@@ -819,7 +821,7 @@ x2 = layers.GlobalMaxPooling1D()(x2)
 x = layers.concatenate([x1, x2])
 
 score_output = layers.Dense(1, name="score_output")(x)
-class_output = layers.Dense(5, activation="softmax", name="class_output")(x)
+class_output = layers.Dense(5, name="class_output")(x)
 
 model = keras.Model(
     inputs=[image_input, timeseries_input], outputs=[score_output, class_output]
@@ -906,8 +908,8 @@ model.compile(
 )
 
 """
-You could also chose not to compute a loss for certain outputs, if these outputs meant
-for prediction but not for training:
+You could also choose not to compute a loss for certain outputs, if these outputs are
+meant for prediction but not for training:
 """
 
 # List loss version
@@ -923,7 +925,7 @@ model.compile(
 )
 
 """
-Passing data to a multi-input or multi-output model in fit works in a similar way as
+Passing data to a multi-input or multi-output model in `fit()` works in a similar way as
 specifying a loss function in compile: you can pass **lists of NumPy arrays** (with
 1:1 mapping to the outputs that received a loss function) or **dicts mapping output
 names to NumPy arrays**.
@@ -969,9 +971,9 @@ model.fit(train_dataset, epochs=1)
 """
 ## Using callbacks
 
-Callbacks in Keras are objects that are called at different point during training (at
-the start of an epoch, at the end of a batch, at the end of an epoch, etc.) and which
-can be used to implement behaviors such as:
+Callbacks in Keras are objects that are called at different points during training (at
+the start of an epoch, at the end of a batch, at the end of an epoch, etc.). They
+can be used to implement certain behaviors, such as:
 
 - Doing validation at different points during training (beyond the built-in per-epoch
 validation)
@@ -1010,6 +1012,8 @@ model.fit(
 
 """
 ### Many built-in callbacks are available
+
+There are many built-in callbacks already available in Keras, such as:
 
 - `ModelCheckpoint`: Periodically save the model.
 - `EarlyStopping`: Stop training when training is no longer improving the validation
@@ -1144,7 +1148,7 @@ Several built-in schedules are available: `ExponentialDecay`, `PiecewiseConstant
 ### Using callbacks to implement a dynamic learning rate schedule
 
 A dynamic learning rate schedule (for instance, decreasing the learning rate when the
-validation loss is no longer improving) cannot be achieved with these schedule objects
+validation loss is no longer improving) cannot be achieved with these schedule objects,
 since the optimizer does not have access to validation metrics.
 
 However, callbacks do have access to all metrics, including validation metrics! You can
@@ -1156,7 +1160,7 @@ on the optimizer. In fact, this is even built-in as the `ReduceLROnPlateau` call
 ## Visualizing loss and metrics during training
 
 The best way to keep an eye on your model during training is to use
-[TensorBoard](https://www.tensorflow.org/tensorboard), a browser-based application
+[TensorBoard](https://www.tensorflow.org/tensorboard) -- a browser-based application
 that you can run locally that provides you with:
 
 - Live plots of the loss and metrics for training and evaluation
@@ -1175,7 +1179,7 @@ tensorboard --logdir=/full_path_to_your_logs
 """
 ### Using the TensorBoard callback
 
-The easiest way to use TensorBoard with a Keras model and the fit method is the
+The easiest way to use TensorBoard with a Keras model and the `fit()` method is the
 `TensorBoard` callback.
 
 In the simplest case, just specify where you want the callback to write logs, and

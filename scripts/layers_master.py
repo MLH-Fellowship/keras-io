@@ -49,6 +49,8 @@ LAYERS_MASTER = {
                 'tensorflow.keras.initializers.Ones',
                 'tensorflow.keras.initializers.GlorotNormal',
                 'tensorflow.keras.initializers.GlorotUniform',
+                'tensorflow.keras.initializers.HeNormal',
+                'tensorflow.keras.initializers.HeUniform',
                 'tensorflow.keras.initializers.Identity',
                 'tensorflow.keras.initializers.Orthogonal',
                 'tensorflow.keras.initializers.Constant',
@@ -261,16 +263,21 @@ LAYERS_MASTER = {
                     'title': 'ConvLSTM2D layer',
                     'generate': ['tensorflow.keras.layers.ConvLSTM2D']
                 },
+                {
+                    'path': 'rnn',
+                    'title': 'Base RNN layer',
+                    'generate': ['tensorflow.keras.layers.RNN']
+                },
             ]
         },
         {
             'path': 'preprocessing_layers/',
-            'title': 'Preprocessing layers',  # TODO
+            'title': 'Preprocessing layers',
             'toc': True,
             'children': [
                 {
-                    'path': 'core_preprocessing_layers/',
-                    'title': 'Core preprocessing layers',
+                    'path': 'text/',
+                    'title': 'Text preprocessing',
                     'toc': True,
                     'children': [
                         {
@@ -278,69 +285,116 @@ LAYERS_MASTER = {
                             'title': 'TextVectorization layer',
                             'generate': ['tensorflow.keras.layers.experimental.preprocessing.TextVectorization']
                         },
+                    ]
+                },
+                {
+                    'path': 'numerical/',
+                    'title': 'Numerical features preprocessing layers',
+                    'toc': True,
+                    'children': [
                         {
                             'path': 'normalization',
                             'title': 'Normalization layer',
                             'generate': ['tensorflow.keras.layers.experimental.preprocessing.Normalization']
                         },
+                        {
+                            'path': 'discretization',
+                            'title': 'Discretization layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.Discretization'],
+                        },
                     ]
                 },
-                # {
-                #     'path': 'image_preprocessing/',
-                #     'title': 'Image preprocessing & augmentation layers',
-                #     'children': [
-                #         {
-                #             'path': 'resizing',
-                #             'title': 'Resizing layer',
-                #             'generate': ['tensorflow.keras.layers.experimental.preprocessing.Resizing'],
-                #         },
-                #         {
-                #             'path': 'rescaling',
-                #             'title': 'Rescaling layer',
-                #             'generate': ['tensorflow.keras.layers.experimental.preprocessing.Rescaling'],
-                #         },
-                #         {
-                #             'path': 'center_crop',
-                #             'title': 'CenterCrop layer',
-                #             'generate': ['tensorflow.keras.layers.experimental.preprocessing.CenterCrop'],
-                #         },
-                #         {
-                #             'path': 'random_crop',
-                #             'title': 'RandomCrop layer',
-                #             'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomCrop'],
-                #         },
-                #         {
-                #             'path': 'random_flip',
-                #             'title': 'RandomFlip layer',
-                #             'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomFlip'],
-                #         },
-                #         {
-                #             'path': 'random_translation',
-                #             'title': 'RandomTranslation layer',
-                #             'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomTranslation'],
-                #         },
-                #         {
-                #             'path': 'random_rotation',
-                #             'title': 'RandomRotation layer',
-                #             'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomRotation'],
-                #         },
-                #         {
-                #             'path': 'random_zoom',
-                #             'title': 'RandomZoom layer',
-                #             'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomZoom'],
-                #         },
-                #         {
-                #             'path': 'random_height',
-                #             'title': 'RandomHeight layer',
-                #             'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomHeight'],
-                #         },
-                #         {
-                #             'path': 'random_width',
-                #             'title': 'RandomWidth layer',
-                #             'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomWidth'],
-                #         },
-                #     ]
-                # },
+                {
+                    'path': 'categorical/',
+                    'title': 'Categorical features preprocessing layers',
+                    'toc': True,
+                    'children': [
+                        {
+                            'path': 'category_encoding',
+                            'title': 'CategoryEncoding layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.CategoryEncoding'],
+                        },
+                        {
+                            'path': 'hashing',
+                            'title': 'Hashing layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.Hashing'],
+                        },
+                        {
+                            'path': 'string_lookup',
+                            'title': 'StringLookup layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.StringLookup'],
+                        },
+                        {
+                            'path': 'integer_lookup',
+                            'title': 'IntegerLookup layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.IntegerLookup'],
+                        },
+                    ]
+                },
+                {
+                    'path': 'image_preprocessing/',
+                    'title': 'Image preprocessing layers',
+                    'toc': True,
+                    'children': [
+                        {
+                            'path': 'resizing',
+                            'title': 'Resizing layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.Resizing'],
+                        },
+                        {
+                            'path': 'rescaling',
+                            'title': 'Rescaling layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.Rescaling'],
+                        },
+                        {
+                            'path': 'center_crop',
+                            'title': 'CenterCrop layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.CenterCrop'],
+                        },
+                    ]
+                },
+                {
+                    'path': 'image_augmentation/',
+                    'title': 'Image augmentation layers',
+                    'toc': True,
+                    'children': [
+                        {
+                            'path': 'random_crop',
+                            'title': 'RandomCrop layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomCrop'],
+                        },
+                        {
+                            'path': 'random_flip',
+                            'title': 'RandomFlip layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomFlip'],
+                        },
+                        {
+                            'path': 'random_translation',
+                            'title': 'RandomTranslation layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomTranslation'],
+                        },
+                        {
+                            'path': 'random_rotation',
+                            'title': 'RandomRotation layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomRotation'],
+                        },
+                        {
+                            'path': 'random_zoom',
+                            'title': 'RandomZoom layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomZoom'],
+                        },
+                        {
+                            'path': 'random_height',
+                            'title': 'RandomHeight layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomHeight'],
+                        },
+                        {
+                            'path': 'random_width',
+                            'title': 'RandomWidth layer',
+                            'generate': ['tensorflow.keras.layers.experimental.preprocessing.RandomWidth'],
+                        },
+                    ]
+                },
             ]
         },
         {
@@ -412,6 +466,11 @@ LAYERS_MASTER = {
             'title': 'Attention layers',
             'toc': True,
             'children': [
+                {
+                    'path': 'multi_head_attention',
+                    'title': 'MultiHeadAttention layer',
+                    'generate': ['tensorflow.keras.layers.MultiHeadAttention']
+                },
                 {
                     'path': 'attention',
                     'title': 'Attention layer',

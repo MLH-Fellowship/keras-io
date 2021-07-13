@@ -50,7 +50,7 @@ ls aclImdb/train
 
 """
 The `aclImdb/train/pos` and `aclImdb/train/neg` folders contain text files, each of
- which represents on review (either positive or negative):
+ which represents one review (either positive or negative):
 """
 
 """shell
@@ -58,7 +58,7 @@ cat aclImdb/train/pos/6248_7.txt
 """
 
 """
-We are only interest in the `pos` and `neg` subfolders, so let's delete the rest:
+We are only interested in the `pos` and `neg` subfolders, so let's delete the rest:
 """
 
 """shell
