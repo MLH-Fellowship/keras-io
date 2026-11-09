@@ -1,8 +1,8 @@
 # Deep Q-Learning for Atari Breakout
 
-**Author:** [Jacob Chapman](https://twitter.com/jacoblchapman)<br>
+**Author:** [Jacob Chapman](https://twitter.com/jacoblchapman) and [Mathias Lechner](https://twitter.com/MLech20)<br>
 **Date created:** 2020/05/23<br>
-**Last modified:** 2020/05/23<br>
+**Last modified:** 2024/03/16<br>
 **Description:** Play Atari Breakout with a Deep Q-Network.
 
 
@@ -41,25 +41,32 @@ The Deepmind paper trained for "a total of 50 million frames (that is, around 38
 game experience in total)". However this script will give good results at around 10
 million frames which are processed in less than 24 hours on a modern machine.
 
+You can control the number of episodes by setting the `max_episodes` variable
+to a value greater than 0.
+
 ### References
 
 - [Q-Learning](https://link.springer.com/content/pdf/10.1007/BF00992698.pdf)
-- [Deep Q-Learning](https://deepmind.com/research/publications/human-level-control-through-deep-reinforcement-learning)
-
+- [Deep Q-Learning](https://www.semanticscholar.org/paper/Human-level-control-through-deep-reinforcement-Mnih-Kavukcuoglu/340f48901f72278f6bf78a04ee5b01df208cc508)
 
 ---
 ## Setup
 
 
-
 ```python
-from baselines.common.atari_wrappers import make_atari, wrap_deepmind
+import os
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import keras
+from keras import layers
+
+import gymnasium as gym
+from gymnasium.wrappers import AtariPreprocessing, FrameStack
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
 
-# Configuration paramaters for the whole setup
+# Configuration parameters for the whole setup
 seed = 42
 gamma = 0.99  # Discount factor for past rewards
 epsilon = 1.0  # Epsilon greedy parameter
@@ -70,55 +77,100 @@ epsilon_interval = (
 )  # Rate at which to reduce chance of random action being taken
 batch_size = 32  # Size of batch taken from replay buffer
 max_steps_per_episode = 10000
+max_episodes = 10  # Limit training episodes, will run until solved if smaller than 1
 
-# Use the Baseline Atari environment because of Deepmind helper functions
-env = make_atari("BreakoutNoFrameskip-v4")
-# Warp the frames, grey scale, stake four frame and scale to smaller ratio
-env = wrap_deepmind(env, frame_stack=True, scale=True)
+# Use the Atari environment
+# Specify the `render_mode` parameter to show the attempts of the agent in a pop up window.
+env = gym.make("BreakoutNoFrameskip-v4")  # , render_mode="human")
+# Environment preprocessing
+env = AtariPreprocessing(env)
+# Stack four frames
+env = FrameStack(env, 4)
 env.seed(seed)
-
 ```
 
+<div class="k-default-codeblock">
+```
+A.L.E: Arcade Learning Environment (version 0.8.1+unknown)
+[Powered by Stella]
+Game console created:
+  ROM file:  /Users/luca/mambaforge/envs/keras-io/lib/python3.9/site-packages/AutoROM/roms/breakout.bin
+  Cart Name: Breakout - Breakaway IV (1978) (Atari)
+  Cart MD5:  f34f08e5eb96e500e851a80be3277a56
+  Display Format:  AUTO-DETECT ==> NTSC
+  ROM Size:        2048
+  Bankswitch Type: AUTO-DETECT ==> 2K
+```
+</div>
+    
+<div class="k-default-codeblock">
+```
+Running ROM file...
+Random seed is -975249067
+Game console created:
+  ROM file:  /Users/luca/mambaforge/envs/keras-io/lib/python3.9/site-packages/AutoROM/roms/breakout.bin
+  Cart Name: Breakout - Breakaway IV (1978) (Atari)
+  Cart MD5:  f34f08e5eb96e500e851a80be3277a56
+  Display Format:  AUTO-DETECT ==> NTSC
+  ROM Size:        2048
+  Bankswitch Type: AUTO-DETECT ==> 2K
+```
+</div>
+    
+<div class="k-default-codeblock">
+```
+Running ROM file...
+Random seed is -1625411987
+
+(3444837047, 2669555309)
+
+```
+</div>
 ---
 ## Implement the Deep Q-Network
 
 This network learns an approximation of the Q-table, which is a mapping between
-the states and actions that an agent will take. For every state we'll have two
+the states and actions that an agent will take. For every state we'll have four
 actions, that can be taken. The environment provides the state, and the action
-is chosen by selecting the larger of the two Q-values predicted in the output layer.
-
+is chosen by selecting the larger of the four Q-values predicted in the output layer.
 
 
 ```python
 num_actions = 4
 
-# Network defined by the Deepmind paper
-inputs = layers.Input(shape=(84, 84, 4,))
 
-# Convolutions on the frames on the screen
-layer1 = layers.Conv2D(32, 8, strides=4, activation="relu")(inputs)
-layer2 = layers.Conv2D(64, 4, strides=2, activation="relu")(layer1)
-layer3 = layers.Conv2D(64, 3, strides=1, activation="relu")(layer2)
+def create_q_model():
+    # Network defined by the Deepmind paper
+    return keras.Sequential(
+        [
+            layers.Lambda(
+                lambda tensor: keras.ops.transpose(tensor, [0, 2, 3, 1]),
+                output_shape=(84, 84, 4),
+                input_shape=(4, 84, 84),
+            ),
+            # Convolutions on the frames on the screen
+            layers.Conv2D(32, 8, strides=4, activation="relu", input_shape=(4, 84, 84)),
+            layers.Conv2D(64, 4, strides=2, activation="relu"),
+            layers.Conv2D(64, 3, strides=1, activation="relu"),
+            layers.Flatten(),
+            layers.Dense(512, activation="relu"),
+            layers.Dense(num_actions, activation="linear"),
+        ]
+    )
 
-layer4 = layers.Flatten()(layer3)
-
-layer5 = layers.Dense(512, activation="relu")(layer4)
-action = layers.Dense(num_actions, activation="linear")(layer5)
 
 # The first model makes the predictions for Q-values which are used to
 # make a action.
-model = keras.Model(inputs=inputs, outputs=action)
+model = create_q_model()
 # Build a target model for the prediction of future rewards.
 # The weights of a target model get updated every 10000 steps thus when the
 # loss between the Q-values is calculated the target Q-value is stable.
-model_target = keras.Model(inputs=inputs, outputs=action)
-
+model_target = create_q_model()
 
 ```
 
 ---
 ## Train
-
 
 
 ```python
@@ -147,14 +199,15 @@ max_memory_length = 100000
 update_after_actions = 4
 # How often to update the target network
 update_target_network = 10000
+# Using huber loss for stability
+loss_function = keras.losses.Huber()
 
-while True:  # Run until solved
-    state = np.array(env.reset())
+while True:
+    observation, _ = env.reset()
+    state = np.array(observation)
     episode_reward = 0
 
     for timestep in range(1, max_steps_per_episode):
-        # env.render(); Adding this line would show the attempts
-        # of the agent in a pop up window.
         frame_count += 1
 
         # Use epsilon-greedy for exploration
@@ -164,18 +217,18 @@ while True:  # Run until solved
         else:
             # Predict action Q-values
             # From environment state
-            state_tensor = tf.convert_to_tensor(state)
-            state_tensor = tf.expand_dims(state_tensor, 0)
+            state_tensor = keras.ops.convert_to_tensor(state)
+            state_tensor = keras.ops.expand_dims(state_tensor, 0)
             action_probs = model(state_tensor, training=False)
             # Take best action
-            action = tf.argmax(action_probs[0]).numpy()
+            action = keras.ops.argmax(action_probs[0]).numpy()
 
         # Decay probability of taking random action
         epsilon -= epsilon_interval / epsilon_greedy_frames
         epsilon = max(epsilon, epsilon_min)
 
         # Apply the sampled action in our environment
-        state_next, reward, done, _ = env.step(action)
+        state_next, reward, done, _, _ = env.step(action)
         state_next = np.array(state_next)
 
         episode_reward += reward
@@ -190,7 +243,6 @@ while True:  # Run until solved
 
         # Update every fourth frame and once batch size is over 32
         if frame_count % update_after_actions == 0 and len(done_history) > batch_size:
-
             # Get indices of samples for replay buffers
             indices = np.random.choice(range(len(done_history)), size=batch_size)
 
@@ -199,7 +251,7 @@ while True:  # Run until solved
             state_next_sample = np.array([state_next_history[i] for i in indices])
             rewards_sample = [rewards_history[i] for i in indices]
             action_sample = [action_history[i] for i in indices]
-            done_sample = tf.convert_to_tensor(
+            done_sample = keras.ops.convert_to_tensor(
                 [float(done_history[i]) for i in indices]
             )
 
@@ -207,7 +259,7 @@ while True:  # Run until solved
             # Use the target model for stability
             future_rewards = model_target.predict(state_next_sample)
             # Q value = reward + discount factor * expected future reward
-            updated_q_values = rewards_sample + gamma * tf.reduce_max(
+            updated_q_values = rewards_sample + gamma * keras.ops.amax(
                 future_rewards, axis=1
             )
 
@@ -215,23 +267,22 @@ while True:  # Run until solved
             updated_q_values = updated_q_values * (1 - done_sample) - done_sample
 
             # Create a mask so we only calculate loss on the updated Q-values
-            masks = tf.one_hot(action_sample, num_actions)
+            masks = keras.ops.one_hot(action_sample, num_actions)
 
             with tf.GradientTape() as tape:
                 # Train the model on the states and updated Q-values
                 q_values = model(state_sample)
 
                 # Apply the masks to the Q-values to get the Q-value for action taken
-                q_action = tf.reduce_sum(tf.multiply(q_values, masks), axis=1)
+                q_action = keras.ops.sum(keras.ops.multiply(q_values, masks), axis=1)
                 # Calculate loss between new Q-value and old Q-value
-                # Clip the deltas using huber loss for stability
-                loss = keras.losses.huber(updated_q_values, q_action)
+                loss = loss_function(updated_q_values, q_action)
 
             # Backpropagation
             grads = tape.gradient(loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
-        if frame_count % 10000 == 0:
+        if frame_count % update_target_network == 0:
             # update the the target network with new weights
             model_target.set_weights(model.get_weights())
             # Log details
@@ -261,10 +312,18 @@ while True:  # Run until solved
         print("Solved at episode {}!".format(episode_count))
         break
 
+    if (
+        max_episodes > 0 and episode_count >= max_episodes
+    ):  # Maximum number of episodes reached
+        print("Stopped at episode {}!".format(episode_count))
+        break
 ```
 
 ---
 ## Visualizations
+Before any training:
+![Imgur](https://i.imgur.com/rRxXF4H.gif)
+
 In early stages of training:
 ![Imgur](https://i.imgur.com/X8ghdpL.gif)
 

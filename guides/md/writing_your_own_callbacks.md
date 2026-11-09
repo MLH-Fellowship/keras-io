@@ -2,7 +2,7 @@
 
 **Authors:** Rick Chao, Francois Chollet<br>
 **Date created:** 2019/03/20<br>
-**Last modified:** 2020/04/15<br>
+**Last modified:** 2023/06/25<br>
 **Description:** Complete guide to writing new Keras callbacks.
 
 
@@ -10,12 +10,13 @@
 
 
 
-# Introduction
+---
+## Introduction
 
 A callback is a powerful tool to customize the behavior of a Keras model during
-training, evaluation, or inference. Examples include `tf.keras.callbacks.TensorBoard`
+training, evaluation, or inference. Examples include `keras.callbacks.TensorBoard`
 to visualize training progress and results with TensorBoard, or
-`tf.keras.callbacks.ModelCheckpoint` to periodically save your model during training.
+`keras.callbacks.ModelCheckpoint` to periodically save your model during training.
 
 In this guide, you will learn what a Keras callback is, what it can do, and how you can
 build your own. We provide a few demos of simple callback applications to get you
@@ -26,9 +27,8 @@ started.
 
 
 ```python
-import tensorflow as tf
-from tensorflow import keras
-
+import numpy as np
+import keras
 ```
 
 ---
@@ -88,17 +88,17 @@ define a simple Sequential Keras model:
 
 
 ```python
+
 # Define the Keras model to add callbacks to
 def get_model():
     model = keras.Sequential()
-    model.add(keras.layers.Dense(1, input_dim=784))
+    model.add(keras.layers.Dense(1))
     model.compile(
         optimizer=keras.optimizers.RMSprop(learning_rate=0.1),
         loss="mean_squared_error",
         metrics=["mean_absolute_error"],
     )
     return model
-
 
 ```
 
@@ -107,7 +107,7 @@ Then, load the MNIST data for training and testing from Keras datasets API:
 
 ```python
 # Load example MNIST data and pre-process it
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+(x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
 x_train = x_train.reshape(-1, 784).astype("float32") / 255.0
 x_test = x_test.reshape(-1, 784).astype("float32") / 255.0
 
@@ -116,7 +116,6 @@ x_train = x_train[:1000]
 y_train = y_train[:1000]
 x_test = x_test[:1000]
 y_test = y_test[:1000]
-
 ```
 
 Now, define a simple custom callback that logs:
@@ -187,7 +186,6 @@ class CustomCallback(keras.callbacks.Callback):
         keys = list(logs.keys())
         print("...Predicting: end of batch {}; got log keys: {}".format(batch, keys))
 
-
 ```
 
 Let's try it out:
@@ -210,7 +208,6 @@ res = model.evaluate(
 )
 
 res = model.predict(x_test, batch_size=128, callbacks=[CustomCallback()])
-
 ```
 
 <div class="k-default-codeblock">
@@ -258,7 +255,7 @@ Stop testing; got log keys: ['loss', 'mean_absolute_error']
 Start predicting; got log keys: []
 ...Predicting: start of batch 0; got log keys: []
 ...Predicting: end of batch 0; got log keys: ['outputs']
-...Predicting: start of batch 1; got log keys: []
+ 1/8 ━━[37m━━━━━━━━━━━━━━━━━━  0s 13ms/step...Predicting: start of batch 1; got log keys: []
 ...Predicting: end of batch 1; got log keys: ['outputs']
 ...Predicting: start of batch 2; got log keys: []
 ...Predicting: end of batch 2; got log keys: ['outputs']
@@ -273,10 +270,12 @@ Start predicting; got log keys: []
 ...Predicting: start of batch 7; got log keys: []
 ...Predicting: end of batch 7; got log keys: ['outputs']
 Stop predicting; got log keys: []
+ 8/8 ━━━━━━━━━━━━━━━━━━━━ 0s 5ms/step 
 
 ```
 </div>
 ### Usage of `logs` dict
+
 The `logs` dict contains the loss value, and all the metrics at the end of a batch or
 epoch. Example includes the loss and mean absolute error.
 
@@ -285,10 +284,14 @@ epoch. Example includes the loss and mean absolute error.
 
 class LossAndErrorPrintingCallback(keras.callbacks.Callback):
     def on_train_batch_end(self, batch, logs=None):
-        print("For batch {}, loss is {:7.2f}.".format(batch, logs["loss"]))
+        print(
+            "Up to batch {}, the average loss is {:7.2f}.".format(batch, logs["loss"])
+        )
 
     def on_test_batch_end(self, batch, logs=None):
-        print("For batch {}, loss is {:7.2f}.".format(batch, logs["loss"]))
+        print(
+            "Up to batch {}, the average loss is {:7.2f}.".format(batch, logs["loss"])
+        )
 
     def on_epoch_end(self, epoch, logs=None):
         print(
@@ -316,37 +319,36 @@ res = model.evaluate(
     verbose=0,
     callbacks=[LossAndErrorPrintingCallback()],
 )
-
 ```
 
 <div class="k-default-codeblock">
 ```
-For batch 0, loss is   32.34.
-For batch 1, loss is  465.33.
-For batch 2, loss is  319.39.
-For batch 3, loss is  241.91.
-For batch 4, loss is  195.22.
-For batch 5, loss is  163.79.
-For batch 6, loss is  141.30.
-For batch 7, loss is  127.17.
-The average loss for epoch 0 is  127.17 and mean absolute error is    6.13.
-For batch 0, loss is    4.59.
-For batch 1, loss is    4.53.
-For batch 2, loss is    4.59.
-For batch 3, loss is    4.80.
-For batch 4, loss is    4.83.
-For batch 5, loss is    4.78.
-For batch 6, loss is    4.73.
-For batch 7, loss is    4.65.
-The average loss for epoch 1 is    4.65 and mean absolute error is    1.73.
-For batch 0, loss is    6.36.
-For batch 1, loss is    5.55.
-For batch 2, loss is    5.64.
-For batch 3, loss is    5.69.
-For batch 4, loss is    5.93.
-For batch 5, loss is    5.83.
-For batch 6, loss is    5.78.
-For batch 7, loss is    5.71.
+Up to batch 0, the average loss is   29.25.
+Up to batch 1, the average loss is  485.36.
+Up to batch 2, the average loss is  330.94.
+Up to batch 3, the average loss is  250.62.
+Up to batch 4, the average loss is  202.20.
+Up to batch 5, the average loss is  169.51.
+Up to batch 6, the average loss is  145.98.
+Up to batch 7, the average loss is  128.48.
+The average loss for epoch 0 is  128.48 and mean absolute error is    6.01.
+Up to batch 0, the average loss is    5.10.
+Up to batch 1, the average loss is    4.80.
+Up to batch 2, the average loss is    4.96.
+Up to batch 3, the average loss is    4.96.
+Up to batch 4, the average loss is    4.82.
+Up to batch 5, the average loss is    4.69.
+Up to batch 6, the average loss is    4.51.
+Up to batch 7, the average loss is    4.53.
+The average loss for epoch 1 is    4.53 and mean absolute error is    1.72.
+Up to batch 0, the average loss is    5.08.
+Up to batch 1, the average loss is    4.66.
+Up to batch 2, the average loss is    4.64.
+Up to batch 3, the average loss is    4.72.
+Up to batch 4, the average loss is    4.82.
+Up to batch 5, the average loss is    4.83.
+Up to batch 6, the average loss is    4.77.
+Up to batch 7, the average loss is    4.72.
 
 ```
 </div>
@@ -357,7 +359,7 @@ In addition to receiving log information when one of their methods is called,
 callbacks have access to the model associated with the current round of
 training/evaluation/inference: `self.model`.
 
-Here are of few of the things you can do with `self.model` in a callback:
+Here are a few of the things you can do with `self.model` in a callback:
 
 - Set `self.model.stop_training = True` to immediately interrupt training.
 - Mutate hyperparameters of the optimizer (available as `self.model.optimizer`),
@@ -381,23 +383,21 @@ minimum of loss has been reached, by setting the attribute `self.model.stop_trai
 (boolean). Optionally, you can provide an argument `patience` to specify how many
 epochs we should wait before stopping after having reached a local minimum.
 
-`tf.keras.callbacks.EarlyStopping` provides a more complete and general implementation.
+`keras.callbacks.EarlyStopping` provides a more complete and general implementation.
 
 
 ```python
-import numpy as np
-
 
 class EarlyStoppingAtMinLoss(keras.callbacks.Callback):
     """Stop training when the loss is at its min, i.e. the loss stops decreasing.
 
-  Arguments:
-      patience: Number of epochs to wait after min has been hit. After this
-      number of no improvement, training stops.
-  """
+    Arguments:
+        patience: Number of epochs to wait after min has been hit. After this
+        number of no improvement, training stops.
+    """
 
     def __init__(self, patience=0):
-        super(EarlyStoppingAtMinLoss, self).__init__()
+        super().__init__()
         self.patience = patience
         # best_weights to store the weights at which the minimum loss occurs.
         self.best_weights = None
@@ -408,7 +408,7 @@ class EarlyStoppingAtMinLoss(keras.callbacks.Callback):
         # The epoch the training stops at.
         self.stopped_epoch = 0
         # Initialize the best as infinity.
-        self.best = np.Inf
+        self.best = np.inf
 
     def on_epoch_end(self, epoch, logs=None):
         current = logs.get("loss")
@@ -427,7 +427,7 @@ class EarlyStoppingAtMinLoss(keras.callbacks.Callback):
 
     def on_train_end(self, logs=None):
         if self.stopped_epoch > 0:
-            print("Epoch %05d: early stopping" % (self.stopped_epoch + 1))
+            print(f"Epoch {self.stopped_epoch + 1}: early stopping")
 
 
 model = get_model()
@@ -435,44 +435,69 @@ model.fit(
     x_train,
     y_train,
     batch_size=64,
-    steps_per_epoch=5,
     epochs=30,
     verbose=0,
     callbacks=[LossAndErrorPrintingCallback(), EarlyStoppingAtMinLoss()],
 )
-
 ```
 
 <div class="k-default-codeblock">
 ```
-For batch 0, loss is   27.16.
-For batch 1, loss is  479.73.
-For batch 2, loss is  328.31.
-For batch 3, loss is  248.68.
-For batch 4, loss is  200.24.
-The average loss for epoch 0 is  200.24 and mean absolute error is    8.40.
-For batch 0, loss is    6.74.
-For batch 1, loss is    6.80.
-For batch 2, loss is    6.37.
-For batch 3, loss is    6.15.
-For batch 4, loss is    5.94.
-The average loss for epoch 1 is    5.94 and mean absolute error is    1.98.
-For batch 0, loss is    5.79.
-For batch 1, loss is    5.56.
-For batch 2, loss is    5.40.
-For batch 3, loss is    5.04.
-For batch 4, loss is    4.81.
-The average loss for epoch 2 is    4.81 and mean absolute error is    1.73.
-For batch 0, loss is    5.60.
-For batch 1, loss is    9.10.
-For batch 2, loss is   11.11.
-For batch 3, loss is   16.32.
-For batch 4, loss is   23.31.
-The average loss for epoch 3 is   23.31 and mean absolute error is    3.98.
+Up to batch 0, the average loss is   25.57.
+Up to batch 1, the average loss is  471.66.
+Up to batch 2, the average loss is  322.55.
+Up to batch 3, the average loss is  243.88.
+Up to batch 4, the average loss is  196.53.
+Up to batch 5, the average loss is  165.02.
+Up to batch 6, the average loss is  142.34.
+Up to batch 7, the average loss is  125.17.
+Up to batch 8, the average loss is  111.83.
+Up to batch 9, the average loss is  101.35.
+Up to batch 10, the average loss is   92.60.
+Up to batch 11, the average loss is   85.16.
+Up to batch 12, the average loss is   79.02.
+Up to batch 13, the average loss is   73.71.
+Up to batch 14, the average loss is   69.23.
+Up to batch 15, the average loss is   65.26.
+The average loss for epoch 0 is   65.26 and mean absolute error is    3.89.
+Up to batch 0, the average loss is    3.92.
+Up to batch 1, the average loss is    4.34.
+Up to batch 2, the average loss is    5.39.
+Up to batch 3, the average loss is    6.58.
+Up to batch 4, the average loss is   10.55.
+Up to batch 5, the average loss is   19.29.
+Up to batch 6, the average loss is   31.58.
+Up to batch 7, the average loss is   38.20.
+Up to batch 8, the average loss is   41.96.
+Up to batch 9, the average loss is   41.30.
+Up to batch 10, the average loss is   39.31.
+Up to batch 11, the average loss is   37.09.
+Up to batch 12, the average loss is   35.08.
+Up to batch 13, the average loss is   33.27.
+Up to batch 14, the average loss is   31.54.
+Up to batch 15, the average loss is   30.00.
+The average loss for epoch 1 is   30.00 and mean absolute error is    4.23.
+Up to batch 0, the average loss is    5.70.
+Up to batch 1, the average loss is    6.90.
+Up to batch 2, the average loss is    7.74.
+Up to batch 3, the average loss is    8.85.
+Up to batch 4, the average loss is   12.53.
+Up to batch 5, the average loss is   21.55.
+Up to batch 6, the average loss is   35.70.
+Up to batch 7, the average loss is   44.16.
+Up to batch 8, the average loss is   44.82.
+Up to batch 9, the average loss is   43.07.
+Up to batch 10, the average loss is   40.51.
+Up to batch 11, the average loss is   38.44.
+Up to batch 12, the average loss is   36.69.
+Up to batch 13, the average loss is   34.77.
+Up to batch 14, the average loss is   32.97.
+Up to batch 15, the average loss is   31.32.
+The average loss for epoch 2 is   31.32 and mean absolute error is    4.39.
 Restoring model weights from the end of the best epoch.
-Epoch 00004: early stopping
+Epoch 3: early stopping
 
-<tensorflow.python.keras.callbacks.History at 0x158bea450>
+<keras.src.callbacks.history.History at 0x1187b7430>
 
 ```
 </div>
@@ -489,26 +514,26 @@ See `callbacks.LearningRateScheduler` for a more general implementations.
 class CustomLearningRateScheduler(keras.callbacks.Callback):
     """Learning rate scheduler which sets the learning rate according to schedule.
 
-  Arguments:
-      schedule: a function that takes an epoch index
-          (integer, indexed from 0) and current learning rate
-          as inputs and returns a new learning rate as output (float).
-  """
+    Arguments:
+        schedule: a function that takes an epoch index
+            (integer, indexed from 0) and current learning rate
+            as inputs and returns a new learning rate as output (float).
+    """
 
     def __init__(self, schedule):
-        super(CustomLearningRateScheduler, self).__init__()
+        super().__init__()
         self.schedule = schedule
 
     def on_epoch_begin(self, epoch, logs=None):
-        if not hasattr(self.model.optimizer, "lr"):
-            raise ValueError('Optimizer must have a "lr" attribute.')
+        if not hasattr(self.model.optimizer, "learning_rate"):
+            raise ValueError('Optimizer must have a "learning_rate" attribute.')
         # Get the current learning rate from model's optimizer.
-        lr = float(tf.keras.backend.get_value(self.model.optimizer.learning_rate))
+        lr = self.model.optimizer.learning_rate
         # Call schedule function to get the scheduled learning rate.
         scheduled_lr = self.schedule(epoch, lr)
         # Set the value back to the optimizer before this epoch starts
-        tf.keras.backend.set_value(self.model.optimizer.lr, scheduled_lr)
-        print("\nEpoch %05d: Learning rate is %6.4f." % (epoch, scheduled_lr))
+        self.model.optimizer.learning_rate = scheduled_lr
+        print(f"\nEpoch {epoch}: Learning rate is {float(np.array(scheduled_lr))}.")
 
 
 LR_SCHEDULE = [
@@ -535,7 +560,6 @@ model.fit(
     x_train,
     y_train,
     batch_size=64,
-    steps_per_epoch=5,
     epochs=15,
     verbose=0,
     callbacks=[
@@ -543,193 +567,358 @@ model.fit(
         CustomLearningRateScheduler(lr_schedule),
     ],
 )
-
 ```
 
     
 <div class="k-default-codeblock">
 ```
-Epoch 00000: Learning rate is 0.1000.
-For batch 0, loss is   20.39.
-For batch 1, loss is  467.92.
-For batch 2, loss is  320.53.
-For batch 3, loss is  242.66.
-For batch 4, loss is  195.60.
-The average loss for epoch 0 is  195.60 and mean absolute error is    8.23.
+Epoch 0: Learning rate is 0.10000000149011612.
+Up to batch 0, the average loss is   27.90.
+Up to batch 1, the average loss is  439.49.
+Up to batch 2, the average loss is  302.08.
+Up to batch 3, the average loss is  228.83.
+Up to batch 4, the average loss is  184.97.
+Up to batch 5, the average loss is  155.25.
+Up to batch 6, the average loss is  134.03.
+Up to batch 7, the average loss is  118.29.
+Up to batch 8, the average loss is  105.65.
+Up to batch 9, the average loss is   95.53.
+Up to batch 10, the average loss is   87.25.
+Up to batch 11, the average loss is   80.33.
+Up to batch 12, the average loss is   74.48.
+Up to batch 13, the average loss is   69.46.
+Up to batch 14, the average loss is   65.05.
+Up to batch 15, the average loss is   61.31.
+The average loss for epoch 0 is   61.31 and mean absolute error is    3.85.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00001: Learning rate is 0.1000.
-For batch 0, loss is    6.62.
-For batch 1, loss is    6.02.
-For batch 2, loss is    6.85.
-For batch 3, loss is    6.46.
-For batch 4, loss is    6.33.
-The average loss for epoch 1 is    6.33 and mean absolute error is    2.03.
+Epoch 1: Learning rate is 0.10000000149011612.
+Up to batch 0, the average loss is   57.96.
+Up to batch 1, the average loss is   55.11.
+Up to batch 2, the average loss is   52.81.
+Up to batch 3, the average loss is   51.06.
+Up to batch 4, the average loss is   50.58.
+Up to batch 5, the average loss is   51.49.
+Up to batch 6, the average loss is   53.24.
+Up to batch 7, the average loss is   54.20.
+Up to batch 8, the average loss is   54.39.
+Up to batch 9, the average loss is   54.31.
+Up to batch 10, the average loss is   53.83.
+Up to batch 11, the average loss is   52.93.
+Up to batch 12, the average loss is   51.73.
+Up to batch 13, the average loss is   50.34.
+Up to batch 14, the average loss is   48.94.
+Up to batch 15, the average loss is   47.65.
+The average loss for epoch 1 is   47.65 and mean absolute error is    4.30.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00002: Learning rate is 0.1000.
-For batch 0, loss is    5.28.
-For batch 1, loss is    5.29.
-For batch 2, loss is    5.30.
-For batch 3, loss is    4.84.
-For batch 4, loss is    4.59.
-The average loss for epoch 2 is    4.59 and mean absolute error is    1.73.
+Epoch 2: Learning rate is 0.10000000149011612.
+Up to batch 0, the average loss is   46.38.
+Up to batch 1, the average loss is   45.16.
+Up to batch 2, the average loss is   44.03.
+Up to batch 3, the average loss is   43.11.
+Up to batch 4, the average loss is   42.52.
+Up to batch 5, the average loss is   42.32.
+Up to batch 6, the average loss is   43.06.
+Up to batch 7, the average loss is   44.58.
+Up to batch 8, the average loss is   45.33.
+Up to batch 9, the average loss is   45.15.
+Up to batch 10, the average loss is   44.59.
+Up to batch 11, the average loss is   43.88.
+Up to batch 12, the average loss is   43.17.
+Up to batch 13, the average loss is   42.40.
+Up to batch 14, the average loss is   41.74.
+Up to batch 15, the average loss is   41.19.
+The average loss for epoch 2 is   41.19 and mean absolute error is    4.27.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00003: Learning rate is 0.0500.
-For batch 0, loss is    5.20.
-For batch 1, loss is    5.33.
-For batch 2, loss is    4.70.
-For batch 3, loss is    4.43.
-For batch 4, loss is    4.29.
-The average loss for epoch 3 is    4.29 and mean absolute error is    1.67.
+Epoch 3: Learning rate is 0.05.
+Up to batch 0, the average loss is   40.85.
+Up to batch 1, the average loss is   40.11.
+Up to batch 2, the average loss is   39.38.
+Up to batch 3, the average loss is   38.69.
+Up to batch 4, the average loss is   38.01.
+Up to batch 5, the average loss is   37.38.
+Up to batch 6, the average loss is   36.77.
+Up to batch 7, the average loss is   36.18.
+Up to batch 8, the average loss is   35.61.
+Up to batch 9, the average loss is   35.08.
+Up to batch 10, the average loss is   34.54.
+Up to batch 11, the average loss is   34.04.
+Up to batch 12, the average loss is   33.56.
+Up to batch 13, the average loss is   33.08.
+Up to batch 14, the average loss is   32.64.
+Up to batch 15, the average loss is   32.25.
+The average loss for epoch 3 is   32.25 and mean absolute error is    3.64.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00004: Learning rate is 0.0500.
-For batch 0, loss is    4.97.
-For batch 1, loss is    4.64.
-For batch 2, loss is    4.30.
-For batch 3, loss is    3.95.
-For batch 4, loss is    3.96.
-The average loss for epoch 4 is    3.96 and mean absolute error is    1.57.
+Epoch 4: Learning rate is 0.05000000074505806.
+Up to batch 0, the average loss is   31.83.
+Up to batch 1, the average loss is   31.42.
+Up to batch 2, the average loss is   31.05.
+Up to batch 3, the average loss is   30.72.
+Up to batch 4, the average loss is   30.49.
+Up to batch 5, the average loss is   30.37.
+Up to batch 6, the average loss is   30.15.
+Up to batch 7, the average loss is   29.94.
+Up to batch 8, the average loss is   29.75.
+Up to batch 9, the average loss is   29.56.
+Up to batch 10, the average loss is   29.27.
+Up to batch 11, the average loss is   28.96.
+Up to batch 12, the average loss is   28.67.
+Up to batch 13, the average loss is   28.39.
+Up to batch 14, the average loss is   28.11.
+Up to batch 15, the average loss is   27.80.
+The average loss for epoch 4 is   27.80 and mean absolute error is    3.43.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00005: Learning rate is 0.0500.
-For batch 0, loss is    3.18.
-For batch 1, loss is    3.04.
-For batch 2, loss is    3.31.
-For batch 3, loss is    3.88.
-For batch 4, loss is    3.83.
-The average loss for epoch 5 is    3.83 and mean absolute error is    1.56.
+Epoch 5: Learning rate is 0.05000000074505806.
+Up to batch 0, the average loss is   27.51.
+Up to batch 1, the average loss is   27.25.
+Up to batch 2, the average loss is   27.05.
+Up to batch 3, the average loss is   26.88.
+Up to batch 4, the average loss is   26.76.
+Up to batch 5, the average loss is   26.60.
+Up to batch 6, the average loss is   26.44.
+Up to batch 7, the average loss is   26.25.
+Up to batch 8, the average loss is   26.08.
+Up to batch 9, the average loss is   25.89.
+Up to batch 10, the average loss is   25.71.
+Up to batch 11, the average loss is   25.48.
+Up to batch 12, the average loss is   25.26.
+Up to batch 13, the average loss is   25.03.
+Up to batch 14, the average loss is   24.81.
+Up to batch 15, the average loss is   24.58.
+The average loss for epoch 5 is   24.58 and mean absolute error is    3.25.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00006: Learning rate is 0.0100.
-For batch 0, loss is    4.45.
-For batch 1, loss is    4.82.
-For batch 2, loss is    4.13.
-For batch 3, loss is    3.70.
-For batch 4, loss is    3.44.
-The average loss for epoch 6 is    3.44 and mean absolute error is    1.47.
+Epoch 6: Learning rate is 0.01.
+Up to batch 0, the average loss is   24.36.
+Up to batch 1, the average loss is   24.14.
+Up to batch 2, the average loss is   23.93.
+Up to batch 3, the average loss is   23.71.
+Up to batch 4, the average loss is   23.52.
+Up to batch 5, the average loss is   23.32.
+Up to batch 6, the average loss is   23.12.
+Up to batch 7, the average loss is   22.93.
+Up to batch 8, the average loss is   22.74.
+Up to batch 9, the average loss is   22.55.
+Up to batch 10, the average loss is   22.37.
+Up to batch 11, the average loss is   22.19.
+Up to batch 12, the average loss is   22.01.
+Up to batch 13, the average loss is   21.83.
+Up to batch 14, the average loss is   21.67.
+Up to batch 15, the average loss is   21.50.
+The average loss for epoch 6 is   21.50 and mean absolute error is    2.98.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00007: Learning rate is 0.0100.
-For batch 0, loss is    2.93.
-For batch 1, loss is    3.21.
-For batch 2, loss is    3.49.
-For batch 3, loss is    3.49.
-For batch 4, loss is    3.60.
-The average loss for epoch 7 is    3.60 and mean absolute error is    1.50.
+Epoch 7: Learning rate is 0.009999999776482582.
+Up to batch 0, the average loss is   21.33.
+Up to batch 1, the average loss is   21.17.
+Up to batch 2, the average loss is   21.01.
+Up to batch 3, the average loss is   20.85.
+Up to batch 4, the average loss is   20.71.
+Up to batch 5, the average loss is   20.57.
+Up to batch 6, the average loss is   20.41.
+Up to batch 7, the average loss is   20.27.
+Up to batch 8, the average loss is   20.13.
+Up to batch 9, the average loss is   19.98.
+Up to batch 10, the average loss is   19.83.
+Up to batch 11, the average loss is   19.69.
+Up to batch 12, the average loss is   19.57.
+Up to batch 13, the average loss is   19.44.
+Up to batch 14, the average loss is   19.32.
+Up to batch 15, the average loss is   19.19.
+The average loss for epoch 7 is   19.19 and mean absolute error is    2.77.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00008: Learning rate is 0.0100.
-For batch 0, loss is    3.94.
-For batch 1, loss is    3.30.
-For batch 2, loss is    3.45.
-For batch 3, loss is    3.68.
-For batch 4, loss is    3.45.
-The average loss for epoch 8 is    3.45 and mean absolute error is    1.44.
+Epoch 8: Learning rate is 0.009999999776482582.
+Up to batch 0, the average loss is   19.07.
+Up to batch 1, the average loss is   18.95.
+Up to batch 2, the average loss is   18.83.
+Up to batch 3, the average loss is   18.70.
+Up to batch 4, the average loss is   18.58.
+Up to batch 5, the average loss is   18.46.
+Up to batch 6, the average loss is   18.35.
+Up to batch 7, the average loss is   18.24.
+Up to batch 8, the average loss is   18.12.
+Up to batch 9, the average loss is   18.01.
+Up to batch 10, the average loss is   17.90.
+Up to batch 11, the average loss is   17.79.
+Up to batch 12, the average loss is   17.68.
+Up to batch 13, the average loss is   17.58.
+Up to batch 14, the average loss is   17.48.
+Up to batch 15, the average loss is   17.38.
+The average loss for epoch 8 is   17.38 and mean absolute error is    2.61.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00009: Learning rate is 0.0050.
-For batch 0, loss is    4.47.
-For batch 1, loss is    3.74.
-For batch 2, loss is    3.70.
-For batch 3, loss is    3.89.
-For batch 4, loss is    3.64.
-The average loss for epoch 9 is    3.64 and mean absolute error is    1.47.
+Epoch 9: Learning rate is 0.005.
+Up to batch 0, the average loss is   17.28.
+Up to batch 1, the average loss is   17.18.
+Up to batch 2, the average loss is   17.08.
+Up to batch 3, the average loss is   16.99.
+Up to batch 4, the average loss is   16.90.
+Up to batch 5, the average loss is   16.80.
+Up to batch 6, the average loss is   16.71.
+Up to batch 7, the average loss is   16.62.
+Up to batch 8, the average loss is   16.53.
+Up to batch 9, the average loss is   16.44.
+Up to batch 10, the average loss is   16.35.
+Up to batch 11, the average loss is   16.26.
+Up to batch 12, the average loss is   16.17.
+Up to batch 13, the average loss is   16.09.
+Up to batch 14, the average loss is   16.00.
+Up to batch 15, the average loss is   15.92.
+The average loss for epoch 9 is   15.92 and mean absolute error is    2.48.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00010: Learning rate is 0.0050.
-For batch 0, loss is    4.53.
-For batch 1, loss is    4.10.
-For batch 2, loss is    3.81.
-For batch 3, loss is    3.74.
-For batch 4, loss is    3.83.
-The average loss for epoch 10 is    3.83 and mean absolute error is    1.50.
+Epoch 10: Learning rate is 0.004999999888241291.
+Up to batch 0, the average loss is   15.84.
+Up to batch 1, the average loss is   15.76.
+Up to batch 2, the average loss is   15.68.
+Up to batch 3, the average loss is   15.61.
+Up to batch 4, the average loss is   15.53.
+Up to batch 5, the average loss is   15.45.
+Up to batch 6, the average loss is   15.37.
+Up to batch 7, the average loss is   15.29.
+Up to batch 8, the average loss is   15.23.
+Up to batch 9, the average loss is   15.15.
+Up to batch 10, the average loss is   15.08.
+Up to batch 11, the average loss is   15.00.
+Up to batch 12, the average loss is   14.93.
+Up to batch 13, the average loss is   14.86.
+Up to batch 14, the average loss is   14.79.
+Up to batch 15, the average loss is   14.72.
+The average loss for epoch 10 is   14.72 and mean absolute error is    2.37.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00011: Learning rate is 0.0050.
-For batch 0, loss is    2.82.
-For batch 1, loss is    3.02.
-For batch 2, loss is    3.16.
-For batch 3, loss is    3.04.
-For batch 4, loss is    2.90.
-The average loss for epoch 11 is    2.90 and mean absolute error is    1.34.
+Epoch 11: Learning rate is 0.004999999888241291.
+Up to batch 0, the average loss is   14.65.
+Up to batch 1, the average loss is   14.58.
+Up to batch 2, the average loss is   14.52.
+Up to batch 3, the average loss is   14.45.
+Up to batch 4, the average loss is   14.39.
+Up to batch 5, the average loss is   14.33.
+Up to batch 6, the average loss is   14.26.
+Up to batch 7, the average loss is   14.20.
+Up to batch 8, the average loss is   14.14.
+Up to batch 9, the average loss is   14.08.
+Up to batch 10, the average loss is   14.02.
+Up to batch 11, the average loss is   13.96.
+Up to batch 12, the average loss is   13.90.
+Up to batch 13, the average loss is   13.84.
+Up to batch 14, the average loss is   13.78.
+Up to batch 15, the average loss is   13.72.
+The average loss for epoch 11 is   13.72 and mean absolute error is    2.27.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00012: Learning rate is 0.0010.
-For batch 0, loss is    3.30.
-For batch 1, loss is    3.17.
-For batch 2, loss is    2.87.
-For batch 3, loss is    2.87.
-For batch 4, loss is    2.96.
-The average loss for epoch 12 is    2.96 and mean absolute error is    1.33.
+Epoch 12: Learning rate is 0.001.
+Up to batch 0, the average loss is   13.67.
+Up to batch 1, the average loss is   13.60.
+Up to batch 2, the average loss is   13.55.
+Up to batch 3, the average loss is   13.49.
+Up to batch 4, the average loss is   13.44.
+Up to batch 5, the average loss is   13.38.
+Up to batch 6, the average loss is   13.33.
+Up to batch 7, the average loss is   13.28.
+Up to batch 8, the average loss is   13.22.
+Up to batch 9, the average loss is   13.17.
+Up to batch 10, the average loss is   13.12.
+Up to batch 11, the average loss is   13.07.
+Up to batch 12, the average loss is   13.02.
+Up to batch 13, the average loss is   12.97.
+Up to batch 14, the average loss is   12.92.
+Up to batch 15, the average loss is   12.87.
+The average loss for epoch 12 is   12.87 and mean absolute error is    2.19.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00013: Learning rate is 0.0010.
-For batch 0, loss is    2.84.
-For batch 1, loss is    3.25.
-For batch 2, loss is    3.20.
-For batch 3, loss is    3.11.
-For batch 4, loss is    3.07.
-The average loss for epoch 13 is    3.07 and mean absolute error is    1.37.
+Epoch 13: Learning rate is 0.0010000000474974513.
+Up to batch 0, the average loss is   12.82.
+Up to batch 1, the average loss is   12.77.
+Up to batch 2, the average loss is   12.72.
+Up to batch 3, the average loss is   12.68.
+Up to batch 4, the average loss is   12.63.
+Up to batch 5, the average loss is   12.58.
+Up to batch 6, the average loss is   12.53.
+Up to batch 7, the average loss is   12.49.
+Up to batch 8, the average loss is   12.45.
+Up to batch 9, the average loss is   12.40.
+Up to batch 10, the average loss is   12.35.
+Up to batch 11, the average loss is   12.30.
+Up to batch 12, the average loss is   12.26.
+Up to batch 13, the average loss is   12.22.
+Up to batch 14, the average loss is   12.17.
+Up to batch 15, the average loss is   12.13.
+The average loss for epoch 13 is   12.13 and mean absolute error is    2.12.
 ```
 </div>
     
 <div class="k-default-codeblock">
 ```
-Epoch 00014: Learning rate is 0.0010.
-For batch 0, loss is    2.69.
-For batch 1, loss is    2.70.
-For batch 2, loss is    2.89.
-For batch 3, loss is    2.69.
-For batch 4, loss is    2.97.
-The average loss for epoch 14 is    2.97 and mean absolute error is    1.33.
+Epoch 14: Learning rate is 0.0010000000474974513.
+Up to batch 0, the average loss is   12.09.
+Up to batch 1, the average loss is   12.05.
+Up to batch 2, the average loss is   12.01.
+Up to batch 3, the average loss is   11.97.
+Up to batch 4, the average loss is   11.92.
+Up to batch 5, the average loss is   11.88.
+Up to batch 6, the average loss is   11.84.
+Up to batch 7, the average loss is   11.80.
+Up to batch 8, the average loss is   11.76.
+Up to batch 9, the average loss is   11.72.
+Up to batch 10, the average loss is   11.68.
+Up to batch 11, the average loss is   11.64.
+Up to batch 12, the average loss is   11.60.
+Up to batch 13, the average loss is   11.57.
+Up to batch 14, the average loss is   11.54.
+Up to batch 15, the average loss is   11.50.
+The average loss for epoch 14 is   11.50 and mean absolute error is    2.06.
 
-<tensorflow.python.keras.callbacks.History at 0x158bb8410>
+<keras.src.callbacks.history.History at 0x168619c60>
 
 ```
 </div>
 ### Built-in Keras callbacks
+
 Be sure to check out the existing Keras callbacks by
 reading the [API docs](https://keras.io/api/callbacks/).
 Applications include logging to CSV, saving

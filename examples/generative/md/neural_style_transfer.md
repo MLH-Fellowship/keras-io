@@ -3,7 +3,7 @@
 **Author:** [fchollet](https://twitter.com/fchollet)<br>
 **Date created:** 2016/01/11<br>
 **Last modified:** 2020/05/02<br>
-**Description:** Transfering the style of a reference image to target image using gradient descent.
+**Description:** Transferring the style of a reference image to target image using gradient descent.
 
 
 <img class="k-inline-icon" src="https://colab.research.google.com/img/colab_favicon.ico"/> [**View in Colab**](https://colab.research.google.com/github/keras-team/keras-io/blob/master/examples/generative/ipynb/neural_style_transfer.ipynb)  <span class="k-dot">•</span><img class="k-inline-icon" src="https://github.com/favicon.ico"/> [**GitHub source**](https://github.com/keras-team/keras-io/blob/master/examples/generative/neural_style_transfer.py)
@@ -36,17 +36,19 @@ keeping the generated image close enough to the original one.
 **Reference:** [A Neural Algorithm of Artistic Style](
   http://arxiv.org/abs/1508.06576)
 
-
 ---
 ## Setup
 
 
-
 ```python
+import os
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import keras
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras.applications import vgg19
+from keras.applications import vgg19
 
 base_image_path = keras.utils.get_file("paris.jpg", "https://i.imgur.com/F28w3Ac.jpg")
 style_reference_image_path = keras.utils.get_file(
@@ -60,15 +62,22 @@ style_weight = 1e-6
 content_weight = 2.5e-8
 
 # Dimensions of the generated picture.
-width, height = keras.preprocessing.image.load_img(base_image_path).size
+width, height = keras.utils.load_img(base_image_path).size
 img_nrows = 400
 img_ncols = int(width * img_nrows / height)
-
 ```
 
+<div class="k-default-codeblock">
+```
+Downloading data from https://i.imgur.com/F28w3Ac.jpg
+ 102437/102437 ━━━━━━━━━━━━━━━━━━━━ 0s 0us/step
+Downloading data from https://i.imgur.com/9ooB60I.jpg
+ 935806/935806 ━━━━━━━━━━━━━━━━━━━━ 0s 0us/step
+
+```
+</div>
 ---
 ## Let's take a look at our base (content) image and our style reference image
-
 
 
 ```python
@@ -76,30 +85,30 @@ from IPython.display import Image, display
 
 display(Image(base_image_path))
 display(Image(style_reference_image_path))
-
 ```
 
 
-![jpeg](/img/examples/generative/neural_style_transfer/neural_style_transfer_5_0.jpeg)
+    
+![jpeg](/img/examples/generative/neural_style_transfer/neural_style_transfer_5_0.jpg)
+    
 
 
 
-![jpeg](/img/examples/generative/neural_style_transfer/neural_style_transfer_5_1.jpeg)
+    
+![jpeg](/img/examples/generative/neural_style_transfer/neural_style_transfer_5_1.jpg)
+    
 
 
 ---
 ## Image preprocessing / deprocessing utilities
 
 
-
 ```python
 
 def preprocess_image(image_path):
     # Util function to open, resize and format pictures into appropriate tensors
-    img = keras.preprocessing.image.load_img(
-        image_path, target_size=(img_nrows, img_ncols)
-    )
-    img = keras.preprocessing.image.img_to_array(img)
+    img = keras.utils.load_img(image_path, target_size=(img_nrows, img_ncols))
+    img = keras.utils.img_to_array(img)
     img = np.expand_dims(img, axis=0)
     img = vgg19.preprocess_input(img)
     return tf.convert_to_tensor(img)
@@ -117,7 +126,6 @@ def deprocess_image(x):
     x = np.clip(x, 0, 255).astype("uint8")
     return x
 
-
 ```
 
 ---
@@ -132,7 +140,6 @@ of the style reference image
 generated image close to that of the base image
 - The `total_variation_loss` function, a regularization loss which keeps the generated
 image locally-coherent
-
 
 
 ```python
@@ -158,7 +165,7 @@ def style_loss(style, combination):
     C = gram_matrix(combination)
     channels = 3
     size = img_nrows * img_ncols
-    return tf.reduce_sum(tf.square(S - C)) / (4.0 * (channels ** 2) * (size ** 2))
+    return tf.reduce_sum(tf.square(S - C)) / (4.0 * (channels**2) * (size**2))
 
 
 # An auxiliary loss function
@@ -183,12 +190,10 @@ def total_variation_loss(x):
     )
     return tf.reduce_sum(tf.pow(a + b, 1.25))
 
-
 ```
 
 Next, let's create a feature extraction model that retrieves the intermediate activations
 of VGG19 (as a dict, by name).
-
 
 
 ```python
@@ -201,11 +206,16 @@ outputs_dict = dict([(layer.name, layer.output) for layer in model.layers])
 # Set up a model that returns the activation values for every layer in
 # VGG19 (as a dict).
 feature_extractor = keras.Model(inputs=model.inputs, outputs=outputs_dict)
-
 ```
 
-Finally, here's the code that computes the style transfer loss.
+<div class="k-default-codeblock">
+```
+Downloading data from https://storage.googleapis.com/tensorflow/keras-applications/vgg19/vgg19_weights_tf_dim_ordering_tf_kernels_notop.h5
+ 80134624/80134624 ━━━━━━━━━━━━━━━━━━━━ 2s 0us/step
 
+```
+</div>
+Finally, here's the code that computes the style transfer loss.
 
 
 ```python
@@ -249,14 +259,12 @@ def compute_loss(combination_image, base_image, style_reference_image):
     loss += total_variation_weight * total_variation_loss(combination_image)
     return loss
 
-
 ```
 
 ---
 ## Add a tf.function decorator to loss & gradient computation
 
 To compile it, and thus make it fast.
-
 
 
 ```python
@@ -268,7 +276,6 @@ def compute_loss_and_grads(combination_image, base_image, style_reference_image)
     grads = tape.gradient(loss, combination_image)
     return loss, grads
 
-
 ```
 
 ---
@@ -278,7 +285,6 @@ Repeatedly run vanilla gradient descent steps to minimize the loss, and save the
 resulting image every 100 iterations.
 
 We decay the learning rate by 0.96 every 100 steps.
-
 
 
 ```python
@@ -302,64 +308,65 @@ for i in range(1, iterations + 1):
         print("Iteration %d: loss=%.2f" % (i, loss))
         img = deprocess_image(combination_image.numpy())
         fname = result_prefix + "_at_iteration_%d.png" % i
-        keras.preprocessing.image.save_img(fname, img)
-
+        keras.utils.save_img(fname, img)
 ```
 
 <div class="k-default-codeblock">
 ```
-Iteration 100: loss=11018.36
-Iteration 200: loss=8514.28
-Iteration 300: loss=7571.70
-Iteration 400: loss=7064.09
-Iteration 500: loss=6736.33
-Iteration 600: loss=6501.82
-Iteration 700: loss=6323.21
-Iteration 800: loss=6181.44
-Iteration 900: loss=6065.30
-Iteration 1000: loss=5967.72
-Iteration 1100: loss=5884.61
-Iteration 1200: loss=5812.84
-Iteration 1300: loss=5750.36
-Iteration 1400: loss=5695.61
-Iteration 1500: loss=5647.19
-Iteration 1600: loss=5604.15
-Iteration 1700: loss=5565.45
-Iteration 1800: loss=5530.61
-Iteration 1900: loss=5498.99
-Iteration 2000: loss=5470.26
-Iteration 2100: loss=5444.05
-Iteration 2200: loss=5420.09
-Iteration 2300: loss=5398.12
-Iteration 2400: loss=5377.92
-Iteration 2500: loss=5359.31
-Iteration 2600: loss=5342.14
-Iteration 2700: loss=5326.28
-Iteration 2800: loss=5311.56
-Iteration 2900: loss=5297.89
-Iteration 3000: loss=5285.14
-Iteration 3100: loss=5273.21
-Iteration 3200: loss=5262.05
-Iteration 3300: loss=5251.60
-Iteration 3400: loss=5241.82
-Iteration 3500: loss=5232.64
-Iteration 3600: loss=5224.02
-Iteration 3700: loss=5215.90
-Iteration 3800: loss=5208.26
-Iteration 3900: loss=5201.06
-Iteration 4000: loss=5194.26
+Iteration 100: loss=11021.63
+Iteration 200: loss=8516.82
+Iteration 300: loss=7572.36
+Iteration 400: loss=7062.23
+Iteration 500: loss=6733.57
+Iteration 600: loss=6498.27
+Iteration 700: loss=6319.11
+Iteration 800: loss=6176.94
+Iteration 900: loss=6060.49
+Iteration 1000: loss=5963.24
+Iteration 1100: loss=5880.51
+Iteration 1200: loss=5809.23
+Iteration 1300: loss=5747.35
+Iteration 1400: loss=5692.95
+Iteration 1500: loss=5644.84
+Iteration 1600: loss=5601.82
+Iteration 1700: loss=5563.18
+Iteration 1800: loss=5528.38
+Iteration 1900: loss=5496.89
+Iteration 2000: loss=5468.20
+Iteration 2100: loss=5441.97
+Iteration 2200: loss=5418.02
+Iteration 2300: loss=5396.11
+Iteration 2400: loss=5376.00
+Iteration 2500: loss=5357.49
+Iteration 2600: loss=5340.36
+Iteration 2700: loss=5324.49
+Iteration 2800: loss=5309.77
+Iteration 2900: loss=5296.08
+Iteration 3000: loss=5283.33
+Iteration 3100: loss=5271.47
+Iteration 3200: loss=5260.39
+Iteration 3300: loss=5250.02
+Iteration 3400: loss=5240.29
+Iteration 3500: loss=5231.18
+Iteration 3600: loss=5222.65
+Iteration 3700: loss=5214.61
+Iteration 3800: loss=5207.08
+Iteration 3900: loss=5199.98
+Iteration 4000: loss=5193.27
 
 ```
 </div>
 After 4000 iterations, you get the following result:
 
 
-
 ```python
 display(Image(result_prefix + "_at_iteration_4000.png"))
-
 ```
 
 
+    
 ![png](/img/examples/generative/neural_style_transfer/neural_style_transfer_19_0.png)
 
+---
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 17: Image generation](https://deeplearningwithpython.io/chapters/chapter17_image-generation)

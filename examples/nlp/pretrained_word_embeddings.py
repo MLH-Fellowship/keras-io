@@ -4,15 +4,23 @@ Author: [fchollet](https://twitter.com/fchollet)
 Date created: 2020/05/05
 Last modified: 2020/05/05
 Description: Text classification on the Newsgroup20 dataset using pre-trained GloVe word embeddings.
+Accelerator: GPU
 """
 
 """
 ## Setup
 """
 
+import os
+
+# Only the TensorFlow backend supports string inputs.
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import pathlib
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
+import tensorflow.data as tf_data
+import keras
+from keras import layers
 
 """
 ## Introduction
@@ -40,11 +48,6 @@ data_path = keras.utils.get_file(
 """
 ## Let's take a look at the data
 """
-
-import os
-import pathlib
-
-os.listdir(pathlib.Path(data_path).parent)
 
 data_dir = pathlib.Path(data_path).parent / "20_newsgroup"
 dirnames = os.listdir(data_dir)
@@ -124,10 +127,8 @@ Our layer will only consider the top 20,000 words, and will truncate or pad sequ
 be actually 200 tokens long.
 """
 
-from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
-
-vectorizer = TextVectorization(max_tokens=20000, output_sequence_length=200)
-text_ds = tf.data.Dataset.from_tensor_slices(train_samples).batch(128)
+vectorizer = layers.TextVectorization(max_tokens=20000, output_sequence_length=200)
+text_ds = tf_data.Dataset.from_tensor_slices(train_samples).batch(128)
 vectorizer.adapt(text_ds)
 
 """
@@ -141,7 +142,7 @@ vectorizer.get_vocabulary()[:5]
 Let's vectorize a test sentence:
 """
 
-output = vectorizer(np.array([["the cat sat on the mat"]]))
+output = vectorizer([["the cat sat on the mat"]])
 output.numpy()[0, :6]
 
 """
@@ -153,13 +154,13 @@ Here's a dict mapping words to their indices:
 """
 
 voc = vectorizer.get_vocabulary()
-word_index = dict(zip(voc, range(2, len(voc))))
+word_index = dict(zip(voc, range(len(voc))))
 
 """
 As you can see, we obtain the same encoding as above for our test sentence:
 """
 
-test = [b"the", b"cat", b"sat", b"on", b"the", b"mat"]
+test = ["the", "cat", "sat", "on", "the", "mat"]
 [word_index[w] for w in test]
 
 """
@@ -170,11 +171,11 @@ test = [b"the", b"cat", b"sat", b"on", b"the", b"mat"]
 Let's download pre-trained GloVe embeddings (a 822M zip file).
 
 You'll need to run the following commands:
+"""
 
-```
-!wget http://nlp.stanford.edu/data/glove.6B.zip
-!unzip -q glove.6B.zip
-```
+"""shell
+wget https://downloads.cs.stanford.edu/nlp/data/glove.6B.zip
+unzip -q glove.6B.zip
 """
 
 """
@@ -184,9 +185,7 @@ The archive contains text-encoded vectors of various sizes: 50-dimensional,
 Let's make a dict mapping words (strings) to their NumPy vector representation:
 """
 
-path_to_glove_file = os.path.join(
-    os.path.expanduser("~"), ".keras/datasets/glove.6B.100d.txt"
-)
+path_to_glove_file = "glove.6B.100d.txt"
 
 embeddings_index = {}
 with open(path_to_glove_file) as f:
@@ -201,10 +200,6 @@ print("Found %s word vectors." % len(embeddings_index))
 Now, let's prepare a corresponding embedding matrix that we can use in a Keras
 `Embedding` layer. It's a simple NumPy matrix where entry at index `i` is the pre-trained
 vector for the word of index `i` in our `vectorizer`'s vocabulary.
-
-**Note:** the `TextVectorization` layer stores tokens as bytes, not `str` types.
-This means that you need to decode them to `utf-8` before doing string comparisons, like
-the below: `embeddings_index.get(word.decode('utf-8'))`
 """
 
 num_tokens = len(voc) + 2
@@ -215,7 +210,7 @@ misses = 0
 # Prepare embedding matrix
 embedding_matrix = np.zeros((num_tokens, embedding_dim))
 for word, i in word_index.items():
-    embedding_vector = embeddings_index.get(word.decode("utf-8"))
+    embedding_vector = embeddings_index.get(word)
     if embedding_vector is not None:
         # Words not found in embedding index will be all-zeros.
         # This includes the representation for "padding" and "OOV"
@@ -233,14 +228,15 @@ Note that we set `trainable=False` so as to keep the embeddings fixed (we don't 
 update them during training).
 """
 
-from tensorflow.keras.layers import Embedding
+from keras.layers import Embedding
 
 embedding_layer = Embedding(
     num_tokens,
     embedding_dim,
-    embeddings_initializer=keras.initializers.Constant(embedding_matrix),
     trainable=False,
 )
+embedding_layer.build((1,))
+embedding_layer.set_weights([embedding_matrix])
 
 """
 ## Build the model
@@ -248,9 +244,7 @@ embedding_layer = Embedding(
 A simple 1D convnet with global max pooling and a classifier at the end.
 """
 
-from tensorflow.keras import layers
-
-int_sequences_input = keras.Input(shape=(None,), dtype="int64")
+int_sequences_input = keras.Input(shape=(None,), dtype="int32")
 embedded_sequences = embedding_layer(int_sequences_input)
 x = layers.Conv1D(128, 5, activation="relu")(embedded_sequences)
 x = layers.MaxPooling1D(5)(x)
@@ -302,8 +296,15 @@ x = vectorizer(string_input)
 preds = model(x)
 end_to_end_model = keras.Model(string_input, preds)
 
-probabilities = end_to_end_model.predict(
-    [["this message is about computer graphics and 3D modeling"]]
+probabilities = end_to_end_model(
+    keras.ops.convert_to_tensor(
+        [["this message is about computer graphics and 3D modeling"]]
+    )
 )
 
-class_names[np.argmax(probabilities[0])]
+print(class_names[np.argmax(probabilities[0])])
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 14: Text classification](https://deeplearningwithpython.io/chapters/chapter14_text-classification)
+"""

@@ -4,7 +4,9 @@ Author: [Siddhartha Banerjee](https://twitter.com/sidd2006)
 Date created: 2020/05/24
 Last modified: 2020/05/24
 Description: Recommending movies using a model trained on Movielens dataset.
+Accelerator: GPU
 """
+
 """
 ## Introduction
 
@@ -31,13 +33,14 @@ the a match score between the user and the movie (predicted rating).
 """
 
 import pandas as pd
-import numpy as np
-from zipfile import ZipFile
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
 from pathlib import Path
 import matplotlib.pyplot as plt
+import numpy as np
+from zipfile import ZipFile
+
+import keras
+from keras import layers
+from keras import ops
 
 """
 ## First, load the data and apply preprocessing
@@ -120,7 +123,7 @@ EMBEDDING_SIZE = 50
 
 class RecommenderNet(keras.Model):
     def __init__(self, num_users, num_movies, embedding_size, **kwargs):
-        super(RecommenderNet, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.num_users = num_users
         self.num_movies = num_movies
         self.embedding_size = embedding_size
@@ -144,16 +147,17 @@ class RecommenderNet(keras.Model):
         user_bias = self.user_bias(inputs[:, 0])
         movie_vector = self.movie_embedding(inputs[:, 1])
         movie_bias = self.movie_bias(inputs[:, 1])
-        dot_user_movie = tf.tensordot(user_vector, movie_vector, 2)
+        dot_user_movie = ops.tensordot(user_vector, movie_vector, 2)
         # Add all the components (including bias)
         x = dot_user_movie + user_bias + movie_bias
         # The sigmoid activation forces the rating to between 0 and 1
-        return tf.nn.sigmoid(x)
+        return ops.nn.sigmoid(x)
 
 
 model = RecommenderNet(num_users, num_movies, EMBEDDING_SIZE)
 model.compile(
-    loss=tf.keras.losses.BinaryCrossentropy(), optimizer=keras.optimizers.Adam(lr=0.001)
+    loss=keras.losses.BinaryCrossentropy(),
+    optimizer=keras.optimizers.Adam(learning_rate=0.001),
 )
 
 """
@@ -197,7 +201,7 @@ movies_not_watched = list(
 movies_not_watched = [[movie2movie_encoded.get(x)] for x in movies_not_watched]
 user_encoder = user2user_encoded.get(user_id)
 user_movie_array = np.hstack(
-    ([[user_id]] * len(movies_not_watched), movies_not_watched)
+    ([[user_encoder]] * len(movies_not_watched), movies_not_watched)
 )
 ratings = model.predict(user_movie_array).flatten()
 top_ratings_indices = ratings.argsort()[-10:][::-1]

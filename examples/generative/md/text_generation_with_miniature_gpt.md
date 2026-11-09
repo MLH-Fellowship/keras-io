@@ -1,29 +1,26 @@
-# Text Generation with miniature GPT
+# Text generation with a miniature GPT
 
 **Author:** [Apoorv Nandan](https://twitter.com/NandanApoorv)<br>
 **Date created:** 2020/05/29<br>
-**Last modified:** 2020/05/29<br>
+**Last modified:** 2026/08/21<br>
+**Description:** Implement a miniature version of GPT and train it to generate text.
 
 
 <img class="k-inline-icon" src="https://colab.research.google.com/img/colab_favicon.ico"/> [**View in Colab**](https://colab.research.google.com/github/keras-team/keras-io/blob/master/examples/generative/ipynb/text_generation_with_miniature_gpt.ipynb)  <span class="k-dot">•</span><img class="k-inline-icon" src="https://github.com/favicon.ico"/> [**GitHub source**](https://github.com/keras-team/keras-io/blob/master/examples/generative/text_generation_with_miniature_gpt.py)
 
 
-**Description:** Implement miniature version of GPT and learn to generate text.
 
 ---
 ## Introduction
 
-This example demonstrates autoregressive language modelling using a
-a miniature version of GPT model.
-The model consists of a single transformer block with causal masking
-in the its attention layer.
-We use the text from IMDB sentiment classification dataset for training
+This example demonstrates how to implement an autoregressive language model
+using a miniature version of the GPT model.
+The model consists of a single Transformer block with causal masking
+in its attention layer.
+We use the text from the IMDB sentiment classification dataset for training
 and generate new movie reviews for a given prompt.
-When using this script with your own data, make sure it has atleast
-1M words.
-
-This example should be run with `tf-nightly>=2.3.0-dev20200531` or
-with TensorFlow 2.3 or higher.
+When using this script with your own dataset, make sure it has at least
+1 million words.
 
 **References:**
 
@@ -31,125 +28,42 @@ with TensorFlow 2.3 or higher.
 - [GPT-2](https://www.semanticscholar.org/paper/Language-Models-are-Unsupervised-Multitask-Learners-Radford-Wu/9405cc0d6169988371b2755e573cc28650d14dfe)
 - [GPT-3](https://arxiv.org/abs/2005.14165)
 
-
 ---
 ## Setup
 
 
-
 ```python
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
-import numpy as np
 import os
-import re
+
+os.environ["KERAS_BACKEND"] = "jax"
+
+import keras
+from keras import layers
+from keras import ops
+from keras.layers import TextVectorization
+import numpy as np
 import string
 import random
-
-```
-
----
-## Self-attention with causal masking
-
-We compute self-attention as usual, but prevent any information to flow
-from future tokens by masking the upper half of the scaled dot product matrix.
-
-
-
-```python
-
-class MultiHeadSelfAttention(layers.Layer):
-    def __init__(self, embed_dim, num_heads=8):
-        super(MultiHeadSelfAttention, self).__init__()
-        self.embed_dim = embed_dim
-        self.num_heads = num_heads
-        if embed_dim % num_heads != 0:
-            raise ValueError(
-                f"embedding dimension = {embed_dim} should be divisible by number of heads = {num_heads}"
-            )
-        self.projection_dim = embed_dim // num_heads
-        self.query_dense = layers.Dense(embed_dim)
-        self.key_dense = layers.Dense(embed_dim)
-        self.value_dense = layers.Dense(embed_dim)
-        self.combine_heads = layers.Dense(embed_dim)
-
-    @staticmethod
-    def causal_attention_mask(n_dest, n_src, dtype):
-        """
-        1's in the lower triangle, counting from the lower right corner.
-        """
-        i = tf.range(n_dest)[:, None]
-        j = tf.range(n_src)
-        m = i >= j - n_src + n_dest
-        return tf.cast(m, dtype)
-
-    def attention(self, query, key, value):
-        score = tf.matmul(query, key, transpose_b=True)
-        dim_key = tf.cast(tf.shape(key)[-1], tf.float32)
-        scaled_score = score / tf.math.sqrt(dim_key)
-
-        # prevent information flow from future tokens
-        shape = tf.shape(scaled_score)
-        dim_dest, dim_src = shape[2], shape[3]
-        attention_mask = self.causal_attention_mask(
-            dim_dest, dim_src, scaled_score.dtype
-        )
-        attention_mask = tf.reshape(attention_mask, [1, 1, dim_dest, dim_src])
-        scaled_score = scaled_score * attention_mask - 1e4 * (1 - attention_mask)
-
-        weights = tf.nn.softmax(scaled_score, axis=-1)
-        output = tf.matmul(weights, value)
-        return output, weights
-
-    def separate_heads(self, x, batch_size):
-        x = tf.reshape(x, (batch_size, -1, self.num_heads, self.projection_dim))
-        return tf.transpose(x, perm=[0, 2, 1, 3])
-
-    def call(self, inputs):
-        # x.shape = [batch_size, seq_len, embedding_dim]
-        batch_size = tf.shape(inputs)[0]
-        query = self.query_dense(inputs)  # (batch_size, seq_len, embed_dim)
-        key = self.key_dense(inputs)  # (batch_size, seq_len, embed_dim)
-        value = self.value_dense(inputs)  # (batch_size, seq_len, embed_dim)
-        query = self.separate_heads(
-            query, batch_size
-        )  # (batch_size, num_heads, seq_len, projection_dim)
-        key = self.separate_heads(
-            key, batch_size
-        )  # (batch_size, num_heads, seq_len, projection_dim)
-        value = self.separate_heads(
-            value, batch_size
-        )  # (batch_size, num_heads, seq_len, projection_dim)
-        attention, weights = self.attention(query, key, value)
-        attention = tf.transpose(
-            attention, perm=[0, 2, 1, 3]
-        )  # (batch_size, seq_len, num_heads, projection_dim)
-        concat_attention = tf.reshape(
-            attention, (batch_size, -1, self.embed_dim)
-        )  # (batch_size, seq_len, embed_dim)
-        output = self.combine_heads(
-            concat_attention
-        )  # (batch_size, seq_len, embed_dim)
-        return output
-
-
+import tensorflow
+import tensorflow.data as tf_data
+import tensorflow.strings as tf_strings
 ```
 
 ---
 ## Implement a Transformer block as a layer
 
 
-
 ```python
 
 class TransformerBlock(layers.Layer):
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super(TransformerBlock, self).__init__()
-        self.att = MultiHeadSelfAttention(embed_dim, num_heads)
+        super().__init__()
+        self.att = layers.MultiHeadAttention(num_heads, embed_dim)
         self.ffn = keras.Sequential(
-            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
+            [
+                layers.Dense(ff_dim, activation="relu"),
+                layers.Dense(embed_dim),
+            ]
         )
         self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
@@ -157,88 +71,151 @@ class TransformerBlock(layers.Layer):
         self.dropout2 = layers.Dropout(rate)
 
     def call(self, inputs):
-        attention_output = self.att(inputs)
+        attention_output = self.att(inputs, inputs, use_causal_mask=True)
         attention_output = self.dropout1(attention_output)
         out1 = self.layernorm1(inputs + attention_output)
         ffn_output = self.ffn(out1)
         ffn_output = self.dropout2(ffn_output)
         return self.layernorm2(out1 + ffn_output)
 
-
 ```
 
 ---
-## Implement embedding layer
+## Implement an embedding layer
 
-Two seperate embedding layers, one for tokens, one for token index (positions).
-
+Create two separate embedding layers: one for tokens and one for token index
+(positions).
 
 
 ```python
 
 class TokenAndPositionEmbedding(layers.Layer):
-    def __init__(self, maxlen, vocab_size, emded_dim):
-        super(TokenAndPositionEmbedding, self).__init__()
-        self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=emded_dim)
-        self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=emded_dim)
+    def __init__(self, maxlen, vocab_size, embed_dim):
+        super().__init__()
+        self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
+        self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
 
     def call(self, x):
-        maxlen = tf.shape(x)[-1]
-        positions = tf.range(start=0, limit=maxlen, delta=1)
+        maxlen = ops.shape(x)[-1]
+        positions = ops.arange(0, maxlen, 1)
         positions = self.pos_emb(positions)
         x = self.token_emb(x)
         return x + positions
 
-
 ```
 
 ---
-## Implement miniature GPT model
-
+## Implement the miniature GPT model
 
 
 ```python
 vocab_size = 20000  # Only consider the top 20k words
-maxlen = 100  # Max sequence size
+maxlen = 80  # Max sequence size
 embed_dim = 256  # Embedding size for each token
 num_heads = 2  # Number of attention heads
 feed_forward_dim = 256  # Hidden layer size in feed forward network inside transformer
 
 
 def create_model():
-    inputs = layers.Input(shape=(maxlen,), dtype=tf.int32)
+    inputs = layers.Input(shape=(maxlen,), dtype="int32")
     embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
     x = embedding_layer(inputs)
     transformer_block = TransformerBlock(embed_dim, num_heads, feed_forward_dim)
     x = transformer_block(x)
     outputs = layers.Dense(vocab_size)(x)
     model = keras.Model(inputs=inputs, outputs=[outputs, x])
-    loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
     model.compile(
-        "adam", loss=[loss_fn, None],
+        "adam",
+        loss=[loss_fn, None],
     )  # No loss and optimization based on word embeddings from transformer block
     return model
-
 
 ```
 
 ---
-## Prepare data for word level language modelling
+## Prepare the data for word-level language modelling
 
-We will download IMDB data, and combine training and validation sets for
-text generation task.
-
+Download the IMDB dataset and combine training and validation sets for a text
+generation task.
 
 
 ```python
 !curl -O https://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz
 !tar -xf aclImdb_v1.tar.gz
-
 ```
+
+<div class="k-default-codeblock">
+```
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+```
+</div>
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+
+    
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+
+    
+  0 80.2M    0 98304    0     0  62202      0  0:22:32  0:00:01  0:22:31 62178
+
+    
+  0 80.2M    0  304k    0     0   125k      0  0:10:55  0:00:02  0:10:53  125k
+
+    
+  0 80.2M    0  768k    0     0   223k      0  0:06:08  0:00:03  0:06:05  223k
+
+    
+  1 80.2M    1 1584k    0     0   355k      0  0:03:51  0:00:04  0:03:47  355k
+
+    
+  3 80.2M    3 3056k    0     0   558k      0  0:02:27  0:00:05  0:02:22  622k
+
+    
+  6 80.2M    6 5584k    0     0   860k      0  0:01:35  0:00:06  0:01:29 1118k
+
+    
+ 11 80.2M   11 9728k    0     0  1296k      0  0:01:03  0:00:07  0:00:56 1855k
+
+    
+ 19 80.2M   19 15.7M    0     0  1892k      0  0:00:43  0:00:08  0:00:35 3023k
+
+    
+ 28 80.2M   28 22.7M    0     0  2446k      0  0:00:33  0:00:09  0:00:24 4279k
+
+    
+ 37 80.2M   37 29.7M    0     0  2891k      0  0:00:28  0:00:10  0:00:18 5402k
+
+    
+ 46 80.2M   46 37.4M    0     0  3313k      0  0:00:24  0:00:11  0:00:13 6443k
+
+    
+ 55 80.2M   55 44.1M    0     0  3641k      0  0:00:22  0:00:12  0:00:10 7226k
+
+    
+ 64 80.2M   64 51.6M    0     0  3934k      0  0:00:20  0:00:13  0:00:07 7475k
+
+    
+ 72 80.2M   72 57.8M    0     0  4098k      0  0:00:20  0:00:14  0:00:06 7307k
+
+    
+ 80 80.2M   80 64.4M    0     0  4266k      0  0:00:19  0:00:15  0:00:04 7221k
+
+    
+ 88 80.2M   88 71.2M    0     0  4429k      0  0:00:18  0:00:16  0:00:02 7059k
+
+    
+ 97 80.2M   97 78.2M    0     0  4583k      0  0:00:17  0:00:17 --:--:-- 6885k
+
+    
+100 80.2M  100 80.2M    0     0  4650k      0  0:00:17  0:00:17 --:--:-- 6924k
+
+
 
 ```python
 
-batch_size = 32
+batch_size = 128
 
 # The dataset contains each review in a separate text file
 # The text files are present in four different folders
@@ -256,21 +233,21 @@ for dir in directories:
 
 print(f"{len(filenames)} files")
 
-# Create dataset from text files
+# Create a dataset from text files
 random.shuffle(filenames)
-text_ds = tf.data.TextLineDataset(filenames)
+text_ds = tf_data.TextLineDataset(filenames)
 text_ds = text_ds.shuffle(buffer_size=256)
 text_ds = text_ds.batch(batch_size)
 
 
 def custom_standardization(input_string):
-    """ Remove html line-break tags and handle punctuation """
-    lowercased = tf.strings.lower(input_string)
-    stripped_html = tf.strings.regex_replace(lowercased, "<br />", " ")
-    return tf.strings.regex_replace(stripped_html, f"([{string.punctuation}])", r" \1")
+    """Remove html line-break tags and handle punctuation"""
+    lowercased = tf_strings.lower(input_string)
+    stripped_html = tf_strings.regex_replace(lowercased, "<br />", " ")
+    return tf_strings.regex_replace(stripped_html, f"([{string.punctuation}])", r" \1")
 
 
-# Create vectcorization layer and adapt it to the text
+# Create a vectorization layer and adapt it to the text
 vectorize_layer = TextVectorization(
     standardize=custom_standardization,
     max_tokens=vocab_size - 1,
@@ -287,45 +264,40 @@ def prepare_lm_inputs_labels(text):
     word at position (i+1). The model will use all words up till position (i)
     to predict the next word.
     """
-    text = tf.expand_dims(text, -1)
+    text = tensorflow.expand_dims(text, -1)
     tokenized_sentences = vectorize_layer(text)
     x = tokenized_sentences[:, :-1]
     y = tokenized_sentences[:, 1:]
     return x, y
 
 
-text_ds = text_ds.map(prepare_lm_inputs_labels)
-text_ds = text_ds.prefetch(tf.data.experimental.AUTOTUNE)
-
+text_ds = text_ds.map(prepare_lm_inputs_labels, num_parallel_calls=tf_data.AUTOTUNE)
+text_ds = text_ds.prefetch(tf_data.AUTOTUNE)
 
 ```
+
 <div class="k-default-codeblock">
 ```
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100 80.2M  100 80.2M    0     0  10.6M      0  0:00:07  0:00:07 --:--:-- 17.0M
-
 50000 files
-
 ```
 </div>
----
-## Callback for generating text
 
+---
+## Implement a Keras callback for generating text
 
 
 ```python
 
 class TextGenerator(keras.callbacks.Callback):
-    """Callback to generate text from trained model.
+    """A callback to generate text from a trained model.
     1. Feed some starting prompt to the model
-    2. Predict probabilities for next token
-    3. Sample next token and add it to the next input
+    2. Predict probabilities for the next token
+    3. Sample the next token and add it to the next input
 
-    # Arguments
+    Arguments:
         max_tokens: Integer, the number of tokens to be generated after prompt.
         start_tokens: List of integers, the token indices for the starting prompt.
-        index_to_word: List of strings, obtained from TextVectorization layer.
+        index_to_word: List of strings, obtained from the TextVectorization layer.
         top_k: Integer, sample from the `top_k` token predictions.
         print_every: Integer, print after this many epochs.
     """
@@ -340,9 +312,9 @@ class TextGenerator(keras.callbacks.Callback):
         self.k = top_k
 
     def sample_from(self, logits):
-        logits, indices = tf.math.top_k(logits, k=self.k, sorted=True)
+        logits, indices = ops.top_k(logits, k=self.k, sorted=True)
         indices = np.asarray(indices).astype("int32")
-        preds = keras.activations.softmax(tf.expand_dims(logits, 0))[0]
+        preds = keras.activations.softmax(ops.expand_dims(logits, 0))[0]
         preds = np.asarray(preds).astype("float32")
         return np.random.choice(indices, p=preds)
 
@@ -359,14 +331,14 @@ class TextGenerator(keras.callbacks.Callback):
             pad_len = maxlen - len(start_tokens)
             sample_index = len(start_tokens) - 1
             if pad_len < 0:
-                x = start_tokens[:maxlen]
+                x = start_tokens[-maxlen:]
                 sample_index = maxlen - 1
             elif pad_len > 0:
                 x = start_tokens + [0] * pad_len
             else:
                 x = start_tokens
             x = np.array([x])
-            y, _ = self.model.predict(x)
+            y, _ = self.model.predict(x, verbose=0)
             sample_token = self.sample_from(y[0][sample_index])
             tokens_generated.append(sample_token)
             start_tokens.append(sample_token)
@@ -387,297 +359,205 @@ start_tokens = [word_to_index.get(_, 1) for _ in start_prompt.split()]
 num_tokens_generated = 40
 text_gen_callback = TextGenerator(num_tokens_generated, start_tokens, vocab)
 
-
 ```
 
 ---
-## Train
+## Train the model
 
 Note: This code should preferably be run on GPU.
-
 
 
 ```python
 model = create_model()
 
-model.fit(text_ds, verbose=2, epochs=30, callbacks=[text_gen_callback])
-
+model.fit(text_ds, verbose=2, epochs=25, callbacks=[text_gen_callback])
 ```
 
 <div class="k-default-codeblock">
 ```
-Epoch 1/30
-generated text:
-this movie is the best of the funniest and i have seen , and have ever seen in this movie . i don 't know it just to watch the show . but i don 't like this movie for those movies that they
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 5.0624 - dense_6_loss: 5.0624
-Epoch 2/30
-generated text:
-this movie is not a good drama . it is not the only thing about the way . the story is very basic but is not just so much as a kid i think it was a bit more than i have the chance
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 4.4791 - dense_6_loss: 4.4791
-Epoch 3/30
-generated text:
-this movie is the first movie it makes you wonder if you were going to watch and again . i can 't imagine how bad i felt like this , this movie wasn 't bad . i was expecting it a lot , but
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 4.2813 - dense_6_loss: 4.2813
-Epoch 4/30
-generated text:
-this movie is the first time capsule of all time . i think i would like to say this is a good movie . it was very entertaining because it was a lot more interesting . it was not a good movie , and
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 4.1470 - dense_6_loss: 4.1470
-Epoch 5/30
-generated text:
-this movie is a wonderful family film . it is a beautiful movie . it is an example of how a man who is a good movie that i have to do . but it is really the best way to watch . it
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 4.0431 - dense_6_loss: 4.0431
-Epoch 6/30
-generated text:
-this movie is very different than that it is very entertaining in it . but it is also an interesting plot , it 's very interesting to the end of wwii and the war . the story is also [UNK] " is a true
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.9584 - dense_6_loss: 3.9584
-Epoch 7/30
-generated text:
-this movie is a good movie . it isn 't scary , but that is a movie with lots of blood . it 's a very good horror movie but it has a good time , but the plot of the movie is good
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.8868 - dense_6_loss: 3.8868
-Epoch 8/30
-generated text:
-this movie is a great movie that has the plot . the acting is good . i have seen some bad movies from my list ! but this one is so bad that it has to be so bad i can watch it over
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.8246 - dense_6_loss: 3.8246
-Epoch 9/30
-generated text:
-this movie is a good one and the most amazing thing i 've ever seen . the movie was good , and i was so excited that it wasn 't . i didn 't get much . there were some good actors in this
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.7712 - dense_6_loss: 3.7712
-Epoch 10/30
-generated text:
-this movie is a bit boring in a long way . i 've never heard of seeing such bad acting in this movie . i was just too long and boring . the music is awful , and the story , the story is
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.7230 - dense_6_loss: 3.7230
-Epoch 11/30
-generated text:
-this movie is a terrible movie , but it has its elements of [UNK] " and is [UNK] . . i 'm a big fan of this movie , i am a big fan of horror movies , but it is not scary at
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.6805 - dense_6_loss: 3.6805
-Epoch 12/30
-generated text:
-this movie is an absolute abomination . i don 't understand why it was a comedy , the characters , and i can 't believe it was meant to be , and it was a great comedy . there is something good . .
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.6424 - dense_6_loss: 3.6424
-Epoch 13/30
-generated text:
-this movie is a lot of fun watching the movie in its [UNK] -ness " . i was surprised to see a very good movie . it was a bit long , but it didn 't come across as good as the film .
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.6081 - dense_6_loss: 3.6081
-Epoch 14/30
-generated text:
-this movie is about a man who is a [UNK] , and he does in an old house with the spirits of [UNK] and the dead . i 'm not kidding , the plot has a [UNK] of old man , the woman is
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.5760 - dense_6_loss: 3.5760
-Epoch 15/30
-generated text:
-this movie is one of the most beautiful films of all time . it is one of the greatest movies ever created , and in the wilderness . this movie was made by a beautiful young woman who finds her way out her .
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.5473 - dense_6_loss: 3.5473
-Epoch 16/30
-generated text:
-this movie is really bad , and it is so terrible . it 's hard to make a movie and a whole lot better than i watched , but this wasn 't a bad movie , but it 's pretty damn good . i
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.5210 - dense_6_loss: 3.5210
-Epoch 17/30
-generated text:
-this movie is great ! ! i am a big fan of [UNK] . i don 't like this movie because i don 't think i can 't think of it , but it 's got me wrong and i 'm not sure why
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.4966 - dense_6_loss: 3.4966
-Epoch 18/30
-generated text:
-this movie is one of those awful movies that is one of the few [UNK] films that were the [UNK] . there is no real story , a young girl with a young girl , who 's been kidnapped by an evil witch .
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.4731 - dense_6_loss: 3.4731
-Epoch 19/30
-generated text:
-this movie is one of the greatest movies i have ever watched . i watched it . the movie is so funny , it is very good . it is a great movie with a great acting in this movie , and i loved
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.4519 - dense_6_loss: 3.4519
-Epoch 20/30
-generated text:
-this movie is a pretty interesting , the characters are very good . the story line is so good and the plot is good as the main character of a good [UNK] [UNK] ) is a bit of [UNK] [UNK] for the first time
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.4321 - dense_6_loss: 3.4321
-Epoch 21/30
-generated text:
-this movie is not the worst movie ever . there is no emotion . this movie starts out on one of the most boring movies ever made . it doesn 't even come close to the conclusion of the director 's character [UNK] .
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.4133 - dense_6_loss: 3.4133
-Epoch 22/30
-generated text:
-this movie is just plain awful . it 's just awful . it doesn 't have a shred of good dialogue . there isn 't enough action and the actors are good . the movie is just plain awful . the acting is bad
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.3956 - dense_6_loss: 3.3956
-Epoch 23/30
-generated text:
-this movie is very bad , if i 'm not sure what the makers hoped it was going to be . i was expecting it to be a bad movie . it was terrible and i was expecting that the actors had a great
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.3791 - dense_6_loss: 3.3791
-Epoch 24/30
-generated text:
-this movie is very entertaining to see . i am a big fan of the [UNK] " . it was also a very good movie for the first time , and for the [UNK] " [UNK] ' , and i 'm not really sure
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.3636 - dense_6_loss: 3.3636
-Epoch 25/30
-generated text:
-this movie is a great movie and its a good one . the only thing in those movies that are really great , it is not a great movie , but this is a great movie . . it is not that bad .
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.3490 - dense_6_loss: 3.3490
-Epoch 26/30
-generated text:
-this movie is great to see , but it is a great movie . this is the story of juliette lewis character and is a woman . her acting is so good . she doesn 't want to see how many times she gets
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.3342 - dense_6_loss: 3.3342
-Epoch 27/30
-generated text:
-this movie is very good , i have read a review for the fact that it was very good ! i am a christian [UNK] fan , and i must say that i am not a huge fan of the bible code of the
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.3215 - dense_6_loss: 3.3215
-Epoch 28/30
-generated text:
-this movie is really a great film , and it was really good . the story is about a girl named gerda and kai falling asleep . this one is a very well done and the rest of the cast is well written .
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.3086 - dense_6_loss: 3.3086
-Epoch 29/30
-generated text:
-this movie is one of the best movies ever to win best movie ever and it is the first movie i ever saw . it was a very good movie . it 's really a lot of laughs and it 's funny . it
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.2968 - dense_6_loss: 3.2968
-Epoch 30/30
-generated text:
-this movie is very interesting . i have no idea how the movie is . it 's just a little boring , confusing and pointless characters . it is also a good movie . i like the characters in the movie . i am
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
-1563/1563 - 146s - loss: 3.2849 - dense_6_loss: 3.2849
+Epoch 1/25
 
-<tensorflow.python.keras.callbacks.History at 0x7f0da81a3e10>
+/usr/local/lib/python3.13/dist-packages/keras/src/trainers/epoch_iterator.py:164: UserWarning: Your input ran out of data; interrupting training. Make sure that your dataset or generator can generate at least `steps_per_epoch * epochs` batches. You may need to use the `.repeat()` function when building your dataset.
+  self._interrupted_warning()
 
+generated text:
+this movie is a good horror movie , and it 's not a good movie about an excellent family . it has never a few years ago , but the story and all over the movie is a good movie . it is the
+
+391/391 - 60s - 154ms/step - loss: 5.6142
+
+Epoch 2/25
+
+generated text:
+this movie is bad , it isn 't the best film . if you were going to get a copy of the [UNK] of the movie . but it is not the only a bad movie that is a great movie that makes it
+
+391/391 - 48s - 123ms/step - loss: 4.7214
+
+Epoch 3/25
+
+generated text:
+this movie is not the worst movie ! ! ! [UNK] and you 'll know what is about a good thing about this movie that makes me look like [UNK] " i can see it . i am not a big fan of the
+
+391/391 - 49s - 126ms/step - loss: 4.4726
+
+Epoch 4/25
+
+generated text:
+this movie is a little gem . it is a movie about a group of teenagers , who enjoy themselves , who are on a journey , the [UNK] , the movie is [UNK] of an ancient [UNK] " and the film is a
+
+391/391 - 49s - 126ms/step - loss: 4.3193
+
+Epoch 5/25
+
+generated text:
+this movie is very very entertaining . it is not worth a look at it . if it is a true story or the plot is a very funny . it has to be funny . it doesn 't take the word from that
+
+391/391 - 49s - 126ms/step - loss: 4.2022
+
+Epoch 6/25
+
+generated text:
+this movie is one of the worst movies i have ever watched . i can 't remember a little movie , but i don 't really care what i have ever seen on the first episode in the original series , but i can
+
+391/391 - 50s - 127ms/step - loss: 4.1067
+
+Epoch 7/25
+
+generated text:
+this movie is not the best film of all time . it was made on a saturday night television and i was hooked , when it first came out on tv . . . . . i was so , i went to a
+
+391/391 - 50s - 128ms/step - loss: 4.0243
+
+Epoch 8/25
+
+generated text:
+this movie is just terrible . the worst thing i 've seen it many films , and that you are looking for the dvd release in this movie . this is so awful that it is not a [UNK] of a horror movie .
+
+391/391 - 50s - 127ms/step - loss: 3.9527
+
+Epoch 9/25
+
+generated text:
+this movie is a great movie . the story is about as simple as a family employing the old [UNK] of the old age of northern afghanistan and the other members of [UNK] , the family are very well chosen , and it is
+
+391/391 - 50s - 127ms/step - loss: 3.8885
+
+Epoch 10/25
+
+generated text:
+this movie is so bad that it 's a good movie . i was expecting to see how bad it was , but it is not worth it . it is very good and i have seen to be one of them . the
+
+391/391 - 50s - 127ms/step - loss: 3.8317
+
+Epoch 11/25
+
+generated text:
+this movie is really bad . it 's very well paced , the ending is very well made . i am so sure , but if the script had no sense of humor or intelligence to be seen by [UNK] , or not in
+
+391/391 - 82s - 210ms/step - loss: 3.7802
+
+Epoch 12/25
+
+generated text:
+this movie is really bad . the plot is very simple . the acting is terrible . the plot [UNK] , but the movie is so bad they could have a good thing but it 's not for everyone , but the story .
+
+391/391 - 51s - 130ms/step - loss: 3.7335
+
+Epoch 13/25
+
+generated text:
+this movie is so funny , and it has a funny little . . the [UNK] of the original story : a [UNK] of a bunch of [UNK] [UNK] [UNK] ) who can 't act . the whole movie makes it so good it
+
+391/391 - 49s - 126ms/step - loss: 3.6900
+
+Epoch 14/25
+
+generated text:
+this movie is so bad i have ever seen . . bad . but i 'm a big fan of the horror genre is usually not even a bad movie . i have no idea , but i can say that i really liked
+
+391/391 - 50s - 128ms/step - loss: 3.6512
+
+Epoch 15/25
+
+generated text:
+this movie is very good . the story line in the first film . it is very slow , plodding , dull , plodding and surprisingly tedious . it 's not really bad , dull , dull , plodding pace , but i think
+
+391/391 - 50s - 127ms/step - loss: 3.6147
+
+Epoch 16/25
+
+generated text:
+this movie is not really a great idea for a film . it 's a classic that i can 't believe the main actor is in this movie that you could get better . i am still wondering who is a real movie but
+
+391/391 - 50s - 128ms/step - loss: 3.5816
+
+Epoch 17/25
+
+generated text:
+this movie is very bad . the first , a [UNK] , a [UNK] [UNK] " movie with [UNK] . i 'm glad to report the executives involved are at a [UNK] table , and their shows that you should have to be entertained
+
+391/391 - 50s - 127ms/step - loss: 3.5503
+
+Epoch 18/25
+
+generated text:
+this movie is not the worst . the script is a waste of time ! ! it has the script or plot of the movie is so bad that it 's not funny . the first of all , it has all , so
+
+391/391 - 50s - 127ms/step - loss: 3.5218
+
+Epoch 19/25
+
+generated text:
+this movie is so bad that i think it 's not a bad movie but it is so bad it 's a bad idea , the plot is simple but it 's not . the characters are all very likable and just a good
+
+391/391 - 50s - 127ms/step - loss: 3.4949
+
+Epoch 20/25
+
+generated text:
+this movie is a bad , and it doesn 't work . it 's a shame that it doesn 't make much seem to be a great movie . . . . a good thing that makes it a nice to see the story
+
+391/391 - 50s - 127ms/step - loss: 3.4693
+
+Epoch 21/25
+
+generated text:
+this movie is not a comedy about a girl who falls in love with her love . she is also friendly , sweet , and sweet , charming . . . . but the story line with a young [UNK] woman who is now
+
+391/391 - 50s - 127ms/step - loss: 3.4459
+
+Epoch 22/25
+
+generated text:
+this movie is really terrible ! i really liked [UNK] , it does not get the michigan , but it 's not funny . . [UNK] . and [UNK] ) [UNK] [UNK] is so sweet , the story of a young boy named dexter
+
+391/391 - 50s - 127ms/step - loss: 3.4238
+
+Epoch 23/25
+
+generated text:
+this movie is a bad movie , because of the bad acting , bad dialogue , and bad dialogue . it 's almost too cheesy sounding like some of them are not even [UNK] . [UNK] 's character was a good choice but i
+
+391/391 - 50s - 128ms/step - loss: 3.4028
+
+Epoch 24/25
+
+generated text:
+this movie is not bad , but that bad enough . the acting is good , the special effects are so awful that you can 't see . i am very sure that this isn 't the worst film ever . this is a
+
+391/391 - 50s - 128ms/step - loss: 3.3821
+
+Epoch 25/25
+
+generated text:
+this movie is the only one i 've ever seen a lot in . it seems like the movie , and i can only remember it , as a child , it 's the most irritating , tender , [UNK] , and my wife
+
+391/391 - 50s - 127ms/step - loss: 3.3640
+
+<keras.src.callbacks.history.History at 0x781cac40dd30>
 ```
 </div>
+
+---
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 15: Language models and the Transformer](https://deeplearningwithpython.io/chapters/chapter15_language-models-and-the-transformer)
+- [Chapter 16: Text generation](https://deeplearningwithpython.io/chapters/chapter16_text-generation)

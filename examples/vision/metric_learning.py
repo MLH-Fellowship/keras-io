@@ -4,7 +4,9 @@ Author: [Mat Kelcey](https://twitter.com/mat_kelcey)
 Date created: 2020/06/05
 Last modified: 2020/06/09
 Description: Example of using similarity metric learning on CIFAR-10 images.
+Accelerator: GPU
 """
+
 """
 ## Overview
 
@@ -22,7 +24,12 @@ For a more detailed overview of metric learning see:
 
 """
 ## Setup
+
+Set Keras backend to tensorflow.
 """
+import os
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
 
 import random
 import matplotlib.pyplot as plt
@@ -31,8 +38,8 @@ import tensorflow as tf
 from collections import defaultdict
 from PIL import Image
 from sklearn.metrics import ConfusionMatrixDisplay
-from tensorflow import keras
-from tensorflow.keras import layers
+import keras
+from keras import layers
 
 """
 ## Dataset
@@ -41,7 +48,7 @@ For this example we will be using the
 [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset.
 """
 
-from tensorflow.keras.datasets import cifar10
+from keras.datasets import cifar10
 
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
@@ -119,11 +126,12 @@ num_classes = 10
 
 
 class AnchorPositivePairs(keras.utils.Sequence):
-    def __init__(self, num_batchs):
-        self.num_batchs = num_batchs
+    def __init__(self, num_batches):
+        super().__init__()
+        self.num_batches = num_batches
 
     def __len__(self):
-        return self.num_batchs
+        return self.num_batches
 
     def __getitem__(self, _idx):
         x = np.empty((2, num_classes, height_width, height_width, 3), dtype=np.float32)
@@ -143,7 +151,7 @@ We can visualise a batch in another collage. The top row shows randomly chosen a
 from the 10 classes, the bottom row shows the corresponding 10 positives.
 """
 
-examples = next(iter(AnchorPositivePairs(num_batchs=1)))
+examples = next(iter(AnchorPositivePairs(num_batches=1)))
 
 show_collage(examples)
 
@@ -169,7 +177,7 @@ class EmbeddingModel(keras.Model):
 
             # Calculate cosine similarity between anchors and positives. As they have
             # been normalised this is just the pair wise dot products.
-            similarities = tf.einsum(
+            similarities = keras.ops.einsum(
                 "ae,pe->ap", anchor_embeddings, positive_embeddings
             )
 
@@ -183,15 +191,21 @@ class EmbeddingModel(keras.Model):
             # want the main diagonal values, which correspond to the anchor/positive
             # pairs, to be high. This loss will move embeddings for the
             # anchor/positive pairs together and move all other pairs apart.
-            sparse_labels = tf.range(num_classes)
-            loss = self.compiled_loss(sparse_labels, similarities)
+            sparse_labels = keras.ops.arange(num_classes)
+            loss = self.compute_loss(y=sparse_labels, y_pred=similarities)
 
         # Calculate gradients and apply via optimizer.
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
         # Update and return metrics (specifically the one for the loss value).
-        self.compiled_metrics.update_state(sparse_labels, similarities)
+        for metric in self.metrics:
+            # Calling `self.compile` will by default add a `keras.metrics.Mean` loss
+            if metric.name == "loss":
+                metric.update_state(loss)
+            else:
+                metric.update_state(sparse_labels, similarities)
+
         return {m.name: m.result() for m in self.metrics}
 
 
@@ -209,20 +223,19 @@ x = layers.Conv2D(filters=64, kernel_size=3, strides=2, activation="relu")(x)
 x = layers.Conv2D(filters=128, kernel_size=3, strides=2, activation="relu")(x)
 x = layers.GlobalAveragePooling2D()(x)
 embeddings = layers.Dense(units=8, activation=None)(x)
-embeddings = tf.nn.l2_normalize(embeddings, axis=-1)
+embeddings = layers.UnitNormalization()(embeddings)
 
 model = EmbeddingModel(inputs, embeddings)
 
 """
 Finally we run the training. On a Google Colab GPU instance this takes about a minute.
 """
-
 model.compile(
     optimizer=keras.optimizers.Adam(learning_rate=1e-3),
     loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
 )
 
-history = model.fit(AnchorPositivePairs(num_batchs=1000), epochs=20)
+history = model.fit(AnchorPositivePairs(num_batches=1000), epochs=20)
 
 plt.plot(history.history["loss"])
 plt.show()

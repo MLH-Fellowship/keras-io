@@ -2,8 +2,10 @@
 Title: Few-Shot learning with Reptile
 Author: [ADMoreau](https://github.com/ADMoreau)
 Date created: 2020/05/21
-Last modified: 2020/05/30
+Last modified: 2023/07/20
 Description: Few-shot classification on the Omniglot dataset using Reptile.
+Accelerator: GPU
+Converted to Keras 3 By: [Muhammad Anas Raza](https://anasrz.com)
 """
 
 """
@@ -16,13 +18,17 @@ The algorithm works by performing Stochastic Gradient Descent using the
 difference between weights trained on a mini-batch of never-seen-before data and the
 model weights prior to training over a fixed number of meta-iterations.
 """
+import os
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import keras
+from keras import layers
 
 import matplotlib.pyplot as plt
 import numpy as np
 import random
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
 import tensorflow_datasets as tfds
 
 """
@@ -86,7 +92,7 @@ class Dataset:
             if label not in self.data:
                 self.data[label] = []
             self.data[label].append(image)
-            self.labels = list(self.data.keys())
+        self.labels = list(self.data.keys())
 
     def get_mini_dataset(
         self, batch_size, repetitions, shots, num_classes, split=False
@@ -111,15 +117,15 @@ class Dataset:
                     self.data[label_subset[class_idx]], k=shots + 1
                 )
                 test_images[class_idx] = images_to_split[-1]
-                temp_images[
-                    class_idx * shots : (class_idx + 1) * shots
-                ] = images_to_split[:-1]
+                temp_images[class_idx * shots : (class_idx + 1) * shots] = (
+                    images_to_split[:-1]
+                )
             else:
                 # For each index in the randomly selected label_subset, sample the
                 # necessary number of images.
-                temp_images[
-                    class_idx * shots : (class_idx + 1) * shots
-                ] = random.choices(self.data[label_subset[class_idx]], k=shots)
+                temp_images[class_idx * shots : (class_idx + 1) * shots] = (
+                    random.choices(self.data[label_subset[class_idx]], k=shots)
+                )
 
         dataset = tf.data.Dataset.from_tensor_slices(
             (temp_images.astype(np.float32), temp_labels.astype(np.int32))
@@ -224,7 +230,7 @@ for meta_iter in range(meta_iters):
                     loss = keras.losses.sparse_categorical_crossentropy(labels, preds)
                 grads = tape.gradient(loss, model.trainable_weights)
                 optimizer.apply_gradients(zip(grads, model.trainable_weights))
-            test_preds = model.predict(test_images)
+            test_preds = model.predict(test_images, verbose=0)
             test_preds = tf.argmax(test_preds).numpy()
             num_correct = (test_preds == test_labels).sum()
             # Reset the weights after getting the evaluation accuracies.
@@ -244,7 +250,9 @@ for meta_iter in range(meta_iters):
 # First, some preprocessing to smooth the training and testing arrays for display.
 window_length = 100
 train_s = np.r_[
-    training[window_length - 1 : 0 : -1], training, training[-1:-window_length:-1]
+    training[window_length - 1 : 0 : -1],
+    training,
+    training[-1:-window_length:-1],
 ]
 test_s = np.r_[
     testing[window_length - 1 : 0 : -1], testing, testing[-1:-window_length:-1]

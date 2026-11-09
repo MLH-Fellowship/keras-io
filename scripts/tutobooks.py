@@ -60,15 +60,19 @@ you expect. If not, keep editing `your_example.py` until it does.
 
 Finally, submit a PR adding `examples/your_example.py`.
 """
+
 import os
+import re
 import sys
 import json
+import copy
 import random
 import shutil
+import tempfile
 from pathlib import Path
 
-TIMEOUT = 60 * 60
-MAX_LOC = 300
+TIMEOUT = 12 * 60 * 60  # 12 hours
+MAX_LOC = 350
 
 
 def nb_to_py(nb_path, py_path):
@@ -114,7 +118,7 @@ def nb_to_py(nb_path, py_path):
         f.close()
 
 
-def py_to_nb(py_path, nb_path, fill_outputs=True):
+def py_to_nb(py_path, nb_path, fill_outputs=False):
     f = open(py_path)
     py = f.read()
     f.close()
@@ -151,6 +155,8 @@ def py_to_nb(py_path, nb_path, fill_outputs=True):
         # Drop last newline char
         if source and not source[-1].strip():
             source = source[:-1]
+        if source:
+            source[-1] = source[-1].rstrip()
         if tag == "shell":
             source = ["!" + l for l in source]
             cell_type = "code"
@@ -166,12 +172,17 @@ def py_to_nb(py_path, nb_path, fill_outputs=True):
             cells.append(cell)
     notebook = {}
     for key in NB_BASE.keys():
-        notebook[key] = NB_BASE[key]
+        notebook[key] = copy.deepcopy(NB_BASE[key])
     notebook["metadata"]["colab"]["name"] = str(py_path).split("/")[-1][:-3]
+    notebook["metadata"]["accelerator"] = attributes["accelerator"]
+    if attributes["accelerator"] == "TPU":
+        # Set to the current free tier TPU type.
+        # A missing value defaults to "V28", which is no longer available.
+        notebook["metadata"]["colab"]["gpuType"] = "V5E1"
     notebook["cells"] = cells
     if loc > MAX_LOC:
         raise ValueError(
-            "Found %d lines of code, but expected fewer than %d" % (loc, MAX_LOC)
+            f"Found {loc} lines of code, but expected fewer than {MAX_LOC}"
         )
 
     f = open(nb_path, "w")
@@ -212,12 +223,12 @@ def nb_to_md(nb_path, md_path, img_dir, working_dir=None):
         original_img_dir = original_img_dir[:-1]
     img_dir = os.path.abspath(img_dir)
     nb_path = os.path.abspath(nb_path)
-    nb_fname = str(nb_path).split("/")[-1]
+    nb_fname = str(nb_path).split(os.path.sep)[-1]
 
     del_working_dir = False
     if working_dir is None:
         del_working_dir = True
-        working_dir = "tmp_" + str(random.randint(1e6, 1e7))
+        working_dir = "tmp_" + str(random.randint(10**6, 10**7))
     if not os.path.exists(working_dir):
         os.makedirs(working_dir)
     print("Using working_dir:", working_dir)
@@ -298,6 +309,8 @@ def validate(py):
         raise ValueError("Missing `Last modified:` field.")
     if not lines[5].startswith("Description: "):
         raise ValueError("Missing `Description:` field.")
+    if not lines[6].startswith("Accelerator: "):
+        raise ValueError("Missing `Accelerator:` field.")
     description = lines[5][len("Description: ") :]
     if not description:
         raise ValueError("Missing `Description:` field content.")
@@ -307,6 +320,13 @@ def validate(py):
         raise ValueError("Description field content must end with a period.")
     if len(description) > 100:
         raise ValueError("Description field content must be less than 100 chars.")
+    accelerator = lines[6][len("Accelerator: ") :]
+    accelerator_options = ["GPU", "TPU", "None"]
+    if accelerator not in accelerator_options:
+        raise ValueError(
+            f"Accelerator field content must be one of: {accelerator_options}. "
+            f"Received: accelerator={accelerator}"
+        )
     for i, line in enumerate(lines):
         if line.startswith('"""') and line.endswith('"""') and len(line) > 3:
             raise ValueError(
@@ -317,7 +337,9 @@ def validate(py):
         if line.endswith(" "):
             raise ValueError("Found trailing space on line %d; line: `%s`" % (i, line))
     # Validate style with black
-    fpath = "/tmp/" + str(random.randint(1e6, 1e7)) + ".py"
+
+    tmp = tempfile.gettempdir()
+    fpath = os.path.join(tmp, str(random.randint(10**6, 10**7)) + ".py")
     f = open(fpath, "w")
     pre_formatting = "\n".join(lines)
     f.write(pre_formatting)
@@ -329,9 +351,29 @@ def validate(py):
     os.remove(fpath)
     if formatted != pre_formatting:
         raise ValueError(
-            "You python file did not follow `black` conventions. "
+            "Your python file did not follow `black` conventions. "
             "Run `black your_file.py` to autoformat it."
         )
+
+    # Extra checks.
+    if "//arxiv.org/pdf/" in py:
+        raise ValueError(
+            "Do not link to arXiv PDFs directly. " "Instead, link to the abstract page."
+        )
+
+
+def count_locs_in_file(py_path):
+    f = open(py_path)
+    py = f.read()
+    f.close()
+    _get_next_script_element(py)  # Header
+    loc = 0
+    while py:
+        e, cell_type, py, _ = _get_next_script_element(py)
+        lines = e.split("\n")
+        if cell_type == "code":
+            loc += _count_locs(lines)
+    return loc
 
 
 def _count_locs(lines):
@@ -417,6 +459,8 @@ def _get_next_script_element(py):
 
 def _parse_header(header):
     lines = header.split("\n")
+    if len(lines) not in (6, 7):
+        raise ValueError("Invalid header, it should be exactly 6 or 7 lines.")
     title = lines[0][len("Title: ") :]
     author_line = lines[1]
     if author_line.startswith("Authors"):
@@ -428,6 +472,7 @@ def _parse_header(header):
     date_created = lines[2][len("Date created: ") :]
     last_modified = lines[3][len("Last modified: ") :]
     description = lines[4][len("Description: ") :]
+    accelerator = lines[5][len("Accelerator: ") :]
     return {
         "title": title,
         "author": author,
@@ -435,6 +480,7 @@ def _parse_header(header):
         "date_created": date_created,
         "last_modified": last_modified,
         "description": description,
+        "accelerator": accelerator,
     }
 
 
@@ -445,24 +491,109 @@ def _make_output_code_blocks(md):
     is_inside_backticks = False
 
     def is_output_line(line, prev_line, output_lines):
+        if (
+            output_lines
+            and "\x08" in output_lines[-1]
+            and not output_lines[-1].replace("\x08", "").strip()
+        ):
+            # We already started a block and the last line is just deletes, that
+            # implies that the current line will be part of the block (progress
+            # bar being re-written).
+            return True
+
         if line.startswith("    ") and len(line) >= 5:
-            if output_lines or (lines[i - 1].strip() == "" and line.strip()):
+            # Non-empty indented line
+            if output_lines:
+                # Continuation of the output block
                 return True
+            if not prev_line.strip():
+                # Begining of an output block
+                return True
+        elif not line.strip():
+            # Empty line
+            if output_lines:
+                # Continuation of the output block
+                return True
+        elif line.strip()[0] in ("\x1b", "\x08"):
+            # Line starts with ESC or delete character, it must be a progress
+            # bar, which is often not indented.
+            return True
         return False
 
     def flush(output_lines, final_lines):
         final_lines.append('<div class="k-default-codeblock">')
         final_lines.append("```")
-        if len(output_lines) == 1:
-            line = output_lines[0]
-            final_lines.append(line[4:])
-        else:
-            for line in output_lines:
-                final_lines.append(line[4:])
+
+        # When not None, we are in a progress bar and this is its last state.
+        progress_bar = None
+        # Used to dedupe empty lines. Also used when in a progress bar.
+        previous_line_empty = False
+
+        for line in output_lines:
+            # Unindent.
+            if line.startswith("    "):
+                # Normal block is indented by 4 spaces.
+                line = line[4:]
+            else:
+                # Progress bar and empty lines.
+                line = line.strip()
+
+            if "\x1b" in line or "\x08" in line:
+                # This is a progress bar.
+                if "\x1b" in line:
+                    # Remove escape sequences.
+                    line = re.sub(r"\x1b\[[0-9][0-9]?m", "", line)
+
+                if "\x08" in line:
+                    # Delete characters, remove everything up to the last one.
+                    line = line[line.rindex("\x08") + 1 :].strip()
+
+                if previous_line_empty and progress_bar is None:
+                    # We're starting a progress bar, flush the empty line.
+                    final_lines.append("")
+
+                if progress_bar is None or line:
+                    # Update latest progress bar content.
+                    progress_bar = line
+
+                previous_line_empty = not line
+                # When in a progress bar, don't append.
+                continue
+
+            if progress_bar is not None and not line:
+                # In a progress bar with an empty line.
+                previous_line_empty = True
+                # We're staying in the progress bar, don't append.
+                continue
+
+            # If we get here, we're not / no longer in a progress bar.
+
+            if progress_bar:
+                # Flush progress bar content with the last value.
+                final_lines.append(progress_bar)
+                progress_bar = None
+
+            if line:
+                if previous_line_empty:
+                    # Flush empty line before appending non-empty line.
+                    final_lines.append("")
+                final_lines.append(line)
+                previous_line_empty = False
+            else:
+                previous_line_empty = True
+
+        if progress_bar:
+            # Flush progress bar content with the last value.
+            final_lines.append(progress_bar)
+
         final_lines.append("```")
         final_lines.append("</div>")
 
-    for i, line in enumerate(lines):
+        if previous_line_empty:
+            # If the last line in the block was empty, put it after the block.
+            final_lines.append("")
+
+    for line in lines:
         if line.startswith("```"):
             is_inside_backticks = not is_inside_backticks
             final_lines.append(line)
@@ -472,7 +603,7 @@ def _make_output_code_blocks(md):
             final_lines.append(line)
             continue
 
-        if i > 0 and is_output_line(line, lines[-1], output_lines):
+        if final_lines and is_output_line(line, final_lines[-1], output_lines):
             output_lines.append(line)
         elif not line:
             if output_lines:
@@ -492,6 +623,7 @@ def _make_output_code_blocks(md):
 
 NB_BASE = {
     "metadata": {
+        "accelerator": "GPU",
         "colab": {
             "collapsed_sections": [],
             "name": "",  # FILL ME
@@ -521,34 +653,40 @@ NB_BASE = {
 
 if __name__ == "__main__":
     cmd = sys.argv[1]
-    if cmd not in {"nb2py", "py2nb"}:
+    if cmd not in {"nb2py", "py2nb", "count_loc"}:
         raise ValueError(
             "Specify a command: either "
             "`nb2py source_filename.ipynb target_filename.py` or "
-            "`py2nb source_filename.py target_file name.ipynb"
+            "`py2nb source_filename.py target_file name.ipynb` or "
+            "`count_loc source_filename.py`."
         )
-    if len(sys.argv) < 4:
-        raise ValueError("Specify a source filename and a target filename")
-    source = sys.argv[2]
-    target = sys.argv[3]
+    if cmd == "count_loc":
+        source = sys.argv[2]
+        loc = count_locs_in_file(source)
+        print(f"Counted {loc} lines of code in {source}.")
+    else:
+        if len(sys.argv) < 4:
+            raise ValueError("Specify a source filename and a target filename")
+        source = sys.argv[2]
+        target = sys.argv[3]
 
-    if cmd == "py2nb":
-        if not source.endswith(".py"):
-            raise ValueError(
-                "The source filename should be a Python file. Got:", source
-            )
-        if not target.endswith(".ipynb"):
-            raise ValueError(
-                "The target filename should be a notebook file. Got:", target
-            )
-        py_to_nb(source, target)
-    if cmd == "nb2py":
-        if not source.endswith(".ipynb"):
-            raise ValueError(
-                "The source filename should be a notebook file. Got:", source
-            )
-        if not target.endswith(".py"):
-            raise ValueError(
-                "The target filename should be a Python file. Got:", target
-            )
-        nb_to_py(source, target)
+        if cmd == "py2nb":
+            if not source.endswith(".py"):
+                raise ValueError(
+                    f"The source filename should be a Python file. Got: {source}"
+                )
+            if not target.endswith(".ipynb"):
+                raise ValueError(
+                    f"The target filename should be a notebook file. Got: {target}"
+                )
+            py_to_nb(source, target)
+        if cmd == "nb2py":
+            if not source.endswith(".ipynb"):
+                raise ValueError(
+                    f"The source filename should be a notebook file. Got: {source}"
+                )
+            if not target.endswith(".py"):
+                raise ValueError(
+                    f"The target filename should be a Python file. Got: {target}"
+                )
+            nb_to_py(source, target)

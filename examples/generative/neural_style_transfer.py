@@ -3,7 +3,8 @@ Title: Neural style transfer
 Author: [fchollet](https://twitter.com/fchollet)
 Date created: 2016/01/11
 Last modified: 2020/05/02
-Description: Transfering the style of a reference image to target image using gradient descent.
+Description: Transferring the style of a reference image to target image using gradient descent.
+Accelerator: GPU
 """
 
 """
@@ -36,11 +37,14 @@ keeping the generated image close enough to the original one.
 """
 ## Setup
 """
+import os
 
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import keras
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras.applications import vgg19
+from keras.applications import vgg19
 
 base_image_path = keras.utils.get_file("paris.jpg", "https://i.imgur.com/F28w3Ac.jpg")
 style_reference_image_path = keras.utils.get_file(
@@ -54,7 +58,7 @@ style_weight = 1e-6
 content_weight = 2.5e-8
 
 # Dimensions of the generated picture.
-width, height = keras.preprocessing.image.load_img(base_image_path).size
+width, height = keras.utils.load_img(base_image_path).size
 img_nrows = 400
 img_ncols = int(width * img_nrows / height)
 
@@ -74,10 +78,8 @@ display(Image(style_reference_image_path))
 
 def preprocess_image(image_path):
     # Util function to open, resize and format pictures into appropriate tensors
-    img = keras.preprocessing.image.load_img(
-        image_path, target_size=(img_nrows, img_ncols)
-    )
-    img = keras.preprocessing.image.img_to_array(img)
+    img = keras.utils.load_img(image_path, target_size=(img_nrows, img_ncols))
+    img = keras.utils.img_to_array(img)
     img = np.expand_dims(img, axis=0)
     img = vgg19.preprocess_input(img)
     return tf.convert_to_tensor(img)
@@ -132,7 +134,7 @@ def style_loss(style, combination):
     C = gram_matrix(combination)
     channels = 3
     size = img_nrows * img_ncols
-    return tf.reduce_sum(tf.square(S - C)) / (4.0 * (channels ** 2) * (size ** 2))
+    return tf.reduce_sum(tf.square(S - C)) / (4.0 * (channels**2) * (size**2))
 
 
 # An auxiliary loss function
@@ -262,10 +264,15 @@ for i in range(1, iterations + 1):
         print("Iteration %d: loss=%.2f" % (i, loss))
         img = deprocess_image(combination_image.numpy())
         fname = result_prefix + "_at_iteration_%d.png" % i
-        keras.preprocessing.image.save_img(fname, img)
+        keras.utils.save_img(fname, img)
 
 """
 After 4000 iterations, you get the following result:
 """
 
 display(Image(result_prefix + "_at_iteration_4000.png"))
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 17: Image generation](https://deeplearningwithpython.io/chapters/chapter17_image-generation)
+"""

@@ -15,10 +15,16 @@
 
 
 ```python
-import numpy as np
-import tensorflow as tf
-from tensorflow import keras
+import os
 
+# Only the TensorFlow backend supports string inputs.
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import pathlib
+import numpy as np
+import tensorflow.data as tf_data
+import keras
+from keras import layers
 ```
 
 ---
@@ -43,7 +49,6 @@ data_path = keras.utils.get_file(
     "http://www.cs.cmu.edu/afs/cs.cmu.edu/project/theo-20/www/data/news20.tar.gz",
     untar=True,
 )
-
 ```
 
 ---
@@ -51,11 +56,6 @@ data_path = keras.utils.get_file(
 
 
 ```python
-import os
-import pathlib
-
-os.listdir(pathlib.Path(data_path).parent)
-
 data_dir = pathlib.Path(data_path).parent / "20_newsgroup"
 dirnames = os.listdir(data_dir)
 print("Number of directories:", len(dirnames))
@@ -64,15 +64,14 @@ print("Directory names:", dirnames)
 fnames = os.listdir(data_dir / "comp.graphics")
 print("Number of files in comp.graphics:", len(fnames))
 print("Some example filenames:", fnames[:5])
-
 ```
 
 <div class="k-default-codeblock">
 ```
 Number of directories: 20
-Directory names: ['talk.politics.mideast', 'rec.autos', 'comp.sys.mac.hardware', 'alt.atheism', 'rec.sport.baseball', 'comp.os.ms-windows.misc', 'rec.sport.hockey', 'sci.crypt', 'sci.med', 'talk.politics.misc', 'rec.motorcycles', 'comp.windows.x', 'comp.graphics', 'comp.sys.ibm.pc.hardware', 'sci.electronics', 'talk.politics.guns', 'sci.space', 'soc.religion.christian', 'misc.forsale', 'talk.religion.misc']
+Directory names: ['comp.sys.ibm.pc.hardware', 'comp.os.ms-windows.misc', 'comp.windows.x', 'sci.space', 'sci.crypt', 'sci.med', 'alt.atheism', 'rec.autos', 'rec.sport.hockey', 'talk.politics.misc', 'talk.politics.mideast', 'rec.motorcycles', 'talk.politics.guns', 'misc.forsale', 'sci.electronics', 'talk.religion.misc', 'comp.graphics', 'soc.religion.christian', 'comp.sys.mac.hardware', 'rec.sport.baseball']
 Number of files in comp.graphics: 1000
-Some example filenames: ['38254', '38402', '38630', '38865', '38891']
+Some example filenames: ['39638', '38747', '38242', '39057', '39031']
 
 ```
 </div>
@@ -81,7 +80,6 @@ Here's a example of what one file contains:
 
 ```python
 print(open(data_dir / "comp.graphics" / "38987").read())
-
 ```
 
 <div class="k-default-codeblock">
@@ -149,7 +147,6 @@ for dirname in sorted(os.listdir(data_dir)):
 
 print("Classes:", class_names)
 print("Number of samples:", len(samples))
-
 ```
 
 <div class="k-default-codeblock">
@@ -201,7 +198,6 @@ train_samples = samples[:-num_validation_samples]
 val_samples = samples[-num_validation_samples:]
 train_labels = labels[:-num_validation_samples]
 val_labels = labels[-num_validation_samples:]
-
 ```
 
 ---
@@ -215,12 +211,9 @@ be actually 200 tokens long.
 
 
 ```python
-from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
-
-vectorizer = TextVectorization(max_tokens=20000, output_sequence_length=200)
-text_ds = tf.data.Dataset.from_tensor_slices(train_samples).batch(128)
+vectorizer = layers.TextVectorization(max_tokens=20000, output_sequence_length=200)
+text_ds = tf_data.Dataset.from_tensor_slices(train_samples).batch(128)
 vectorizer.adapt(text_ds)
-
 ```
 
 You can retrieve the computed vocabulary used via `vectorizer.get_vocabulary()`. Let's
@@ -229,7 +222,6 @@ print the top 5 words:
 
 ```python
 vectorizer.get_vocabulary()[:5]
-
 ```
 
 
@@ -237,7 +229,7 @@ vectorizer.get_vocabulary()[:5]
 
 <div class="k-default-codeblock">
 ```
-[b'the', b'to', b'of', b'a', b'and']
+['', '[UNK]', 'the', 'to', 'of']
 
 ```
 </div>
@@ -245,9 +237,8 @@ Let's vectorize a test sentence:
 
 
 ```python
-output = vectorizer(np.array([["the cat sat on the mat"]]))
+output = vectorizer([["the cat sat on the mat"]])
 output.numpy()[0, :6]
-
 ```
 
 
@@ -255,7 +246,7 @@ output.numpy()[0, :6]
 
 <div class="k-default-codeblock">
 ```
-array([   2, 3697, 1686,   15,    2, 5943])
+array([   2, 3480, 1818,   15,    2, 5830])
 
 ```
 </div>
@@ -268,17 +259,15 @@ Here's a dict mapping words to their indices:
 
 ```python
 voc = vectorizer.get_vocabulary()
-word_index = dict(zip(voc, range(2, len(voc))))
-
+word_index = dict(zip(voc, range(len(voc))))
 ```
 
 As you can see, we obtain the same encoding as above for our test sentence:
 
 
 ```python
-test = [b"the", b"cat", b"sat", b"on", b"the", b"mat"]
+test = ["the", "cat", "sat", "on", "the", "mat"]
 [word_index[w] for w in test]
-
 ```
 
 
@@ -286,7 +275,7 @@ test = [b"the", b"cat", b"sat", b"on", b"the", b"mat"]
 
 <div class="k-default-codeblock">
 ```
-[2, 3697, 1686, 15, 2, 5943]
+[2, 3480, 1818, 15, 2, 5830]
 
 ```
 </div>
@@ -297,10 +286,36 @@ Let's download pre-trained GloVe embeddings (a 822M zip file).
 
 You'll need to run the following commands:
 
-```
-!wget http://nlp.stanford.edu/data/glove.6B.zip
+
+```python
+!wget https://downloads.cs.stanford.edu/nlp/data/glove.6B.zip
 !unzip -q glove.6B.zip
 ```
+
+<div class="k-default-codeblock">
+```
+--2023-11-19 22:45:27--  https://downloads.cs.stanford.edu/nlp/data/glove.6B.zip
+Resolving downloads.cs.stanford.edu (downloads.cs.stanford.edu)... 171.64.64.22
+Connecting to downloads.cs.stanford.edu (downloads.cs.stanford.edu)|171.64.64.22|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 862182613 (822M) [application/zip]
+Saving to: ‘glove.6B.zip’
+```
+</div>
+    
+<div class="k-default-codeblock">
+```
+glove.6B.zip        100%[===================>] 822.24M  5.05MB/s    in 2m 39s  
+```
+</div>
+    
+<div class="k-default-codeblock">
+```
+2023-11-19 22:48:06 (5.19 MB/s) - ‘glove.6B.zip’ saved [862182613/862182613]
+```
+</div>
+    
+
 
 The archive contains text-encoded vectors of various sizes: 50-dimensional,
 100-dimensional, 200-dimensional, 300-dimensional. We'll use the 100D ones.
@@ -309,9 +324,7 @@ Let's make a dict mapping words (strings) to their NumPy vector representation:
 
 
 ```python
-path_to_glove_file = os.path.join(
-    os.path.expanduser("~"), ".keras/datasets/glove.6B.100d.txt"
-)
+path_to_glove_file = "glove.6B.100d.txt"
 
 embeddings_index = {}
 with open(path_to_glove_file) as f:
@@ -321,7 +334,6 @@ with open(path_to_glove_file) as f:
         embeddings_index[word] = coefs
 
 print("Found %s word vectors." % len(embeddings_index))
-
 ```
 
 <div class="k-default-codeblock">
@@ -334,10 +346,6 @@ Now, let's prepare a corresponding embedding matrix that we can use in a Keras
 `Embedding` layer. It's a simple NumPy matrix where entry at index `i` is the pre-trained
 vector for the word of index `i` in our `vectorizer`'s vocabulary.
 
-**Note:** the `TextVectorization` layer stores tokens as bytes, not `str` types.
-This means that you need to decode them to `utf-8` before doing string comparisons, like
-the below: `embeddings_index.get(word.decode('utf-8'))`
-
 
 ```python
 num_tokens = len(voc) + 2
@@ -348,7 +356,7 @@ misses = 0
 # Prepare embedding matrix
 embedding_matrix = np.zeros((num_tokens, embedding_dim))
 for word, i in word_index.items():
-    embedding_vector = embeddings_index.get(word.decode("utf-8"))
+    embedding_vector = embeddings_index.get(word)
     if embedding_vector is not None:
         # Words not found in embedding index will be all-zeros.
         # This includes the representation for "padding" and "OOV"
@@ -358,12 +366,11 @@ for word, i in word_index.items():
         misses += 1
 print("Converted %d words (%d misses)" % (hits, misses))
 
-
 ```
 
 <div class="k-default-codeblock">
 ```
-Converted 17998 words (1999 misses)
+Converted 18021 words (1979 misses)
 
 ```
 </div>
@@ -374,15 +381,15 @@ update them during training).
 
 
 ```python
-from tensorflow.keras.layers import Embedding
+from keras.layers import Embedding
 
 embedding_layer = Embedding(
     num_tokens,
     embedding_dim,
-    embeddings_initializer=keras.initializers.Constant(embedding_matrix),
     trainable=False,
 )
-
+embedding_layer.build((1,))
+embedding_layer.set_weights([embedding_matrix])
 ```
 
 ---
@@ -392,9 +399,7 @@ A simple 1D convnet with global max pooling and a classifier at the end.
 
 
 ```python
-from tensorflow.keras import layers
-
-int_sequences_input = keras.Input(shape=(None,), dtype="int64")
+int_sequences_input = keras.Input(shape=(None,), dtype="int32")
 embedded_sequences = embedding_layer(int_sequences_input)
 x = layers.Conv1D(128, 5, activation="relu")(embedded_sequences)
 x = layers.MaxPooling1D(5)(x)
@@ -407,44 +412,63 @@ x = layers.Dropout(0.5)(x)
 preds = layers.Dense(len(class_names), activation="softmax")(x)
 model = keras.Model(int_sequences_input, preds)
 model.summary()
-
 ```
 
-<div class="k-default-codeblock">
-```
-Model: "model"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-input_1 (InputLayer)         [(None, None)]            0         
-_________________________________________________________________
-embedding (Embedding)        (None, None, 100)         2000100   
-_________________________________________________________________
-conv1d (Conv1D)              (None, None, 128)         64128     
-_________________________________________________________________
-max_pooling1d (MaxPooling1D) (None, None, 128)         0         
-_________________________________________________________________
-conv1d_1 (Conv1D)            (None, None, 128)         82048     
-_________________________________________________________________
-max_pooling1d_1 (MaxPooling1 (None, None, 128)         0         
-_________________________________________________________________
-conv1d_2 (Conv1D)            (None, None, 128)         82048     
-_________________________________________________________________
-global_max_pooling1d (Global (None, 128)               0         
-_________________________________________________________________
-dense (Dense)                (None, 128)               16512     
-_________________________________________________________________
-dropout (Dropout)            (None, 128)               0         
-_________________________________________________________________
-dense_1 (Dense)              (None, 20)                2580      
-=================================================================
-Total params: 2,247,416
-Trainable params: 247,316
-Non-trainable params: 2,000,100
-_________________________________________________________________
 
-```
-</div>
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "functional_1"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)                    </span>┃<span style="font-weight: bold"> Output Shape              </span>┃<span style="font-weight: bold">    Param # </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ input_layer (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>)              │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ embedding (<span style="color: #0087ff; text-decoration-color: #0087ff">Embedding</span>)           │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">100</span>)         │  <span style="color: #00af00; text-decoration-color: #00af00">2,000,200</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ conv1d (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)                 │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)         │     <span style="color: #00af00; text-decoration-color: #00af00">64,128</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ max_pooling1d (<span style="color: #0087ff; text-decoration-color: #0087ff">MaxPooling1D</span>)    │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)         │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ conv1d_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)         │     <span style="color: #00af00; text-decoration-color: #00af00">82,048</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ max_pooling1d_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">MaxPooling1D</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)         │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ conv1d_2 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)         │     <span style="color: #00af00; text-decoration-color: #00af00">82,048</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ global_max_pooling1d            │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)               │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">GlobalMaxPooling1D</span>)            │                           │            │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ dense (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)                   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)               │     <span style="color: #00af00; text-decoration-color: #00af00">16,512</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ dropout (<span style="color: #0087ff; text-decoration-color: #0087ff">Dropout</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)               │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ dense_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)                 │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">20</span>)                │      <span style="color: #00af00; text-decoration-color: #00af00">2,580</span> │
+└─────────────────────────────────┴───────────────────────────┴────────────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">2,247,516</span> (8.57 MB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">2,247,516</span> (8.57 MB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">0</span> (0.00 B)
+</pre>
+
+
+
 ---
 ## Train the model
 
@@ -458,7 +482,6 @@ x_val = vectorizer(np.array([[s] for s in val_samples])).numpy()
 
 y_train = np.array(train_labels)
 y_val = np.array(val_labels)
-
 ```
 
 We use categorical crossentropy as our loss since we're doing softmax classification.
@@ -470,51 +493,57 @@ model.compile(
     loss="sparse_categorical_crossentropy", optimizer="rmsprop", metrics=["acc"]
 )
 model.fit(x_train, y_train, batch_size=128, epochs=20, validation_data=(x_val, y_val))
-
 ```
 
 <div class="k-default-codeblock">
 ```
 Epoch 1/20
-125/125 [==============================] - 8s 64ms/step - loss: 2.6467 - acc: 0.1403 - val_loss: 2.0737 - val_acc: 0.2796
+   2/125 [37m━━━━━━━━━━━━━━━━━━━━  9s 78ms/step - acc: 0.0352 - loss: 3.2164 
+
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1700434131.619687    6780 device_compiler.h:187] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 22s 123ms/step - acc: 0.0926 - loss: 2.8961 - val_acc: 0.2451 - val_loss: 2.1965
 Epoch 2/20
-125/125 [==============================] - 8s 65ms/step - loss: 1.9139 - acc: 0.3422 - val_loss: 1.5841 - val_acc: 0.4689
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 10s 78ms/step - acc: 0.2628 - loss: 2.1377 - val_acc: 0.4421 - val_loss: 1.6594
 Epoch 3/20
-125/125 [==============================] - 8s 65ms/step - loss: 1.4909 - acc: 0.4915 - val_loss: 1.3311 - val_acc: 0.5649
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 10s 78ms/step - acc: 0.4504 - loss: 1.5765 - val_acc: 0.5849 - val_loss: 1.2577
 Epoch 4/20
-125/125 [==============================] - 8s 67ms/step - loss: 1.2629 - acc: 0.5631 - val_loss: 1.3060 - val_acc: 0.5571
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 10s 76ms/step - acc: 0.5711 - loss: 1.2639 - val_acc: 0.6277 - val_loss: 1.1153
 Epoch 5/20
-125/125 [==============================] - 9s 69ms/step - loss: 1.1007 - acc: 0.6231 - val_loss: 1.0992 - val_acc: 0.6302
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 9s 74ms/step - acc: 0.6430 - loss: 1.0318 - val_acc: 0.6684 - val_loss: 0.9902
 Epoch 6/20
-125/125 [==============================] - 8s 68ms/step - loss: 0.9657 - acc: 0.6690 - val_loss: 1.2182 - val_acc: 0.6062
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 9s 72ms/step - acc: 0.6990 - loss: 0.8844 - val_acc: 0.6619 - val_loss: 1.0109
 Epoch 7/20
-125/125 [==============================] - 9s 73ms/step - loss: 0.8474 - acc: 0.7097 - val_loss: 1.1390 - val_acc: 0.6297
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 9s 70ms/step - acc: 0.7330 - loss: 0.7614 - val_acc: 0.6832 - val_loss: 0.9585
 Epoch 8/20
-125/125 [==============================] - 10s 79ms/step - loss: 0.7485 - acc: 0.7388 - val_loss: 0.9862 - val_acc: 0.6784
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 8s 68ms/step - acc: 0.7795 - loss: 0.6328 - val_acc: 0.6847 - val_loss: 0.9917
 Epoch 9/20
-125/125 [==============================] - 10s 77ms/step - loss: 0.6623 - acc: 0.7714 - val_loss: 1.0549 - val_acc: 0.6562
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 8s 64ms/step - acc: 0.8203 - loss: 0.5242 - val_acc: 0.7187 - val_loss: 0.9224
 Epoch 10/20
-125/125 [==============================] - 10s 78ms/step - loss: 0.5723 - acc: 0.7983 - val_loss: 1.3427 - val_acc: 0.6164
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 8s 60ms/step - acc: 0.8506 - loss: 0.4265 - val_acc: 0.7342 - val_loss: 0.9098
 Epoch 11/20
-125/125 [==============================] - 9s 75ms/step - loss: 0.5030 - acc: 0.8283 - val_loss: 1.1039 - val_acc: 0.6739
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 7s 56ms/step - acc: 0.8756 - loss: 0.3659 - val_acc: 0.7204 - val_loss: 1.0022
 Epoch 12/20
-125/125 [==============================] - 10s 83ms/step - loss: 0.4420 - acc: 0.8483 - val_loss: 1.1172 - val_acc: 0.6899
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 7s 54ms/step - acc: 0.8921 - loss: 0.3079 - val_acc: 0.7209 - val_loss: 1.0477
 Epoch 13/20
-125/125 [==============================] - 10s 81ms/step - loss: 0.3761 - acc: 0.8697 - val_loss: 1.3080 - val_acc: 0.6612
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 7s 54ms/step - acc: 0.9077 - loss: 0.2767 - val_acc: 0.7169 - val_loss: 1.0915
 Epoch 14/20
-125/125 [==============================] - 9s 75ms/step - loss: 0.3404 - acc: 0.8852 - val_loss: 1.5581 - val_acc: 0.6192
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 6s 50ms/step - acc: 0.9244 - loss: 0.2253 - val_acc: 0.7382 - val_loss: 1.1397
 Epoch 15/20
-125/125 [==============================] - 10s 77ms/step - loss: 0.2835 - acc: 0.9042 - val_loss: 1.2626 - val_acc: 0.7079
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 6s 49ms/step - acc: 0.9301 - loss: 0.2054 - val_acc: 0.7562 - val_loss: 1.0984
 Epoch 16/20
-125/125 [==============================] - 10s 77ms/step - loss: 0.2653 - acc: 0.9099 - val_loss: 1.3099 - val_acc: 0.7052
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 5s 42ms/step - acc: 0.9373 - loss: 0.1769 - val_acc: 0.7387 - val_loss: 1.2294
 Epoch 17/20
-125/125 [==============================] - 10s 81ms/step - loss: 0.2528 - acc: 0.9176 - val_loss: 1.2101 - val_acc: 0.7047
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 5s 41ms/step - acc: 0.9467 - loss: 0.1626 - val_acc: 0.7009 - val_loss: 1.4906
 Epoch 18/20
-125/125 [==============================] - 10s 76ms/step - loss: 0.2156 - acc: 0.9299 - val_loss: 1.4729 - val_acc: 0.6844
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 5s 39ms/step - acc: 0.9471 - loss: 0.1544 - val_acc: 0.7184 - val_loss: 1.6050
 Epoch 19/20
-125/125 [==============================] - 10s 79ms/step - loss: 0.2010 - acc: 0.9343 - val_loss: 1.4224 - val_acc: 0.6969
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 5s 37ms/step - acc: 0.9532 - loss: 0.1388 - val_acc: 0.7407 - val_loss: 1.4360
 Epoch 20/20
- 37/125 [=======>......................] - ETA: 5s - loss: 0.2082 - acc: 0.9335
+ 125/125 ━━━━━━━━━━━━━━━━━━━━ 5s 37ms/step - acc: 0.9519 - loss: 0.1388 - val_acc: 0.7309 - val_loss: 1.5327
+
+<keras.src.callbacks.history.History at 0x7fbf50e6b910>
 
 ```
 </div>
@@ -534,20 +563,22 @@ x = vectorizer(string_input)
 preds = model(x)
 end_to_end_model = keras.Model(string_input, preds)
 
-probabilities = end_to_end_model.predict(
-    [["this message is about computer graphics and 3D modeling"]]
+probabilities = end_to_end_model(
+    keras.ops.convert_to_tensor(
+        [["this message is about computer graphics and 3D modeling"]]
+    )
 )
 
-class_names[np.argmax(probabilities[0])]
-
+print(class_names[np.argmax(probabilities[0])])
 ```
-
-
-
 
 <div class="k-default-codeblock">
 ```
-'comp.graphics'
+comp.graphics
 
 ```
 </div>
+
+---
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 14: Text classification](https://deeplearningwithpython.io/chapters/chapter14_text-classification)

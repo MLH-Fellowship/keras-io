@@ -2,18 +2,24 @@
 Title: Variational AutoEncoder
 Author: [fchollet](https://twitter.com/fchollet)
 Date created: 2020/05/03
-Last modified: 2020/05/03
+Last modified: 2024/04/24
 Description: Convolutional Variational AutoEncoder (VAE) trained on MNIST digits.
+Accelerator: GPU
 """
 
 """
 ## Setup
 """
 
+import os
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+import keras
+from keras import ops
+from keras import layers
 
 """
 ## Create a sampling layer
@@ -23,12 +29,16 @@ from tensorflow.keras import layers
 class Sampling(layers.Layer):
     """Uses (z_mean, z_log_var) to sample z, the vector encoding a digit."""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.seed_generator = keras.random.SeedGenerator(1337)
+
     def call(self, inputs):
         z_mean, z_log_var = inputs
-        batch = tf.shape(z_mean)[0]
-        dim = tf.shape(z_mean)[1]
-        epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
-        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+        batch = ops.shape(z_mean)[0]
+        dim = ops.shape(z_mean)[1]
+        epsilon = keras.random.normal(shape=(batch, dim), seed=self.seed_generator)
+        return z_mean + ops.exp(0.5 * z_log_var) * epsilon
 
 
 """
@@ -68,30 +78,45 @@ decoder.summary()
 
 class VAE(keras.Model):
     def __init__(self, encoder, decoder, **kwargs):
-        super(VAE, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.encoder = encoder
         self.decoder = decoder
+        self.total_loss_tracker = keras.metrics.Mean(name="total_loss")
+        self.reconstruction_loss_tracker = keras.metrics.Mean(
+            name="reconstruction_loss"
+        )
+        self.kl_loss_tracker = keras.metrics.Mean(name="kl_loss")
+
+    @property
+    def metrics(self):
+        return [
+            self.total_loss_tracker,
+            self.reconstruction_loss_tracker,
+            self.kl_loss_tracker,
+        ]
 
     def train_step(self, data):
-        if isinstance(data, tuple):
-            data = data[0]
         with tf.GradientTape() as tape:
-            z_mean, z_log_var, z = encoder(data)
-            reconstruction = decoder(z)
-            reconstruction_loss = tf.reduce_mean(
-                keras.losses.binary_crossentropy(data, reconstruction)
+            z_mean, z_log_var, z = self.encoder(data)
+            reconstruction = self.decoder(z)
+            reconstruction_loss = ops.mean(
+                ops.sum(
+                    keras.losses.binary_crossentropy(data, reconstruction),
+                    axis=(1, 2),
+                )
             )
-            reconstruction_loss *= 28 * 28
-            kl_loss = 1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var)
-            kl_loss = tf.reduce_mean(kl_loss)
-            kl_loss *= -0.5
+            kl_loss = -0.5 * (1 + z_log_var - ops.square(z_mean) - ops.exp(z_log_var))
+            kl_loss = ops.mean(ops.sum(kl_loss, axis=1))
             total_loss = reconstruction_loss + kl_loss
         grads = tape.gradient(total_loss, self.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
+        self.reconstruction_loss_tracker.update_state(reconstruction_loss)
+        self.kl_loss_tracker.update_state(kl_loss)
+        self.total_loss_tracker.update_state(total_loss)
         return {
-            "loss": total_loss,
-            "reconstruction_loss": reconstruction_loss,
-            "kl_loss": kl_loss,
+            "reconstruction_loss": self.reconstruction_loss_tracker.result(),
+            "kl_loss": self.kl_loss_tracker.result(),
+            "total_loss": self.total_loss_tracker.result(),
         }
 
 
@@ -114,12 +139,10 @@ vae.fit(mnist_digits, epochs=30, batch_size=128)
 import matplotlib.pyplot as plt
 
 
-def plot_latent(encoder, decoder):
+def plot_latent_space(vae, n=30, figsize=15):
     # display a n*n 2D manifold of digits
-    n = 30
     digit_size = 28
-    scale = 2.0
-    figsize = 15
+    scale = 1.0
     figure = np.zeros((digit_size * n, digit_size * n))
     # linearly spaced coordinates corresponding to the 2D plot
     # of digit classes in the latent space
@@ -129,7 +152,7 @@ def plot_latent(encoder, decoder):
     for i, yi in enumerate(grid_y):
         for j, xi in enumerate(grid_x):
             z_sample = np.array([[xi, yi]])
-            x_decoded = decoder.predict(z_sample)
+            x_decoded = vae.decoder.predict(z_sample, verbose=0)
             digit = x_decoded[0].reshape(digit_size, digit_size)
             figure[
                 i * digit_size : (i + 1) * digit_size,
@@ -138,7 +161,7 @@ def plot_latent(encoder, decoder):
 
     plt.figure(figsize=(figsize, figsize))
     start_range = digit_size // 2
-    end_range = n * digit_size + start_range + 1
+    end_range = n * digit_size + start_range
     pixel_range = np.arange(start_range, end_range, digit_size)
     sample_range_x = np.round(grid_x, 1)
     sample_range_y = np.round(grid_y, 1)
@@ -150,16 +173,16 @@ def plot_latent(encoder, decoder):
     plt.show()
 
 
-plot_latent(encoder, decoder)
+plot_latent_space(vae)
 
 """
 ## Display how the latent space clusters different digit classes
 """
 
 
-def plot_label_clusters(encoder, decoder, data, labels):
+def plot_label_clusters(vae, data, labels):
     # display a 2D plot of the digit classes in the latent space
-    z_mean, _, _ = encoder.predict(data)
+    z_mean, _, _ = vae.encoder.predict(data, verbose=0)
     plt.figure(figsize=(12, 10))
     plt.scatter(z_mean[:, 0], z_mean[:, 1], c=labels)
     plt.colorbar()
@@ -171,4 +194,9 @@ def plot_label_clusters(encoder, decoder, data, labels):
 (x_train, y_train), _ = keras.datasets.mnist.load_data()
 x_train = np.expand_dims(x_train, -1).astype("float32") / 255
 
-plot_label_clusters(encoder, decoder, x_train, y_train)
+plot_label_clusters(vae, x_train, y_train)
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 17: Image generation](https://deeplearningwithpython.io/chapters/chapter17_image-generation)
+"""

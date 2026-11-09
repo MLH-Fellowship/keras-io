@@ -1,0 +1,53 @@
+name: Upload to S3
+
+on:
+  push:
+    branches: [master]
+
+# Deploys must never overlap: each run uploads its build and then deletes any
+# page not in that build, so two runs from different commits can delete each
+# other's new pages.
+concurrency:
+  group: upload-s3
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    env:
+      AWS_S3_ACCESS_KEY: ${{ secrets.AWS_S3_ACCESS_KEY }}
+      AWS_S3_SECRET_KEY: ${{ secrets.AWS_S3_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.11"
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          python -m pip install --upgrade pip setuptools
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+      - name: pip cache
+        # zizmor: ignore[cache-poisoning]
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt --progress-bar off --upgrade
+          pip install keras --upgrade
+      - name: Build website
+        run: |
+          python scripts/autogen.py make
+      - name: Upload files
+        run: |
+          python scripts/upload.py

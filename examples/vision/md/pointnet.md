@@ -2,7 +2,7 @@
 
 **Author:** [David Griffiths](https://dgriffiths3.github.io)<br>
 **Date created:** 2020/05/25<br>
-**Last modified:** 2020/05/26<br>
+**Last modified:** 2024/01/09<br>
 **Description:** Implementation of PointNet for ModelNet10 classification.
 
 
@@ -11,7 +11,6 @@
 
 
 # Point cloud classification
-
 
 ---
 ## Introduction
@@ -22,12 +21,10 @@ deep learning paper [PointNet (Qi et al., 2017)](https://arxiv.org/abs/1612.0059
 detailed intoduction on PointNet see [this blog
 post](https://medium.com/@luis_gonzales/an-in-depth-look-at-pointnet-111d7efdaa1a).
 
-
 ---
 ## Setup
 
 If using colab first install trimesh with `!pip install trimesh`.
-
 
 
 ```python
@@ -36,13 +33,13 @@ import os
 import glob
 import trimesh
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+from tensorflow import data as tf_data
+from keras import ops
+import keras
+from keras import layers
 from matplotlib import pyplot as plt
 
-tf.random.set_seed(1234)
-
+keras.utils.set_random_seed(seed=42)
 ```
 
 ---
@@ -52,38 +49,1318 @@ We use the ModelNet10 model dataset, the smaller 10 class version of the ModelNe
 dataset. First download the data:
 
 
-
 ```python
-DATA_DIR = tf.keras.utils.get_file(
+DATA_DIR = keras.utils.get_file(
     "modelnet.zip",
     "http://3dvision.princeton.edu/projects/2014/3DShapeNets/ModelNet10.zip",
     extract=True,
 )
 DATA_DIR = os.path.join(os.path.dirname(DATA_DIR), "ModelNet10")
-
 ```
 
 <div class="k-default-codeblock">
 ```
 Downloading data from http://3dvision.princeton.edu/projects/2014/3DShapeNets/ModelNet10.zip
-473407488/473402300 [==============================] - 13s 0us/step
 
 ```
 </div>
-We can use the `trimesh` package to read and visualize the `.off` mesh files.
+    
+         0/473402300 [37m━━━━━━━━━━━━━━━━━━━━  0s 0s/step
 
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+      8192/473402300 [37m━━━━━━━━━━━━━━━━━━━━  1:06:44 8us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+     40960/473402300 [37m━━━━━━━━━━━━━━━━━━━━  26:17 3us/step  
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+     90112/473402300 [37m━━━━━━━━━━━━━━━━━━━━  17:49 2us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+    188416/473402300 [37m━━━━━━━━━━━━━━━━━━━━  11:20 1us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+    385024/473402300 [37m━━━━━━━━━━━━━━━━━━━━  6:55 1us/step 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+    786432/473402300 [37m━━━━━━━━━━━━━━━━━━━━  4:03 1us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   1581056/473402300 [37m━━━━━━━━━━━━━━━━━━━━  2:21 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3170304/473402300 [37m━━━━━━━━━━━━━━━━━━━━  1:20 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6004736/473402300 [37m━━━━━━━━━━━━━━━━━━━━  47s 0us/step 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8880128/473402300 [37m━━━━━━━━━━━━━━━━━━━━  35s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11902976/473402300 [37m━━━━━━━━━━━━━━━━━━━━  28s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14925824/473402300 [37m━━━━━━━━━━━━━━━━━━━━  24s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17915904/473402300 [37m━━━━━━━━━━━━━━━━━━━━  22s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21020672/473402300 [37m━━━━━━━━━━━━━━━━━━━━  20s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23977984/473402300 ━[37m━━━━━━━━━━━━━━━━━━━  18s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26861568/473402300 ━[37m━━━━━━━━━━━━━━━━━━━  17s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29958144/473402300 ━[37m━━━━━━━━━━━━━━━━━━━  16s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33071104/473402300 ━[37m━━━━━━━━━━━━━━━━━━━  16s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36175872/473402300 ━[37m━━━━━━━━━━━━━━━━━━━  15s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39206912/473402300 ━[37m━━━━━━━━━━━━━━━━━━━  14s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41902080/473402300 ━[37m━━━━━━━━━━━━━━━━━━━  14s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45015040/473402300 ━[37m━━━━━━━━━━━━━━━━━━━  14s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48021504/473402300 ━━[37m━━━━━━━━━━━━━━━━━━  13s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51003392/473402300 ━━[37m━━━━━━━━━━━━━━━━━━  13s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53960704/473402300 ━━[37m━━━━━━━━━━━━━━━━━━  13s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56803328/473402300 ━━[37m━━━━━━━━━━━━━━━━━━  12s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59834368/473402300 ━━[37m━━━━━━━━━━━━━━━━━━  12s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62750720/473402300 ━━[37m━━━━━━━━━━━━━━━━━━  12s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65839104/473402300 ━━[37m━━━━━━━━━━━━━━━━━━  12s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68698112/473402300 ━━[37m━━━━━━━━━━━━━━━━━━  11s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71385088/473402300 ━━━[37m━━━━━━━━━━━━━━━━━  11s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74432512/473402300 ━━━[37m━━━━━━━━━━━━━━━━━  11s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77365248/473402300 ━━━[37m━━━━━━━━━━━━━━━━━  11s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80363520/473402300 ━━━[37m━━━━━━━━━━━━━━━━━  11s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83156992/473402300 ━━━[37m━━━━━━━━━━━━━━━━━  11s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86179840/473402300 ━━━[37m━━━━━━━━━━━━━━━━━  10s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89300992/473402300 ━━━[37m━━━━━━━━━━━━━━━━━  10s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92282880/473402300 ━━━[37m━━━━━━━━━━━━━━━━━  10s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95371264/473402300 ━━━━[37m━━━━━━━━━━━━━━━━  10s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98410496/473402300 ━━━━[37m━━━━━━━━━━━━━━━━  10s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 101130240/473402300 ━━━━[37m━━━━━━━━━━━━━━━━  10s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 104169472/473402300 ━━━━[37m━━━━━━━━━━━━━━━━  10s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 107192320/473402300 ━━━━[37m━━━━━━━━━━━━━━━━  9s 0us/step 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 110297088/473402300 ━━━━[37m━━━━━━━━━━━━━━━━  9s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 113344512/473402300 ━━━━[37m━━━━━━━━━━━━━━━━  9s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 116391936/473402300 ━━━━[37m━━━━━━━━━━━━━━━━  9s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 119513088/473402300 ━━━━━[37m━━━━━━━━━━━━━━━  9s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 122626048/473402300 ━━━━━[37m━━━━━━━━━━━━━━━  9s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 125313024/473402300 ━━━━━[37m━━━━━━━━━━━━━━━  9s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 128368640/473402300 ━━━━━[37m━━━━━━━━━━━━━━━  9s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 131432448/473402300 ━━━━━[37m━━━━━━━━━━━━━━━  8s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 134520832/473402300 ━━━━━[37m━━━━━━━━━━━━━━━  8s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 137560064/473402300 ━━━━━[37m━━━━━━━━━━━━━━━  8s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 140648448/473402300 ━━━━━[37m━━━━━━━━━━━━━━━  8s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 143720448/473402300 ━━━━━━[37m━━━━━━━━━━━━━━  8s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 146808832/473402300 ━━━━━━[37m━━━━━━━━━━━━━━  8s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 149864448/473402300 ━━━━━━[37m━━━━━━━━━━━━━━  8s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 152592384/473402300 ━━━━━━[37m━━━━━━━━━━━━━━  8s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 155623424/473402300 ━━━━━━[37m━━━━━━━━━━━━━━  8s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 158728192/473402300 ━━━━━━[37m━━━━━━━━━━━━━━  8s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 161783808/473402300 ━━━━━━[37m━━━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 164806656/473402300 ━━━━━━[37m━━━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 167895040/473402300 ━━━━━━━[37m━━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 170975232/473402300 ━━━━━━━[37m━━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 174071808/473402300 ━━━━━━━[37m━━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 177119232/473402300 ━━━━━━━[37m━━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 180166656/473402300 ━━━━━━━[37m━━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 182976512/473402300 ━━━━━━━[37m━━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 185884672/473402300 ━━━━━━━[37m━━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 188932096/473402300 ━━━━━━━[37m━━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 192028672/473402300 ━━━━━━━━[37m━━━━━━━━━━━━  7s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 195117056/473402300 ━━━━━━━━[37m━━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 198189056/473402300 ━━━━━━━━[37m━━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 201302016/473402300 ━━━━━━━━[37m━━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 204406784/473402300 ━━━━━━━━[37m━━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 207470592/473402300 ━━━━━━━━[37m━━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 210575360/473402300 ━━━━━━━━[37m━━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 213581824/473402300 ━━━━━━━━━[37m━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 216268800/473402300 ━━━━━━━━━[37m━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 218374144/473402300 ━━━━━━━━━[37m━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 220569600/473402300 ━━━━━━━━━[37m━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 222363648/473402300 ━━━━━━━━━[37m━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 225345536/473402300 ━━━━━━━━━[37m━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 228425728/473402300 ━━━━━━━━━[37m━━━━━━━━━━━  6s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 231473152/473402300 ━━━━━━━━━[37m━━━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 234577920/473402300 ━━━━━━━━━[37m━━━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 237690880/473402300 ━━━━━━━━━━[37m━━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 240746496/473402300 ━━━━━━━━━━[37m━━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 243834880/473402300 ━━━━━━━━━━[37m━━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 246898688/473402300 ━━━━━━━━━━[37m━━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 249954304/473402300 ━━━━━━━━━━[37m━━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 252936192/473402300 ━━━━━━━━━━[37m━━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 255672320/473402300 ━━━━━━━━━━[37m━━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 258695168/473402300 ━━━━━━━━━━[37m━━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 261734400/473402300 ━━━━━━━━━━━[37m━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 264847360/473402300 ━━━━━━━━━━━[37m━━━━━━━━━  5s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 267919360/473402300 ━━━━━━━━━━━[37m━━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 271015936/473402300 ━━━━━━━━━━━[37m━━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 273768448/473402300 ━━━━━━━━━━━[37m━━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 276840448/473402300 ━━━━━━━━━━━[37m━━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 279625728/473402300 ━━━━━━━━━━━[37m━━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 282525696/473402300 ━━━━━━━━━━━[37m━━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 285581312/473402300 ━━━━━━━━━━━━[37m━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 288645120/473402300 ━━━━━━━━━━━━[37m━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 291733504/473402300 ━━━━━━━━━━━━[37m━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 294682624/473402300 ━━━━━━━━━━━━[37m━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 297795584/473402300 ━━━━━━━━━━━━[37m━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 300851200/473402300 ━━━━━━━━━━━━[37m━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 303955968/473402300 ━━━━━━━━━━━━[37m━━━━━━━━  4s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 306798592/473402300 ━━━━━━━━━━━━[37m━━━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 309846016/473402300 ━━━━━━━━━━━━━[37m━━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 312926208/473402300 ━━━━━━━━━━━━━[37m━━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 315990016/473402300 ━━━━━━━━━━━━━[37m━━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 319053824/473402300 ━━━━━━━━━━━━━[37m━━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 322134016/473402300 ━━━━━━━━━━━━━[37m━━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 325099520/473402300 ━━━━━━━━━━━━━[37m━━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 328187904/473402300 ━━━━━━━━━━━━━[37m━━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 331251712/473402300 ━━━━━━━━━━━━━[37m━━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 334364672/473402300 ━━━━━━━━━━━━━━[37m━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 337477632/473402300 ━━━━━━━━━━━━━━[37m━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 340598784/473402300 ━━━━━━━━━━━━━━[37m━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 343130112/473402300 ━━━━━━━━━━━━━━[37m━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 345554944/473402300 ━━━━━━━━━━━━━━[37m━━━━━━  3s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 347570176/473402300 ━━━━━━━━━━━━━━[37m━━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 350224384/473402300 ━━━━━━━━━━━━━━[37m━━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 352436224/473402300 ━━━━━━━━━━━━━━[37m━━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 355393536/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 357179392/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 359858176/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 362045440/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364281856/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364298240/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364306432/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364314624/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364322816/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364331008/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364339200/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364347392/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364355584/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364363776/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364371968/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364380160/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364396544/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364445696/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 364601344/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 365084672/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 366510080/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 369491968/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 372400128/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 375521280/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 378535936/473402300 ━━━━━━━━━━━━━━━[37m━━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 381558784/473402300 ━━━━━━━━━━━━━━━━[37m━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 384475136/473402300 ━━━━━━━━━━━━━━━━[37m━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 387571712/473402300 ━━━━━━━━━━━━━━━━[37m━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 390463488/473402300 ━━━━━━━━━━━━━━━━[37m━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 393551872/473402300 ━━━━━━━━━━━━━━━━[37m━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 396632064/473402300 ━━━━━━━━━━━━━━━━[37m━━━━  2s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 399704064/473402300 ━━━━━━━━━━━━━━━━[37m━━━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 402767872/473402300 ━━━━━━━━━━━━━━━━━[37m━━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 405790720/473402300 ━━━━━━━━━━━━━━━━━[37m━━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 408854528/473402300 ━━━━━━━━━━━━━━━━━[37m━━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 411975680/473402300 ━━━━━━━━━━━━━━━━━[37m━━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 414982144/473402300 ━━━━━━━━━━━━━━━━━[37m━━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 418045952/473402300 ━━━━━━━━━━━━━━━━━[37m━━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 421167104/473402300 ━━━━━━━━━━━━━━━━━[37m━━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 423878656/473402300 ━━━━━━━━━━━━━━━━━[37m━━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 426999808/473402300 ━━━━━━━━━━━━━━━━━━[37m━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 430112768/473402300 ━━━━━━━━━━━━━━━━━━[37m━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 433053696/473402300 ━━━━━━━━━━━━━━━━━━[37m━━  1s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 436125696/473402300 ━━━━━━━━━━━━━━━━━━[37m━━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 439189504/473402300 ━━━━━━━━━━━━━━━━━━[37m━━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 442286080/473402300 ━━━━━━━━━━━━━━━━━━[37m━━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 445063168/473402300 ━━━━━━━━━━━━━━━━━━[37m━━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 448118784/473402300 ━━━━━━━━━━━━━━━━━━[37m━━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 451166208/473402300 ━━━━━━━━━━━━━━━━━━━[37m━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 454262784/473402300 ━━━━━━━━━━━━━━━━━━━[37m━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 457293824/473402300 ━━━━━━━━━━━━━━━━━━━[37m━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 460275712/473402300 ━━━━━━━━━━━━━━━━━━━[37m━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 463011840/473402300 ━━━━━━━━━━━━━━━━━━━[37m━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 466018304/473402300 ━━━━━━━━━━━━━━━━━━━[37m━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 469057536/473402300 ━━━━━━━━━━━━━━━━━━━[37m━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 472145920/473402300 ━━━━━━━━━━━━━━━━━━━[37m━  0s 0us/step
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 473402300/473402300 ━━━━━━━━━━━━━━━━━━━━ 12s 0us/step
+
+
+We can use the `trimesh` package to read and visualize the `.off` mesh files.
 
 
 ```python
 mesh = trimesh.load(os.path.join(DATA_DIR, "chair/train/chair_0001.off"))
 mesh.show()
-
 ```
 
 
 
 
-<iframe srcdoc="<!DOCTYPE html>
+<div><iframe srcdoc="<!DOCTYPE html>
 <html lang=&quot;en&quot;>
   <head>
     <title>trimesh: threejs viewer</title>
@@ -1324,19 +2601,18 @@ return Promise.all(pending).then(function(){return scene;});};}();return GLTFLoa
 Math.pow(distanceToCamera,2)+
 Math.pow(distanceToCamera,2));camera.position.set(len,len,len);controls.update();camera.lookAt(boundingSphere.center);controls.target.set(boundingSphere.center.x,boundingSphere.center.y,boundingSphere.center.z);camera.updateProjectionMatrix();}
 function centerControls(obj,camera,controls){const boundingBox=new THREE.Box3().setFromObject(obj);const boundingSphere=new THREE.Sphere();boundingBox.getBoundingSphere((target=boundingSphere));controls.update();controls.target.set(boundingSphere.center.x,boundingSphere.center.y,boundingSphere.center.z);}
-function init(){scene=new THREE.Scene();scene.background=new THREE.Color(0xffffff);tracklight=new THREE.DirectionalLight(0xffffff,1.75);scene.add(tracklight);base64_data=&quot;Z2xURgIAAAA8lAAA2AMAAEpTT057InNjZW5lIjowLCJzY2VuZXMiOlt7Im5vZGVzIjpbMF19XSwiYXNzZXQiOnsidmVyc2lvbiI6IjIuMCIsImdlbmVyYXRvciI6Imh0dHBzOi8vZ2l0aHViLmNvbS9taWtlZGgvdHJpbWVzaCJ9LCJhY2Nlc3NvcnMiOlt7ImJ1ZmZlclZpZXciOjAsImNvbXBvbmVudFR5cGUiOjUxMjUsImNvdW50Ijo2NzAyLCJtYXgiOls4NDNdLCJtaW4iOlswXSwidHlwZSI6IlNDQUxBUiJ9LHsiYnVmZmVyVmlldyI6MSwiY29tcG9uZW50VHlwZSI6NTEyNiwiY291bnQiOjg0NCwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJtYXgiOlsxMC4xOTk1LDExLjY0MDI1LDE4LjM2MTQxMV0sIm1pbiI6Wy0xMC4xOTk1LC0xMS42NDAyNSwtMTguMzYxNDExXX1dLCJtZXNoZXMiOlt7Im5hbWUiOiJjaGFpcl8wMDAxLm9mZiIsInByaW1pdGl2ZXMiOlt7ImF0dHJpYnV0ZXMiOnsiUE9TSVRJT04iOjF9LCJpbmRpY2VzIjowLCJtb2RlIjo0fV19XSwic2FtcGxlcnMiOlt7fV0sImNhbWVyYXMiOlt7Im5hbWUiOiJjYW1lcmFfQlVLQUIzIiwidHlwZSI6InBlcnNwZWN0aXZlIiwicGVyc3BlY3RpdmUiOnsiYXNwZWN0UmF0aW8iOjEuMzMzMzMzMzMzMzMzMzMzMywieWZvdiI6MC43ODUzOTgxNjMzOTc0NDgzLCJ6bmVhciI6MC4wMX19XSwibm9kZXMiOlt7Im5hbWUiOiJ3b3JsZCIsImNoaWxkcmVuIjpbMSwyXX0seyJuYW1lIjoiY2hhaXJfMDAwMS5vZmYiLCJtZXNoIjowfSx7Im5hbWUiOiJjYW1lcmFfQlVLQUIzIiwiY2FtZXJhIjowLCJtYXRyaXgiOlsxLjAsMC4wLC0wLjAsMC4wLDAuMCwxLjAsMC4wLDAuMCwwLjAsMC4wLDEuMCwwLjAsMC4wLDAuMCw0Ni40NjM0NjA0MTk0MTM0MiwxLjBdfV0sImJ1ZmZlcnMiOlt7ImJ5dGVMZW5ndGgiOjM2OTM2fV0sImJ1ZmZlclZpZXdzIjpbeyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjAsImJ5dGVMZW5ndGgiOjI2ODA4fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MjY4MDgsImJ5dGVMZW5ndGgiOjEwMTI4fV19ICBIkAAAQklOAPkCAACPAgAA+AIAAI8CAAD5AgAAPwMAAD8DAAD5AgAAQAMAAEADAAD5AgAA9wIAAEADAAD3AgAAQQMAAEEDAAD3AgAAQAMAAPcCAAD5AgAAQAMAAEADAAD5AgAAPwMAAD8DAAD5AgAAjwIAAPgCAACPAgAA+QIAAJoCAAD5AgAA+AIAAPkCAACaAgAAOAIAAPkCAAA4AgAAMwIAAPkCAAAzAgAA9wIAAPcCAAAzAgAAOgIAADoCAAAzAgAA9wIAAPcCAAAzAgAA+QIAADMCAAA4AgAA+QIAADgCAACaAgAA+QIAAPgCAAD5AgAAmgIAAEACAABBAwAA9wIAAEEDAABAAgAAbgIAAG4CAABAAgAAQQMAAPcCAABBAwAAQAIAAEADAAC4AgAAPwMAALgCAABAAwAAbAIAAGwCAABAAwAAawIAAGsCAABAAwAAQQMAAGsCAABBAwAAbQIAAG0CAABBAwAAawIAAEEDAABAAwAAawIAAGsCAABAAwAAbAIAAGwCAABAAwAAuAIAAD8DAAC4AgAAQAMAAI8CAAA8AgAA+AIAADwCAACPAgAAPwMAADwCAAA/AwAAuAIAADwCAAC4AgAAbAIAADwCAABsAgAAwwIAAMMCAABsAgAAPAIAAGwCAAC4AgAAPAIAALgCAAA/AwAAPAIAAD8DAACPAgAAPAIAAPgCAAA8AgAAjwIAADwCAAAzAgAAOAIAADMCAAA8AgAAwwIAADMCAADDAgAAbAIAADMCAABsAgAAawIAADMCAABrAgAAOgIAADoCAABrAgAAbQIAAG0CAABrAgAAOgIAADoCAABrAgAAMwIAAGsCAABsAgAAMwIAAGwCAADDAgAAMwIAAMMCAAA8AgAAMwIAADgCAAAzAgAAPAIAAAMAAAD3AgAAOgIAAPcCAAADAAAAQAIAAEACAAADAAAA9wIAADoCAAD3AgAAAwAAALcCAABuAgAAQAIAAG4CAAC3AgAAmwIAAJsCAAC3AgAAbgIAAEACAABuAgAAtwIAAEEDAAANAAAAbQIAAA0AAABBAwAA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lAAAAJUAAACUAAAAgAAAAIAAAACUAAAAgwAAAIAAAACDAAAAdQAAAIAAAAB1AAAAcQAAAHEAAAB1AAAAhgAAAHEAAACGAAAAjQAAAHEAAACNAAAAeQAAAHkAAACNAAAAiQAAAHkAAACJAAAAfAAAAHkAAAB8AAAAcwAAAHMAAAB8AAAAcAAAAHMAAABwAAAAdwAAAHcAAABwAAAAjgAAAHcAAACOAAAAhwAAAHcAAACHAAAAfwAAAH8AAACHAAAAggAAAH8AAACCAAAAjAAAAIwAAACCAAAAhAAAAIwAAACEAAAAkQAAAIwAAACRAAAAbwAAAG8AAACRAAAAjwAAAG8AAACPAAAAeAAAAHgAAACPAAAAbwAAAI8AAACRAAAAbwAAAG8AAACRAAAAjAAAAJEAAACEAAAAjAAAAIQAAACCAAAAjAAAAIwAAACCAAAAfwAAAIIAAACHAAAAfwAAAH8AAACHAAAAdwAAAIcAAACOAAAAdwAAAI4AAABwAAAAdwAAAHcAAABwAAAAcwAAAHAAAAB8AAAAcwAAAHMAAAB8AAAAeQAAAHwAAACJAAAAeQAAAIkAAACNAAAAeQAAAHkAAACNAAAAcQAAAI0AAACGAAAAcQAAAIYAAAB1AAAAcQAAAHEAAAB1AAAAgAAAAHUAAACDAAAAgAAAAIMAAACUAAAAgAAAAIAAAACUAAAAlQAAAJQAAACKAAAAlQAAAG0AAACVAAAAigAAAIgAAACLAAAAlgAAAJYAAACLAAAAkwAAAIsAAAB7AAAAkwAAAJMAAAB7AAAAbwAAAG8AAAB7AAAAeAAAAHgAAAB7AAAAbAAAAHsAAACFAAAAbAAAAGwAAACFAAAAmgAAAJoAAACFAAAAlwAAAIUAAAB0AAAAlwAAAJcAAAB0AAAAfgAAAHQAAAB6AAAAfgAAAH4AAAB6AAAAgQAAAIEAAAB6AAAAmQAAAHoAAAB2AAAAmQAAAJkAAAB2AAAAbgAAAHYAAAB9AAAAbgAAAG4AAAB9AAAAkgAAAJIAAAB9AAAAcgAAAH0AAACbAAAAcgAAAHIAAACbAAAAkAAAAJAAAACbAAAAmAAAAJsAAACDAAAAmAAAAHUAAACYAAAAgwAAAFcCAABNAgAARgIAAE0CAABXAgAAUwIAAE0CAABTAgAAUAIAAFACAABTAgAARQIAAFACAABFAgAATwIAAE8CAABFAgAAVQIAAE8CAABVAgAASAIAAEgCAABVAgAAQwIAAEgCAABDAgAARAIAAEQCAABDAgAAWAIAAEQCAABYAgAAUQIAAFECAABYAgAASgIAAFECAABKAgAATgIAAE4CAABKAgAASQIAAE4CAABJAgAASwIAAEsCAABJAgAAVgIAAEsCAABWAgAATAIAAEwCAABWAgAAWQIAAEwCAABZAgAAVAIAAFQCAABZAgAAQgIAAFQCAABCAgAAUgIAAFICAABCAgAARwIAAEcCAABCAgAAUgIAAFICAABCAgAAVAIAAEICAABZAgAAVAIAAFQCAABZAgAATAIAAFkCAABWAgAATAIAAEwCAABWAgAASwIAAFYCAABJAgAASwIAAEsCAABJAgAATgIAAEkCAABKAgAATgIAAE4CAABKAgAAUQIAAEoCAABYAgAAUQIAAFECAABYAgAARAIAAFgCAABDAgAARAIAAEQCAABDAgAASAIAAEMCAABVAgAASAIAAEgCAABVAgAATwIAAFUCAABFAgAATwIAAE8CAABFAgAAUAIAAEUCAABTAgAAUAIAAFACAABTAgAATQIAAFMCAABXAgAATQIAAEYCAABNAgAAVwIAAJQCAAB3AQAAlQIAAJUCAAB3AQAAlAIAAK0AAACUAgAAqgAAAJQCAACtAAAAlQIAAJUCAACtAAAAlAIAAKoAAACUAgAArQAAAGICAACUAgAAlQIAAJQCAABiAgAAYQIAAGECAABiAgAAlAIAAJUCAACUAgAAYgIAAJQCAABtAQAAdwEAAHcBAABtAQAAlAIAAG0BAACtAAAAqgAAAK0AAABtAQAAdwEAAHcBAABtAQAArQAAAKoAAACtAAAAbQEAAGYAAACVAgAArQAAAJUCAABmAAAAYgIAAGICAABmAAAAlQIAAK0AAACVAgAAZgAAAJQCAABdAAAAqgAAAF0AAACUAgAAYQIAAGECAACUAgAAXQAAAKoAAABdAAAAlAIAAGECAABmAAAAXQAAAGYAAABhAgAAYgIAAGICAABhAgAAZgAAAF0AAABmAAAAYQIAAHcBAACDAQAAYQEAAIMBAAB3AQAAbQEAAIMBAABtAQAAggEAAIIBAABtAQAAagEAAGoBAABtAQAAYgEAAGIBAABtAQAAgQEAAIEBAABtAQAAegEAAHoBAABtAQAAeQEAAHkBAABtAQAAawEAAGsBAABtAQAAcgEAAHIBAABtAQAAdAEAAHQBAABtAQAAfwEAAH8BAABtAQAAfgEAAH4BAABtAQAAfwEAAH8BAABtAQAAdAEAAHQBAABtAQAAcgEAAHIBAABtAQAAawEAAGsBAABtAQAAeQEAAHkBAABtAQAAegEAAHoBAABtAQAAgQEAAIEBAABtAQAAYgEAAGIBAABtAQAAagEAAGoBAABtAQAAggEAAIIBAABtAQAAgwEAAG0BAAB3AQAAgwEAAGEBAACDAQAAdwEAAG0BAACwAAAAfgEAALAAAABtAQAAqgAAAKoAAABtAQAAsAAAAH4BAACwAAAAbQEAAKYAAAB3AQAAYQEAAHcBAACmAAAArQAAAK0AAACmAAAAdwEAAGEBAAB3AQAApgAAAGgAAABmAAAAXgAAAGYAAABoAAAAXQAAAF0AAABoAAAAYgAAAF0AAABiAAAAZQAAAF0AAABlAAAAZwAAAF0AAABnAAAAYQAAAF0AAABhAAAAYAAAAF0AAABgAAAAXwAAAF0AAABfAAAAYwAAAF0AAABjAAAAWgAAAF0AAABaAAAAXAAAAF0AAABcAAAAWwAAAF0AAABbAAAAZAAAAGQAAABbAAAAXQAAAFsAAABcAAAAXQAAAFwAAABaAAAAXQAAAFoAAABjAAAAXQAAAGMAAABfAAAAXQAAAF8AAABgAAAAXQAAAGAAAABhAAAAXQAAAGEAAABnAAAAXQAAAGcAAABlAAAAXQAAAGUAAABiAAAAXQAAAGIAAABoAAAAXQAAAF0AAABoAAAAZgAAAF4AAABmAAAAaAAAACYAAABmAAAAXQAAAGYAAAAmAAAAQgAAAEIAAAAmAAAAZgAAAF0AAABmAAAAJgAAAH8BAACwAAAAsQAAALAAAAB/AQAAfgEAAH4BAAB/AQAAsAAAALEAAACwAAAAfwEAAHQBAACxAAAArAAAALEAAAB0AQAAfwEAAH8BAAB0AQAAsQAAAKwAAACxAAAAdAEAAHIBAACsAAAAqwAAAKwAAAByAQAAdAEAAHQBAAByAQAArAAAAKsAAACsAAAAcgEAAGsBAACrAAAAqQAAAKsAAABrAQAAcgEAAHIBAABrAQAAqwAAAKkAAACrAAAAawEAAK4AAABrAQAAqQAAAGsBAACuAAAAeQEAAHkBAACuAAAA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fwIAAIECAAB/AgAAhAIAAIQCAAB/AgAAeAIAAIQCAAB4AgAAhgIAAIYCAAB4AgAAcAIAAIYCAABwAgAAcQIAAHECAABwAgAAdgIAAHECAAB2AgAAdwIAAHcCAAB2AgAAcwIAAHcCAABzAgAAhQIAAIUCAABzAgAAgAIAAIUCAACAAgAAggIAAIICAACAAgAAfAIAAIICAAB8AgAAfQIAAH0CAAB8AgAAgwIAAH0CAACDAgAAfgIAAH4CAACDAgAAdAIAAH4CAAB0AgAAbwIAAG8CAAB0AgAAdQIAAG8CAAB1AgAAewIAAHsCAAB1AgAAegIAAHoCAAB1AgAAewIAAHsCAAB1AgAAbwIAAHUCAAB0AgAAbwIAAG8CAAB0AgAAfgIAAHQCAACDAgAAfgIAAH4CAACDAgAAfQIAAIMCAAB8AgAAfQIAAH0CAAB8AgAAggIAAHwCAACAAgAAggIAAIICAACAAgAAhQIAAIACAABzAgAAhQIAAIUCAABzAgAAdwIAAHMCAAB2AgAAdwIAAHcCAAB2AgAAcQIAAHYCAABwAgAAcQIAAHECAABwAgAAhgIAAHACAAB4AgAAhgIAAIYCAAB4AgAAhAIAAHgCAAB/AgAAhAIAAIQCAAB/AgAAgQIAAH8CAAByAgAAgQIAAHkCAACBAgAAcgIAAKsBAAABAgAApAEAAAECAACrAQAABwIAALABAACmAQAAlwEAAKYBAACwAQAArwEAAK8BAACwAQAAtgEAAK8BAAC2AQAAmgEAAJoBAAC2AQAArQEAAJoBAACtAQAAngEAAJ4BAACtAQAAxAEAAJ4BAADEAQAAyQEAAMkBAADEAQAAqAEAAMkBAACoAQAAjwEAAI8BAACoAQAAjgEAAI8BAACOAQAAoAEAAKABAACOAQAAvgEAAKABAAC+AQAAwwEAAMMBAAC+AQAAqgEAAMMBAACqAQAAnAEAAJwBAACqAQAArgEAAJwBAACuAQAAkwEAAJMBAACuAQAAqwEAAJMBAACrAQAAmAEAAJgBAACrAQAApAEAAJgBAACkAQAAsQEAAK4BAAAHAgAAqwEAAAcCAACuAQAACgIAAKQBAAANAgAAsQEAAA0CAACkAQAAAQIAABUCAACqAQAAvgEAAKoBAAAVAgAABgIAAAYCAACuAQAAqgEAAK4BAAAGAgAACgIAALEBAAD4AQAAmAEAAPgBAACxAQAADQIAAJgBAAD0AQAAkwEAAPQBAACYAQAA+AEAAJMBAAD7AQAAnAEAAPsBAACTAQAA9AEAAPsBAADDAQAAnAEAAMMBAAD7AQAAGQIAAMMBAAD+AQAAoAEAAP4BAADDAQAAGQIAAKABAADwAQAAjwEAAPABAACgAQAA/gEAAI8BAAAdAgAAyQEAAB0CAACPAQAA8AEAAMkBAAD8AQAAngEAAPwBAADJAQAAHQIAAJ4BAAD5AQAAmgEAAPkBAACeAQAA/AEAAPkBAACvAQAAmgEAAK8BAAD5AQAACwIAAAsCAACmAQAArwEAAKYBAAALAgAAAgIAAAICAACXAQAApgEAAJcBAAACAgAA9wEAAPcBAACwAQAAlwEAALABAAD3AQAADAIAAAwCAAC2AQAAsAEAALYBAAAMAgAAEAIAABACAACtAQAAtgEAAK0BAAAQAgAACQIAAK0BAAAaAgAAxAEAABoCAACtAQAACQIAABoCAACoAQAAxAEAAKgBAAAaAgAABAIAAAQCAACOAQAAqAEAAI4BAAAEAgAA7wEAAO8BAAC+AQAAjgEAAL4BAADvAQAAFQIAABcCAAC0AQAAwQEAALQBAAAXAgAADwIAALIBAAAXAgAAwQEAABcCAACyAQAADgIAAOABAAAPAgAAFwIAAA8CAADgAQAA2gEAAA8CAADHAQAAtAEAAMcBAAAPAgAAHAIAAJIBAAAOAgAAsgEAAA4CAACSAQAA8wEAAA4CAADgAQAAFwIAAOABAAAOAgAA2QEAANoBAAAcAgAADwIAABwCAADaAQAA4wEAABwCAACbAQAAxwEAAJsBAAAcAgAA+gEAALkBAADzAQAAkgEAAPMBAAC5AQAAEgIAAPMBAADZAQAADgIAANkBAADzAQAAzwEAAOMBAAD6AQAAHAIAAPoBAADjAQAA0gEAAPoBAACQAQAAmwEAAJABAAD6AQAA8QEAAKcBAAASAgAAuQEAABICAACnAQAAAwIAABICAADPAQAA8wEAAM8BAAASAgAA3AEAANIBAADxAQAA+gEAAPEBAADSAQAAzQEAAPEBAADGAQAAkAEAAMYBAADxAQAAGwIAAI0BAAADAgAApwEAAAMCAACNAQAA7gEAAAMCAADcAQAAEgIAANwBAAADAgAA1gEAAM0BAAAbAgAA8QEAABsCAADNAQAA4gEAABsCAACpAQAAxgEAAKkBAAAbAgAABQIAAP0BAACNAQAAnwEAAI0BAAD9AQAA7gEAAO4BAADWAQAAAwIAANYBAADuAQAAzAEAAOIBAAAFAgAAGwIAAAUCAADiAQAA1wEAAKkBAAAUAgAAvAEAABQCAACpAQAABQIAAMIBAAD9AQAAnwEAAP0BAADCAQAAGAIAANMBAADuAQAA/QEAAO4BAADTAQAAzAEAAAUCAADeAQAAFAIAAN4BAAAFAgAA1wEAABQCAAChAQAAvAEAAKEBAAAUAgAA/wEAALoBAAAYAgAAwgEAABgCAAC6AQAAEwIAABgCAADTAQAA/QEAANMBAAAYAgAA4QEAAN4BAAD/AQAAFAIAAP8BAADeAQAA1AEAAP8BAACRAQAAoQEAAJEBAAD/AQAA8gEAAKwBAAATAgAAugEAABMCAACsAQAACAIAABMCAADhAQAAGAIAAOEBAAATAgAA3QEAANQBAADyAQAA/wEAAPIBAADUAQAAzgEAAPIBAAC3AQAAkQEAALcBAADyAQAAEQIAAL8BAAAIAgAArAEAAAgCAAC/AQAAFgIAAAgCAADdAQAAEwIAAN0BAAAIAgAA2AEAAM4BAAARAgAA8gEAABECAADOAQAA2wEAABECAACWAQAAtwEAAJYBAAARAgAA9gEAAJQBAAAWAgAAvwEAABYCAACUAQAA9QEAABYCAADYAQAACAIAANgBAAAWAgAA3wEAANsBAAD2AQAAEQIAAPYBAADbAQAA0QEAAPYBAACjAQAAlgEAAKMBAAD2AQAAAAIAAKMBAAD1AQAAlAEAAPUBAACjAQAAAAIAAPUBAADfAQAAFgIAAN8BAAD1AQAA0AEAANEBAAAAAgAA9gEAAAACAADRAQAA1QEAAAACAADQAQAA9QEAANABAAAAAgAA1QEAAPkBAAAcAgAA+gEAABwCAAD5AQAA/AEAABwCAAD8AQAADwIAAA8CAAD8AQAAFwIAABcCAAD8AQAAHQIAABcCAAAdAgAADgIAAA4CAAAdAgAA8wEAAPMBAAAdAgAA8AEAAPMBAADwAQAAEgIAABICAADwAQAA/gEAABICAAD+AQAAAwIAAAMCAAD+AQAA7gEAAO4BAAD+AQAAGQIAAO4BAAAZAgAA/QEAAP0BAAAZAgAA+wEAAP0BAAD7AQAAGAIAABgCAAD7AQAAEwIAABMCAAD7AQAA9AEAABMCAAD0AQAACAIAAAgCAAD0AQAACgIAAAoCAAD0AQAABwIAAAcCAAD0AQAA+AEAAAcCAAD4AQAAAQIAAAECAAD4AQAADQIAAAICAAAMAgAA9wEAAAwCAAACAgAACwIAAAwCAAALAgAAEAIAABACAAALAgAA+QEAABACAAD5AQAA+gEAABACAAD6AQAACQIAAAkCAAD6AQAA8QEAAAkCAADxAQAAGwIAAAkCAAAbAgAAGgIAABoCAAAbAgAABQIAABoCAAAFAgAAFAIAABoCAAAUAgAABAIAAAQCAAAUAgAA/wEAAAQCAAD/AQAA7wEAAO8BAAD/AQAA8gEAAO8BAADyAQAAEQIAAO8BAAARAgAAFQIAABUCAAARAgAA9gEAABUCAAD2AQAABgIAAAYCAAD2AQAAAAIAAAYCAAAAAgAA9QEAAAYCAAD1AQAACgIAAAoCAAD1AQAAFgIAAAoCAAAWAgAACAIAAAgCAAAWAgAACgIAABYCAAD1AQAACgIAAAoCAAD1AQAABgIAAPUBAAAAAgAABgIAAAACAAD2AQAABgIAAAYCAAD2AQAAFQIAAPYBAAARAgAAFQIAABUCAAARAgAA7wEAABECAADyAQAA7wEAAPIBAAD/AQAA7wEAAO8BAAD/AQAABAIAAP8BAAAUAgAABAIAAAQCAAAUAgAAGgIAABQCAAAFAgAAGgIAAAUCAAAbAgAAGgIAABoCAAAbAgAACQIAABsCAADxAQAACQIAAPEBAAD6AQAACQIAAAkCAAD6AQAAEAIAAPoBAAD5AQAAEAIAAPkBAAALAgAAEAIAABACAAALAgAADAIAAAsCAAACAgAADAIAAPcBAAAMAgAAAgIAAA0CAAD4AQAAAQIAAAECAAD4AQAABwIAAPgBAAD0AQAABwIAAAcCAAD0AQAACgIAAAoCAAD0AQAACAIAAAgCAAD0AQAAEwIAAPQBAAD7AQAAEwIAABMCAAD7AQAAGAIAABgCAAD7AQAA/QEAAPsBAAAZAgAA/QEAAP0BAAAZAgAA7gEAABkCAAD+AQAA7gEAAO4BAAD+AQAAAwIAAAMCAAD+AQAAEgIAAP4BAADwAQAAEgIAABICAADwAQAA8wEAAPABAAAdAgAA8wEAAPMBAAAdAgAADgIAAA4CAAAdAgAAFwIAAB0CAAD8AQAAFwIAABcCAAD8AQAADwIAAA8CAAD8AQAAHAIAAPwBAAD5AQAAHAIAAPoBAAAcAgAA+QEAAOMBAADNAQAA0gEAAM0BAADjAQAA2gEAAM0BAADaAQAA4gEAAOIBAADaAQAA4AEAAOIBAADgAQAA1wEAANcBAADgAQAA2QEAANcBAADZAQAA3gEAAN4BAADZAQAAzwEAAN4BAADPAQAA1AEAANQBAADPAQAA3AEAANQBAADcAQAAzgEAAM4BAADcAQAA1gEAAM4BAADWAQAA2wEAANsBAADWAQAAzAEAANsBAADMAQAA0QEAANEBAADMAQAA0wEAANEBAADTAQAA1QEAANUBAADTAQAA4QEAANUBAADhAQAA0AEAANABAADhAQAA3QEAANABAADdAQAA3wEAAN8BAADdAQAA2AEAANgBAADdAQAA3wEAAN8BAADdAQAA0AEAAN0BAADhAQAA0AEAANABAADhAQAA1QEAAOEBAADTAQAA1QEAANUBAADTAQAA0QEAANMBAADMAQAA0QEAANEBAADMAQAA2wEAAMwBAADWAQAA2wEAANsBAADWAQAAzgEAANYBAADcAQAAzgEAAM4BAADcAQAA1AEAANwBAADPAQAA1AEAANQBAADPAQAA3gEAAM8BAADZAQAA3gEAAN4BAADZAQAA1wEAANkBAADgAQAA1wEAANcBAADgAQAA4gEAAOABAADaAQAA4gEAAOIBAADaAQAAzQEAANoBAADjAQAAzQEAANIBAADNAQAA4wEAADwDAAAiAQAAOwMAADsDAAAiAQAAPAMAAKkCAAA8AwAAtQIAADwDAACpAgAAOwMAADsDAACpAgAAPAMAALUCAAA8AwAAqQIAAAsAAAA8AwAAOwMAADwDAAALAAAACgAAAAoAAAALAAAAPAMAADsDAAA8AwAACwAAADwDAABAAQAAIgEAACIBAABAAQAAPAMAAEABAACpAgAAtQIAAKkCAABAAQAAIgEAACIBAABAAQAAqQIAALUCAACpAgAAQAEAANUCAAA7AwAAqQIAADsDAADVAgAACwAAAAsAAADVAgAAOwMAAKkCAAA7AwAA1QIAADwDAADbAgAAtQIAANsCAAA8AwAACgAAAAoAAAA8AwAA2wIAALUCAADbAgAAPAMAAAoAAADVAgAA2wIAANUCAAAKAAAACwAAAAsAAAAKAAAA1QIAANsCAADVAgAACgAAACIBAAA6AQAAQgEAADoBAAAiAQAAQAEAADoBAABAAQAAMQEAADEBAABAAQAAJAEAACQBAABAAQAAOQEAADkBAABAAQAAKgEAACoBAABAAQAALAEAACwBAABAAQAAPAEAADwBAABAAQAAOAEAADgBAABAAQAAKQEAACkBAABAAQAAHQEAAB0BAABAAQAAPgEAAD4BAABAAQAAJQEAACUBAABAAQAAPgEAAD4BAABAAQAAHQEAAB0BAABAAQAAKQEAACkBAABAAQAAOAEAADgBAABAAQAAPAEAADwBAABAAQAALAEAACwBAABAAQAAKgEAACoBAABAAQAAOQEAADkBAABAAQAAJAEAACQBAABAAQAAMQEAADEBAABAAQAAOgEAAEABAAAiAQAAOgEAAEIBAAA6AQAAIgEAAEABAACrAgAAJQEAAKsCAABAAQAAtQIAALUCAABAAQAAqwIAACUBAACrAgAAQAEAALYCAAAiAQAAQgEAACIBAAC2AgAAqQIAAKkCAAC2AgAAIgEAAEIBAAAiAQAAtgIAANACAADVAgAA2QIAANUCAADQAgAA2wIAANsCAADQAgAAzgIAANsCAADOAgAA2AIAANsCAADYAgAA0wIAANsCAADTAgAA3AIAANsCAADcAgAA1wIAANsCAADXAgAA1gIAANsCAADWAgAA0QIAANsCAADRAgAA2gIAANsCAADaAgAA1AIAANsCAADUAgAA0gIAANsCAADSAgAAzwIAAM8CAADSAgAA2wIAANICAADUAgAA2wIAANQCAADaAgAA2wIAANoCAADRAgAA2wIAANECAADWAgAA2wIAANYCAADXAgAA2wIAANcCAADcAgAA2wIAANwCAADTAgAA2wIAANMCAADYAgAA2wIAANgCAADOAgAA2wIAAM4CAADQAgAA2wIAANsCAADQAgAA1QIAANkCAADVAgAA0AIAAMgBAADVAgAA2wIAANUCAADIAQAAtQEAALUBAADIAQAA1QIAANsCAADVAgAAyAEAAD4BAACrAgAAtAIAAKsCAAA+AQAAJQEAACUBAAA+AQAAqwIAALQCAACrAgAAPgEAAB0BAAC0AgAAqAIAALQCAAAdAQAAPgEAAD4BAAAdAQAAtAIAAKgCAAC0AgAAHQEAACkBAACoAgAArAIAAKgCAAApAQAAHQEAAB0BAAApAQAAqAIAAKwCAACoAgAAKQEAADgBAACsAgAAsAIAAKwCAAA4AQAAKQEAACkBAAA4AQAArAIAALACAACsAgAAOAEAALMCAAA4AQAAsAIAADgBAACzAgAAPAEAADwBAACzAgAAOAEAALACAAA4AQAAswIAACwBAACzAgAArgIAALMCAAAsAQAAPAEAADwBAAAsAQAAswIAAK4CAACzAgAALAEAAK0CAAAsAQAArgIAACwBAACtAgAAKgEAACoBAACtAgAALAEAAK4CAAAsAQAArQIAALECAAAqAQAArQIAACoBAACxAgAAOQEAADkBAACxAgAAKgEAAK0CAAAqAQAAsQIAAKoCAAA5AQAAsQIAADkBAACqAgAAJAEAACQBAACqAgAAOQEAALECAAA5AQAAqgIAAK8CAAAkAQAAqgIAACQBAACvAgAAMQEAADEBAACvAgAAJAEAAKoCAAAkAQAArwIAALICAAAxAQAArwIAADEBAACyAgAAOgEAADoBAACyAgAAMQEAAK8CAAAxAQAAsgIAALYCAAA6AQAAsgIAADoBAAC2AgAAQgEAAEIBAAC2AgAAOgEAALICAAA6AQAAtgIAALUBAADZAgAA1QIAANkCAAC1AQAAwAEAAMABAAC1AQAA2QIAANUCAADZAgAAtQEAAMABAADQAgAA2QIAANACAADAAQAAmQEAAJkBAADAAQAA0AIAANkCAADQAgAAwAEAAJkBAADOAgAA0AIAAM4CAACZAQAAjAEAAIwBAACZAQAAzgIAANACAADOAgAAmQEAAIwBAADYAgAAzgIAANgCAACMAQAAvQEAAL0BAACMAQAA2AIAAM4CAADYAgAAjAEAAL0BAADTAgAA2AIAANMCAAC9AQAApQEAAKUBAAC9AQAA0wIAANgCAADTAgAAvQEAANMCAADKAQAA3AIAAMoBAADTAgAApQEAAKUBAADTAgAAygEAANwCAADKAQAA0wIAANwCAAC7AQAA1wIAALsBAADcAgAAygEAAMoBAADcAgAAuwEAANcCAAC7AQAA3AIAANcCAAC4AQAA1gIAALgBAADXAgAAuwEAALsBAADXAgAAuAEAANYCAAC4AQAA1wIAALgBAADRAgAA1gIAANECAAC4AQAAnQEAAJ0BAAC4AQAA0QIAANYCAADRAgAAuAEAANECAADFAQAA2gIAAMUBAADRAgAAnQEAAJ0BAADRAgAAxQEAANoCAADFAQAA0QIAANoCAACzAQAA1AIAALMBAADaAgAAxQEAAMUBAADaAgAAswEAANQCAACzAQAA2gIAANQCAACiAQAA0gIAAKIBAADUAgAAswEAALMBAADUAgAAogEAANICAACiAQAA1AIAANICAACVAQAAzwIAAJUBAADSAgAAogEAAKIBAADSAgAAlQEAAM8CAACVAQAA0gIAAM8CAADIAQAA2wIAAMgBAADPAgAAlQEAAJUBAADPAgAAyAEAANsCAADIAQAAzwIAALUBAACZAQAAwAEAAJkBAAC1AQAAyAEAAJkBAADIAQAAjAEAAIwBAADIAQAAvQEAAL0BAADIAQAApQEAAKUBAADIAQAAygEAAMoBAADIAQAAuwEAALsBAADIAQAAuAEAALgBAADIAQAAnQEAAJ0BAADIAQAAxQEAAMUBAADIAQAAswEAALMBAADIAQAAogEAAKIBAADIAQAAlQEAAJUBAADIAQAAogEAAKIBAADIAQAAswEAALMBAADIAQAAxQEAAMUBAADIAQAAnQEAAJ0BAADIAQAAuAEAALgBAADIAQAAuwEAALsBAADIAQAAygEAAMoBAADIAQAApQEAAKUBAADIAQAAvQEAAL0BAADIAQAAjAEAAIwBAADIAQAAmQEAAMgBAAC1AQAAmQEAAMABAACZAQAAtQEAAOwCAADfAAAA8gIAAN8AAADsAgAA1wAAAN4CAAD0AgAA6gIAAPQCAADeAgAA5wIAAOcCAADeAgAA6QIAAOcCAADpAgAA7QIAAO0CAADpAgAA7wIAAO0CAADvAgAA8AIAAPACAADvAgAA5AIAAPACAADkAgAA5QIAAOUCAADkAgAA5gIAAOUCAADmAgAA4QIAAOECAADmAgAA4AIAAOECAADgAgAA8QIAAPECAADgAgAA4wIAAPECAADjAgAA4gIAAOICAADjAgAA8wIAAOICAADzAgAA7gIAAO4CAADzAgAA3QIAAO4CAADdAgAA6AIAAOgCAADdAgAA7AIAAOgCAADsAgAA6wIAAOsCAADsAgAA8gIAAOsCAADyAgAA3wIAAN0CAADXAAAA7AIAANcAAADdAgAAtwAAAPICAAC5AAAA3wIAALkAAADyAgAA3wAAAMEAAADzAgAA4wIAAPMCAADBAAAA4AAAAOAAAADdAgAA8wIAAN0CAADgAAAAtwAAAN8CAADWAAAA6wIAANYAAADfAgAAuQAAAOsCAADSAAAA6AIAANIAAADrAgAA1gAAAOgCAADZAAAA7gIAANkAAADoAgAA0gAAANkAAADiAgAA7gIAAOICAADZAAAAwAAAAOICAADdAAAA8QIAAN0AAADiAgAAwAAAAPECAAC/AAAA4QIAAL8AAADxAgAA3QAAAOECAADKAAAA5QIAAMoAAADhAgAAvwAAAOUCAADcAAAA8AIAANwAAADlAgAAygAAAPACAADYAAAA7QIAANgAAADwAgAA3AAAANgAAADnAgAA7QIAAOcCAADYAAAAzwAAAM8AAAD0AgAA5wIAAPQCAADPAAAA4QAAAOEAAADqAgAA9AIAAOoCAADhAAAA1QAAANUAAADeAgAA6gIAAN4CAADVAAAAuAAAALgAAADpAgAA3gIAAOkCAAC4AAAA0wAAANMAAADvAgAA6QIAAO8CAADTAAAA2wAAAO8CAADGAAAA5AIAAMYAAADvAgAA2wAAAMYAAADmAgAA5AIAAOYCAADGAAAAywAAAMsAAADgAgAA5gIAAOACAADLAAAAvgAAAL4AAADjAgAA4AIAAOMCAAC+AAAAwQAAAOIAAAAfAQAAPQEAAB8BAADiAAAAugAAADQBAADiAAAAPQEAAOIAAAA0AQAA0AAAAFkBAAC6AAAA4gAAALoAAABZAQAARgEAALoAAAAvAQAAHwEAAC8BAAC6AAAAyQAAADUBAADQAAAANAEAANAAAAA1AQAA0QAAANAAAABZAQAA4gAAAFkBAADQAAAAVAEAAEYBAADJAAAAugAAAMkAAABGAQAAUAEAAMkAAAA3AQAALwEAADcBAADJAAAA2gAAACEBAADRAAAANQEAANEAAAAhAQAAvAAAANEAAABUAQAA0AAAAFQBAADRAAAAVQEAAFABAADaAAAAyQAAANoAAABQAQAAVwEAANoAAAAyAQAANwEAADIBAADaAAAAzQAAAD8BAAC8AAAAIQEAALwAAAA/AQAA4wAAALwAAABVAQAA0QAAAFUBAAC8AAAASAEAAFcBAADNAAAA2gAAAM0AAABXAQAAUgEAAM0AAAAtAQAAMgEAAC0BAADNAAAAxwAAADABAADjAAAAPwEAAOMAAAAwAQAAzAAAAOMAAABIAQAAvAAAAEgBAADjAAAAWgEAAFIBAADHAAAAzQAAAMcAAABSAQAATgEAAMcAAABBAQAALQEAAEEBAADHAAAA5AAAAMUAAAAwAQAAKwEAADABAADFAAAAzAAAAMwAAABaAQAA4wAAAFoBAADMAAAAUQEAAE4BAADkAAAAxwAAAOQAAABOAQAAWwEAAEEBAAC7AAAAIAEAALsAAABBAQAA5AAAACcBAADFAAAAKwEAAMUAAAAnAQAAwwAAAE0BAADMAAAAxQAAAMwAAABNAQAAUQEAAOQAAABHAQAAuwAAAEcBAADkAAAAWwEAALsAAAA7AQAAIAEAADsBAAC7AAAA3gAAACMBAADDAAAAJwEAAMMAAAAjAQAAvQAAAMMAAABNAQAAxQAAAE0BAADDAAAASwEAAEcBAADeAAAAuwAAAN4AAABHAQAAWAEAAN4AAAAzAQAAOwEAADMBAADeAAAAzgAAAB4BAAC9AAAAIwEAAL0AAAAeAQAAtgAAAL0AAABLAQAAwwAAAEsBAAC9AAAASQEAAFgBAADOAAAA3gAAAM4AAABYAQAAUwEAAM4AAAAcAQAAMwEAABwBAADOAAAAtQAAACYBAAC2AAAAHgEAALYAAAAmAQAAwgAAALYAAABJAQAAvQAAAEkBAAC2AAAARQEAAFMBAAC1AAAAzgAAALUAAABTAQAARAEAALUAAAA2AQAAHAEAADYBAAC1AAAA1AAAACgBAADCAAAAJgEAAMIAAAAoAQAAxAAAAMIAAABFAQAAtgAAAEUBAADCAAAASgEAAEQBAADUAAAAtQAAANQAAABEAQAAVgEAANQAAAAuAQAANgEAAC4BAADUAAAAyAAAAC4BAADEAAAAKAEAAMQAAAAuAQAAyAAAAMQAAABKAQAAwgAAAEoBAADEAAAATAEAAFYBAADIAAAA1AAAAMgAAABWAQAATwEAAMgAAABMAQAAxAAAAEwBAADIAAAATwEAANgAAADJAAAA2gAAAMkAAADYAAAA3AAAAMkAAADcAAAAugAAALoAAADcAAAA4gAAAOIAAADcAAAAygAAAOIAAADKAAAA0AAAANAAAADKAAAA0QAAANEAAADKAAAAvwAAANEAAAC/AAAAvAAAALwAAAC/AAAA3QAAALwAAADdAAAA4wAAAOMAAADdAAAAzAAAAMwAAADdAAAAwAAAAMwAAADAAAAAxQAAAMUAAADAAAAA2QAAAMUAAADZAAAAwwAAAMMAAADZAAAAvQAAAL0AAADZAAAA0gAAAL0AAADSAAAAtgAAALYAAADSAAAAtwAAALcAAADSAAAA1wAAANcAAADSAAAA1gAAANcAAADWAAAA3wAAAN8AAADWAAAAuQAAAOEAAAC4AAAA1QAAALgAAADhAAAAzwAAALgAAADPAAAA0wAAANMAAADPAAAA2AAAANMAAADYAAAA2gAAANMAAADaAAAA2wAAANsAAADaAAAAzQAAANsAAADNAAAAxwAAANsAAADHAAAAxgAAAMYAAADHAAAA5AAAAMYAAADkAAAAuwAAAMYAAAC7AAAAywAAAMsAAAC7AAAA3gAAAMsAAADeAAAAvgAAAL4AAADeAAAAzgAAAL4AAADOAAAAtQAAAL4AAAC1AAAAwQAAAMEAAAC1AAAA1AAAAMEAAADUAAAA4AAAAOAAAADUAAAAyAAAAOAAAADIAAAAxAAAAOAAAADEAAAAtwAAALcAAADEAAAAwgAAALcAAADCAAAAtgAAALYAAADCAAAAtwAAAMIAAADEAAAAtwAAALcAAADEAAAA4AAAAMQAAADIAAAA4AAAAMgAAADUAAAA4AAAAOAAAADUAAAAwQAAANQAAAC1AAAAwQAAAMEAAAC1AAAAvgAAALUAAADOAAAAvgAAAM4AAADeAAAAvgAAAL4AAADeAAAAywAAAN4AAAC7AAAAywAAAMsAAAC7AAAAxgAAALsAAADkAAAAxgAAAOQAAADHAAAAxgAAAMYAAADHAAAA2wAAAMcAAADNAAAA2wAAAM0AAADaAAAA2wAAANsAAADaAAAA0wAAANoAAADYAAAA0wAAANgAAADPAAAA0wAAANMAAADPAAAAuAAAAM8AAADhAAAAuAAAANUAAAC4AAAA4QAAALkAAADWAAAA3wAAAN8AAADWAAAA1wAAANYAAADSAAAA1wAAANcAAADSAAAAtwAAALcAAADSAAAAtgAAALYAAADSAAAAvQAAANIAAADZAAAAvQAAAL0AAADZAAAAwwAAAMMAAADZAAAAxQAAANkAAADAAAAAxQAAAMUAAADAAAAAzAAAAMAAAADdAAAAzAAAAMwAAADdAAAA4wAAAOMAAADdAAAAvAAAAN0AAAC/AAAAvAAAALwAAAC/AAAA0QAAAL8AAADKAAAA0QAAANEAAADKAAAA0AAAANAAAADKAAAA4gAAAMoAAADcAAAA4gAAAOIAAADcAAAAugAAALoAAADcAAAAyQAAANwAAADYAAAAyQAAANoAAADJAAAA2AAAAFABAABSAQAAVwEAAFIBAABQAQAARgEAAFIBAABGAQAATgEAAE4BAABGAQAAWQEAAE4BAABZAQAAWwEAAFsBAABZAQAAVAEAAFsBAABUAQAARwEAAEcBAABUAQAAVQEAAEcBAABVAQAAWAEAAFgBAABVAQAASAEAAFgBAABIAQAAUwEAAFMBAABIAQAAWgEAAFMBAABaAQAARAEAAEQBAABaAQAAUQEAAEQBAABRAQAAVgEAAFYBAABRAQAATQEAAFYBAABNAQAATwEAAE8BAABNAQAASwEAAE8BAABLAQAATAEAAEwBAABLAQAASQEAAEwBAABJAQAASgEAAEoBAABJAQAARQEAAEUBAABJAQAASgEAAEoBAABJAQAATAEAAEkBAABLAQAATAEAAEwBAABLAQAATwEAAEsBAABNAQAATwEAAE8BAABNAQAAVgEAAE0BAABRAQAAVgEAAFYBAABRAQAARAEAAFEBAABaAQAARAEAAEQBAABaAQAAUwEAAFoBAABIAQAAUwEAAFMBAABIAQAAWAEAAEgBAABVAQAAWAEAAFgBAABVAQAARwEAAFUBAABUAQAARwEAAEcBAABUAQAAWwEAAFQBAABZAQAAWwEAAFsBAABZAQAATgEAAFkBAABGAQAATgEAAE4BAABGAQAAUgEAAEYBAABQAQAAUgEAAFcBAABSAQAAUAEAAJ8AAACMAgAAoQAAAI4CAACMAgAAnwAAAIwCAACLAgAAoQAAAF0BAACfAAAAoQAAAJ8AAAAsAgAAjgIAAKEAAACLAgAAKgIAAF0BAAAsAgAAnwAAAF0BAAChAAAAXwEAAKEAAAAqAgAAXwEAAF0BAADGAgAALAIAAF0BAABfAQAAxAIAAF8BAAAqAgAAwgIAAMYCAABdAQAAxAIAAMQCAABfAQAAwgIAAOkBAAAgAwAA6wEAACcDAAAgAwAA6QEAACADAAAeAwAA6wEAAA8AAADpAQAA6wEAAOkBAAD9AgAAJwMAAOsBAAAeAwAA+wIAAA8AAAD9AgAA6QEAAA8AAADrAQAAEQAAAOsBAAD7AgAAEQAAAA8AAAChAgAA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&quot;;;renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(window.devicePixelRatio);renderer.setSize(window.innerWidth,window.innerHeight);document.body.appendChild(renderer.domElement);loader=new THREE.GLTFLoader();loader.load(&quot;data:text/plain;base64,&quot;+base64_data,function(gltf){scene.add(gltf.scene);camera=gltf.cameras[0];controls=new THREE.TrackballControls(camera,renderer.domElement);controls.rotateSpeed=1.0;controls.zoomSpeed=1.2;controls.panSpeed=0.8;controls.noZoom=false;controls.noPan=false;controls.staticMoving=true;controls.dynamicDampingFactor=0.3;controls.keys=[65,83,68];controls.addEventListener(&quot;change&quot;,render);centerControls(scene,camera,controls);render();window.addEventListener(&quot;resize&quot;,onWindowResize,false);animate();onWindowResize();});}
+function init(){scene=new THREE.Scene();scene.background=new THREE.Color(0xffffff);tracklight=new THREE.DirectionalLight(0xffffff,1.75);scene.add(tracklight);base64_data=&quot;Z2xURgIAAADwlAAAjAQAAEpTT057InNjZW5lIjowLCJzY2VuZXMiOlt7Im5vZGVzIjpbMF19XSwiYXNzZXQiOnsidmVyc2lvbiI6IjIuMCIsImdlbmVyYXRvciI6Imh0dHBzOi8vZ2l0aHViLmNvbS9taWtlZGgvdHJpbWVzaCJ9LCJhY2Nlc3NvcnMiOlt7ImNvbXBvbmVudFR5cGUiOjUxMjUsInR5cGUiOiJTQ0FMQVIiLCJidWZmZXJWaWV3IjowLCJjb3VudCI6NjcwMiwibWF4IjpbODQzXSwibWluIjpbMF19LHsiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzMiLCJieXRlT2Zmc2V0IjowLCJidWZmZXJWaWV3IjoxLCJjb3VudCI6ODQ0LCJtYXgiOlsxMC4xOTk1MDAwODM5MjMzNCwxMS42NDAyNTAyMDU5OTM2NTIsMTguMzYxNDEwMTQwOTkxMjFdLCJtaW4iOlstMTAuMTk5NTAwMDgzOTIzMzQsLTExLjY0MDI1MDIwNTk5MzY1MiwtMTguMzYxNDEwMTQwOTkxMjFdfV0sIm1lc2hlcyI6W3sibmFtZSI6ImNoYWlyXzAwMDEub2ZmIiwiZXh0cmFzIjp7InByb2Nlc3NlZCI6dHJ1ZSwiZmlsZV9wYXRoIjoiL2hvbWUvY29kZXNwYWNlLy5rZXJhcy9kYXRhc2V0cy9Nb2RlbE5ldDEwL2NoYWlyL3RyYWluL2NoYWlyXzAwMDEub2ZmIiwiZmlsZV9uYW1lIjoiY2hhaXJfMDAwMS5vZmYifSwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6MX0sImluZGljZXMiOjAsIm1vZGUiOjR9XX1dLCJjYW1lcmFzIjpbeyJuYW1lIjoiY2FtZXJhX0JERDY0MCIsInR5cGUiOiJwZXJzcGVjdGl2ZSIsInBlcnNwZWN0aXZlIjp7ImFzcGVjdFJhdGlvIjoxLjMzMzMzMzMzMzMzMzMzMzMsInlmb3YiOjAuNzg1Mzk4MTYzMzk3NDQ4Mywiem5lYXIiOjAuMDF9fV0sIm5vZGVzIjpbeyJuYW1lIjoid29ybGQiLCJjaGlsZHJlbiI6WzEsMl19LHsibmFtZSI6ImNoYWlyXzAwMDEub2ZmIiwibWVzaCI6MH0seyJuYW1lIjoiY2FtZXJhX0JERDY0MCIsImNhbWVyYSI6MCwibWF0cml4IjpbMS4wLDAuMCwtMC4wLDAuMCwwLjAsMS4wLDAuMCwwLjAsMC4wLDAuMCwxLjAsMC4wLDAuMCwwLjAsNDYuNDYzNDYwNDE5NDEzNDIsMS4wXX1dLCJidWZmZXJzIjpbeyJieXRlTGVuZ3RoIjozNjkzNn1dLCJidWZmZXJWaWV3cyI6W3siYnVmZmVyIjowLCJieXRlT2Zmc2V0IjowLCJieXRlTGVuZ3RoIjoyNjgwOH0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjI2ODA4LCJieXRlTGVuZ3RoIjoxMDEyOH1dfSBIkAAAQklOAAAAAAABAAAAAgAAAAEAAAAAAAAAAwAAAAMAAAAAAAAABAAAAAQAAAAAAAAABQAAAAQAAAAFAAAABgAAAAYAAAAFAAAABAAAAAUAAAAAAAAABAAAAAQAAAAAAAAAAwAAAAMAAAAAAAAAAQAAAAIAAAABAAAAAAAAAAcAAAAAAAAAAgAAAAAAAAAHAAAACAAAAAAAAAAIAAAACQAAAAAAAAAJAAAABQAAAAUAAAAJAAAACgAAAAoAAAAJAAAABQAAAAUAAAAJAAAAAAAAAAkAAAAIAAAAAAAAAAgAAAAHAAAAAAAAAAIAAAAAAAAABwAAAAsAAAAGAAAABQAAAAYAAAALAAAADAAAAAwAAAALAAAABgAAAAUAAAAGAAAACwAAAAQAAAANAAAAAwAAAA0AAAAEAAAADgAAAA4AAAAEAAAADwAAAA8AAAAEAAAABgAAAA8AAAAGAAAAEAAAABAAAAAGAAAADwAAAAYAAAAEAAAADwAAAA8AAAAEAAAADgAAAA4AAAAEAAAADQAAAAMAAAANAAAABAAAAAEAAAARAAAAAgAAABEAAAABAAAAAwAAABEAAAADAAAADQAAABEAAAANAAAADgAAABEAAAAOAAAAEgAAABIAAAAOAAAAEQAAAA4AAAANAAAAEQAAAA0AAAADAAAAEQAAAAMAAAABAAAAEQAAAAIAAAARAAAAAQAAABEAAAAJAAAACAAAAAkAAAARAAAAEgAAAAkAAAASAAAADgAAAAkAAAAOAAAADwAAAAkAAAAPAAAACgAAAAoAAAAPAAAAEAAAABAAAAAPAAAACgAAAAoAAAAPAAAACQAAAA8AAAAOAAAACQAAAA4AAAASAAAACQAAABIAAAARAAAACQAAAAgAAAAJAAAAEQAAABMAAAAFAAAACgAAAAUAAAATAAAACwAAAAsAAAATAAAABQAAAAoAAAAFAAAAEwAAABQAAAAMAAAACwAAAAwAAAAUAAAAFQAAABUAAAAUAAAADAAAAAsAAAAMAAAAFAAAAAYAAAAWAAAAEAAAABYAAAAGAAAADAAAAAwAAAAGAAAAFgAAABAAAAAWAAAABgAAABAAAAATAAAACgAAABMAAAAQAAAAFgAAABYAAAAQAAAAEwAAAAoAAAATAAAAEAAAABcAAAALAAAAEwAAAAsAAAAXAAAAFAAAABQAAAAXAAAACwAAABMAAAALAAAAFwAAABgAAAAVAAAAFAAAABUAAAAYAAAAGQAAABkAAAAYAAAAFQAAABQAAAAVAAAAGAAAAAwAAAAaAAAAFgAAABoAAAAMAAAAFQAAABUAAAAMAAAAGgAAABYAAAAaAAAADAAAABYAAAAXAAAAEwAAABcAAAAWAAAAGgAAABoAAAAWAAAAFwAAABMAAAAXAAAAFgAAABsAAAAUAAAAFwAAABQAAAAbAAAAGAAAABgAAAAbAAAAFAAAABcAAAAUAAAAGwAAABwAAAAZAAAAGAAAABkAAAAcAAAAHQAAAB0AAAAcAAAAGQAAABgAAAAZAAAAHAAAABUAAAAeAAAAGgAAAB4AAAAVAAAAGQAAABkAAAAVAAAAHgAAABoAAAAeAAAAFQAAABoAAAAbAAAAFwAAABsAAAAaAAAAHgAAAB4AAAAaAAAAGwAAABcAAAAbAAAAGgAAAB8AAAAYAAAAGwAAABgAAAAfAAAAHAAAABwAAAAfAAAAGAAAABsAAAAYAAAAHwAAACAAAAAdAAAAHAAAAB0AAAAgAAAAIQAAACEAAAAgAAAAHQAAABwAAAAdAAAAIAAAABkAAAAiAAAAHgAAACIAAAAZAAAAHQAAAB0AAAAZAAAAIgAAAB4AAAAiAAAAGQAAAB4AAAAfAAAAGwAAAB8AAAAeAAAAIgAAACIAAAAeAAAAHwAAABsAAAAfAAAAHgAAACAAAAAfAAAAIwAAAB8AAAAgAAAAHAAAABwAAAAgAAAAHwAAACMAAAAfAAAAIAAAACAAAAAkAAAAIQAAACQAAAAgAAAA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XgAAAFYAAABfAAAAWwAAAFcAAABbAAAAYAAAAFcAAABhAAAAWAAAAFgAAABiAAAAXAAAAFUAAABcAAAAXQAAAFkAAABdAAAAYwAAAF4AAABaAAAAZAAAAFYAAABeAAAAXwAAAF8AAABlAAAAWwAAAFsAAABmAAAAYAAAAFcAAABgAAAAZwAAAGcAAABhAAAAVwAAAFgAAABhAAAAYgAAAFwAAABiAAAAaAAAAF0AAABcAAAAaQAAAF0AAABqAAAAYwAAAF4AAABkAAAAawAAAF4AAABsAAAAXwAAAG0AAABlAAAAXwAAAGUAAABmAAAAWwAAAGYAAABuAAAAYAAAAGcAAABgAAAAbwAAAGcAAABwAAAAYQAAAFwAAABoAAAAaQAAAF0AAABpAAAAagAAAGMAAABqAAAAcQAAAGsAAABkAAAAcgAAAF4AAABrAAAAbAAAAGwAAABtAAAAXwAAAGAAAABuAAAAbwAAAGcAAABvAAAAcwAAAHMAAABwAAAAZwAAAGkAAABoAAAAdAAAAGkAAAB0AAAAagAAAGoAAAB0AAAAcQAAAHIAAAB1AAAAawAAAGsAAAB1AAAAbAAAAHUAAABtAAAAbAAAAG4AAAB2AAAAbwAAAHMAAABvAAAAdwAAAHMAAAB4AAAAcAAAAG8AAAB2AAAAdwAAAHMAAAB3AAAAeQAAAHkAAAB4AAAAcwAAAHYAAAB6AAAAdwAAAHcAAAB6AAAAeQAAAHkAAAB7AAAAeAAAAHoAAAB7AAAAeQAAAHwAAAB9AAAAfgAAAH0AAAB8AAAAfwAAAIAAAACBAAAAggAAAIEAAACAAAAAgwAAAIMAAACAAAAAhAAAAIMAAACEAAAAhQAAAIUAAACEAAAAhgAAAIUAAACGAAAAhwAAAIcAAACGAAAAiAAAAIcAAACIAAAAiQAAAIkAAACIAAAAigAAAIkAAACKAAAAiwAAAIsAAACKAAAAjAAAAIsAAACMAAAAjQAAAI0AAACMAAAAjgAAAI0AAACOAAAAjwAAAI8AAACOAAAAkAAAAI8AAACQAAAAkQAAAJEAAACQAAAAkgAAAJEAAACSAAAAkwAAAJMAAACSAAAAfAAAAJMAAAB8AAAAlAAAAJQAAAB8AAAAfgAAAJQAAAB+AAAAlQAAAJIAAAB/AAAAfAAAAH8AAACSAAAAlgAAAH4AAACXAAAAlQAAAJcAAAB+AAAAfQAAAJgAAACQAAAAjgAAAJAAAACYAAAAmQAAAJkAAACSAAAAkAAAAJIAAACZAAAAlgAAAJUAAACaAAAAlAAAAJoAAACVAAAAlwAAAJQAAACbAAAAkwAAAJsAAACUAAAAmgAAAJMAAACcAAAAkQAAAJwAAACTAAAAmwAAAJwAAACPAAAAkQAAAI8AAACcAAAAnQAAAI8AAACeAAAAjQAAAJ4AAACPAAAAnQAAAI0AAACfAAAAiwAAAJ8AAACNAAAAngAAAIsAAACgAAAAiQAAAKAAAACLAAAAnwAAAIkAAAChAAAAhwAAAKEAAACJAAAAoAAAAIcAAACiAAAAhQAAAKIAAACHAAAAoQAAAKIAAACDAAAAhQAAAIMAAACiAAAAowAAAKMAAACBAAAAgwAAAIEAAACjAAAApAAAAKQAAACCAAAAgQAAAIIAAACkAAAApQAAAKUAAACAAAAAggAAAIAAAAClAAAApgAAAKYAAACEAAAAgAAAAIQAAACmAAAApwAAAKcAAACGAAAAhAAAAIYAAACnAAAAqAAAAIYAAACpAAAAiAAAAKkAAACGAAAAqAAAAKkAAACKAAAAiAAAAIoAAACpAAAAqgAAAKoAAACMAAAAigAAAIwAAACqAAAAqwAAAKsAAACOAAAAjAAAAI4AAACrAAAAmAAAAKwAAACtAAAArgAAAK0AAACsAAAArwAAALAAAACsAAAArgAAAKwAAACwAAAAsQAAALIAAACvAAAArAAAAK8AAACyAAAAswAAAK8AAAC0AAAArQAAALQAAACvAAAAtQAAALYAAACxAAAAsAAAALEAAAC2AAAAtwAAALEAAACyAAAArAAAALIAAACxAAAAuAAAALMAAAC1AAAArwAAALUAAACzAAAAuQAAALUAAAC6AAAAtAAAALoAAAC1AAAAuwAAALwAAAC3AAAAtgAAALcAAAC8AAAAvQAAALcAAAC4AAAAsQAAALgAAAC3AAAAvgAAALkAAAC7AAAAtQAAALsAAAC5AAAAvwAAALsAAADAAAAAugAAAMAAAAC7AAAAwQAAAMIAAAC9AAAAvAAAAL0AAADCAAAAwwAAAL0AAAC+AAAAtwAAAL4AAAC9AAAAxAAAAL8AAADBAAAAuwAAAMEAAAC/AAAAxQAAAMEAAADGAAAAwAAAAMYAAADBAAAAxwAAAMgAAADDAAAAwgAAAMMAAADIAAAAyQAAAMMAAADEAAAAvQAAAMQAAADDAAAAygAAAMUAAADHAAAAwQAAAMcAAADFAAAAywAAAMcAAADMAAAAxgAAAMwAAADHAAAAzQAAAM4AAADIAAAAzwAAAMgAAADOAAAAyQAAAMkAAADKAAAAwwAAAMoAAADJAAAA0AAAAMsAAADNAAAAxwAAAM0AAADLAAAA0QAAAMwAAADSAAAA0wAAANIAAADMAAAAzQAAANQAAADOAAAAzwAAAM4AAADUAAAA1QAAANYAAADJAAAAzgAAAMkAAADWAAAA0AAAAM0AAADXAAAA0gAAANcAAADNAAAA0QAAANIAAADYAAAA0wAAANgAAADSAAAA2QAAANoAAADVAAAA1AAAANUAAADaAAAA2wAAANUAAADWAAAAzgAAANYAAADVAAAA3AAAANcAAADZAAAA0gAAANkAAADXAAAA3QAAANkAAADeAAAA2AAAAN4AAADZAAAA3wAAAOAAAADbAAAA2gAAANsAAADgAAAA4QAAANsAAADcAAAA1QAAANwAAADbAAAA4gAAAN0AAADfAAAA2QAAAN8AAADdAAAA4wAAAN8AAADkAAAA3gAAAOQAAADfAAAA5QAAAOYAAADhAAAA4AAAAOEAAADmAAAA5wAAAOEAAADiAAAA2wAAAOIAAADhAAAA6AAAAOMAAADlAAAA3wAAAOUAAADjAAAA6QAAAOUAAADqAAAA5AAAAOoAAADlAAAA6wAAAOwAAADnAAAA5gAAAOcAAADsAAAA7QAAAOcAAADoAAAA4QAAAOgAAADnAAAA7gAAAOkAAADrAAAA5QAAAOsAAADpAAAA7wAAAOsAAADwAAAA6gAAAPAAAADrAAAA8QAAAPAAAADtAAAA7AAAAO0AAADwAAAA8QAAAO0AAADuAAAA5wAAAO4AAADtAAAA8gAAAO8AAADxAAAA6wAAAPEAAADvAAAA8wAAAPEAAADyAAAA7QAAAPIAAADxAAAA8wAAAKIAAAC1AAAAuwAAALUAAACiAAAAoQAAALUAAAChAAAArwAAAK8AAAChAAAArAAAAKwAAAChAAAAoAAAAKwAAACgAAAAsQAAALEAAACgAAAAtwAAALcAAACgAAAAnwAAALcAAACfAAAAvQAAAL0AAACfAAAAngAAAL0AAACeAAAAwwAAAMMAAACeAAAAyQAAAMkAAACeAAAAnQAAAMkAAACdAAAAzgAAAM4AAACdAAAAnAAAAM4AAACcAAAA1QAAANUAAACcAAAA2wAAANsAAACcAAAAmwAAANsAAACbAAAA4QAAAOEAAACbAAAAlgAAAJYAAACbAAAAfwAAAH8AAACbAAAAmgAAAH8AAACaAAAAfQAAAH0AAACaAAAAlwAAAKQAAACmAAAApQAAAKYAAACkAAAAowAAAKYAAACjAAAApwAAAKcAAACjAAAAogAAAKcAAACiAAAAuwAAAKcAAAC7AAAAqAAAAKgAAAC7AAAAwQAAAKgAAADBAAAAxwAAAKgAAADHAAAAqQAAAKkAAADHAAAAzQAAAKkAAADNAAAA0gAAAKkAAADSAAAAqgAAAKoAAADSAAAA2QAAAKoAAADZAAAAqwAAAKsAAADZAAAA3wAAAKsAAADfAAAA5QAAAKsAAADlAAAAmAAAAJgAAADlAAAA6wAAAJgAAADrAAAAmQAAAJkAAADrAAAA8QAAAJkAAADxAAAA7QAAAJkAAADtAAAAlgAAAJYAAADtAAAA5wAAAJYAAADnAAAA4QAAAOEAAADnAAAAlgAAAOcAAADtAAAAlgAAAJYAAADtAAAAmQAAAO0AAADxAAAAmQAAAPEAAADrAAAAmQAAAJkAAADrAAAAmAAAAOsAAADlAAAAmAAAAJgAAADlAAAAqwAAAOUAAADfAAAAqwAAAN8AAADZAAAAqwAAAKsAAADZAAAAqgAAANkAAADSAAAAqgAAAKoAAADSAAAAqQAAANIAAADNAAAAqQAAAM0AAADHAAAAqQAAAKkAAADHAAAAqAAAAMcAAADBAAAAqAAAAMEAAAC7AAAAqAAAAKgAAAC7AAAApwAAALsAAACiAAAApwAAAKIAAACjAAAApwAAAKcAAACjAAAApgAAAKMAAACkAAAApgAAAKUAAACmAAAApAAAAJcAAACaAAAAfQAAAH0AAACaAAAAfwAAAJoAAACbAAAAfwAAAH8AAACbAAAAlgAAAJYAAACbAAAA4QAAAOEAAACbAAAA2wAAAJsAAACcAAAA2wAAANsAAACcAAAA1QAAANUAAACcAAAAzgAAAJwAAACdAAAAzgAAAM4AAACdAAAAyQAAAJ0AAACeAAAAyQAAAMkAAACeAAAAwwAAAMMAAACeAAAAvQAAAJ4AAACfAAAAvQAAAL0AAACfAAAAtwAAAJ8AAACgAAAAtwAAALcAAACgAAAAsQAAALEAAACgAAAArAAAAKAAAAChAAAArAAAAKwAAAChAAAArwAAAK8AAAChAAAAtQAAAKEAAACiAAAAtQAAALsAAAC1AAAAogAAALkAAADFAAAAvwAAAMUAAAC5AAAAswAAAMUAAACzAAAAywAAAMsAAACzAAAAsgAAAMsAAACyAAAA0QAAANEAAACyAAAAuAAAANEAAAC4AAAA1wAAANcAAAC4AAAAvgAAANcAAAC+AAAA3QAAAN0AAAC+AAAAxAAAAN0AAADEAAAA4wAAAOMAAADEAAAAygAAAOMAAADKAAAA6QAAAOkAAADKAAAA0AAAAOkAAADQAAAA7wAAAO8AAADQAAAA1gAAAO8AAADWAAAA8wAAAPMAAADWAAAA3AAAAPMAAADcAAAA8gAAAPIAAADcAAAA4gAAAPIAAADiAAAA7gAAAO4AAADiAAAA6AAAAOgAAADiAAAA7gAAAO4AAADiAAAA8gAAAOIAAADcAAAA8gAAAPIAAADcAAAA8wAAANwAAADWAAAA8wAAAPMAAADWAAAA7wAAANYAAADQAAAA7wAAAO8AAADQAAAA6QAAANAAAADKAAAA6QAAAOkAAADKAAAA4wAAAMoAAADEAAAA4wAAAOMAAADEAAAA3QAAAMQAAAC+AAAA3QAAAN0AAAC+AAAA1wAAAL4AAAC4AAAA1wAAANcAAAC4AAAA0QAAALgAAACyAAAA0QAAANEAAACyAAAAywAAALIAAACzAAAAywAAAMsAAACzAAAAxQAAALMAAAC5AAAAxQAAAL8AAADFAAAAuQAAAPQAAAD1AAAA9gAAAPYAAAD1AAAA9AAAAPcAAAD0AAAA+AAAAPQAAAD3AAAA9gAAAPYAAAD3AAAA9AAAAPgAAAD0AAAA9wAAAPkAAAD0AAAA9gAAAPQAAAD5AAAA+gAAAPoAAAD5AAAA9AAAAPYAAAD0AAAA+QAAAPQAAAD7AAAA9QAAAPUAAAD7AAAA9AAAAPsAAAD3AAAA+AAAAPcAAAD7AAAA9QAAAPUAAAD7AAAA9wAAAPgAAAD3AAAA+wAAAPwAAAD2AAAA9wAAAPYAAAD8AAAA+QAAAPkAAAD8AAAA9gAAAPcAAAD2AAAA/AAAAPQAAAD9AAAA+AAAAP0AAAD0AAAA+gAAAPoAAAD0AAAA/QAAAPgAAAD9AAAA9AAAAPoAAAD8AAAA/QAAAPwAAAD6AAAA+QAAAPkAAAD6AAAA/AAAAP0AAAD8AAAA+gAAAPUAAAD+AAAA/wAAAP4AAAD1AAAA+wAAAP4AAAD7AAAAAAEAAAABAAD7AAAAAQEAAAEBAAD7AAAAAgEAAAIBAAD7AAAAAwEAAAMBAAD7AAAABAEAAAQBAAD7AAAABQEAAAUBAAD7AAAABgEAAAYBAAD7AAAABwEAAAcBAAD7AAAACAEAAAgBAAD7AAAACQEAAAkBAAD7AAAACgEAAAoBAAD7AAAACQEAAAkBAAD7AAAACAEAAAgBAAD7AAAABwEAAAcBAAD7AAAABgEAAAYBAAD7AAAABQEAAAUBAAD7AAAABAEAAAQBAAD7AAAAAwEAAAMBAAD7AAAAAgEAAAIBAAD7AAAAAQEAAAEBAAD7AAAAAAEAAAABAAD7AAAA/gAAAPsAAAD1AAAA/gAAAP8AAAD+AAAA9QAAAPsAAAALAQAACgEAAAsBAAD7AAAA+AAAAPgAAAD7AAAACwEAAAoBAAALAQAA+wAAAAwBAAD1AAAA/wAAAPUAAAAMAQAA9wAAAPcAAAAMAQAA9QAAAP8AAAD1AAAADAEAAA0BAAD8AAAADgEAAPwAAAANAQAA/QAAAP0AAAANAQAADwEAAP0AAAAPAQAAEAEAAP0AAAAQAQAAEQEAAP0AAAARAQAAEgEAAP0AAAASAQAAEwEAAP0AAAATAQAAFAEAAP0AAAAUAQAAFQEAAP0AAAAVAQAAFgEAAP0AAAAWAQAAFwEAAP0AAAAXAQAAGAEAAP0AAAAYAQAAGQEAABkBAAAYAQAA/QAAABgBAAAXAQAA/QAAABcBAAAWAQAA/QAAABYBAAAVAQAA/QAAABUBAAAUAQAA/QAAABQBAAATAQAA/QAAABMBAAASAQAA/QAAABIBAAARAQAA/QAAABEBAAAQAQAA/QAAABABAAAPAQAA/QAAAA8BAAANAQAA/QAAAP0AAAANAQAA/AAAAA4BAAD8AAAADQEAABoBAAD8AAAA/QAAAPwAAAAaAQAAGwEAABsBAAAaAQAA/AAAAP0AAAD8AAAAGgEAAAkBAAALAQAAHAEAAAsBAAAJAQAACgEAAAoBAAAJAQAACwEAABwBAAALAQAA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TQEAAEoBAAA3AQAANAEAADcBAABKAQAATgEAADYBAABPAQAATQEAAE8BAAA2AQAANQEAAFABAABIAQAARgEAAEgBAABQAQAAUQEAAFEBAABKAQAASAEAAEoBAABRAQAATgEAAE0BAABSAQAATAEAAFIBAABNAQAATwEAAEwBAABTAQAASwEAAFMBAABMAQAAUgEAAEsBAABUAQAASQEAAFQBAABLAQAAUwEAAFQBAABHAQAASQEAAEcBAABUAQAAVQEAAEcBAABWAQAARQEAAFYBAABHAQAAVQEAAEUBAABXAQAAQwEAAFcBAABFAQAAVgEAAEMBAABYAQAAQQEAAFgBAABDAQAAVwEAAEEBAABZAQAAPwEAAFkBAABBAQAAWAEAAD8BAABaAQAAPQEAAFoBAAA/AQAAWQEAAFoBAAA7AQAAPQEAADsBAABaAQAAWwEAAFsBAAA5AQAAOwEAADkBAABbAQAAXAEAAFwBAAA6AQAAOQEAADoBAABcAQAAXQEAAF0BAAA4AQAAOgEAADgBAABdAQAAXgEAAF4BAAA8AQAAOAEAADwBAABeAQAAXwEAAF8BAAA+AQAAPAEAAD4BAABfAQAAYAEAAD4BAABhAQAAQAEAAGEBAAA+AQAAYAEAAGEBAABCAQAAQAEAAEIBAABhAQAAYgEAAGIBAABEAQAAQgEAAEQBAABiAQAAYwEAAGMBAABGAQAARAEAAEYBAABjAQAAUAEAAGQBAABlAQAAZgEAAGUBAABkAQAAZwEAAGgBAABkAQAAZgEAAGQBAABoAQAAaQEAAGoBAABnAQAAZAEAAGcBAABqAQAAawEAAGcBAABsAQAAZQEAAGwBAABnAQAAbQEAAG4BAABpAQAAaAEAAGkBAABuAQAAbwEAAGkBAABqAQAAZAEAAGoBAABpAQAAcAEAAGsBAABtAQAAZwEAAG0BAABrAQAAcQEAAG0BAAByAQAAbAEAAHIBAABtAQAAcwEAAHQBAABvAQAAbgEAAG8BAAB0AQAAdQEAAG8BAABwAQAAaQEAAHABAABvAQAAdgEAAHEBAABzAQAAbQEAAHMBAABxAQAAdwEAAHMBAAB4AQAAcgEAAHgBAABzAQAAeQEAAHoBAAB1AQAAdAEAAHUBAAB6AQAAewEAAHUBAAB2AQAAbwEAAHYBAAB1AQAAfAEAAHcBAAB5AQAAcwEAAHkBAAB3AQAAfQEAAHkBAAB+AQAAeAEAAH4BAAB5AQAAfwEAAIABAAB7AQAAegEAAHsBAACAAQAAgQEAAHsBAAB8AQAAdQEAAHwBAAB7AQAAggEAAH0BAAB/AQAAeQEAAH8BAAB9AQAAgwEAAH8BAACEAQAAfgEAAIQBAAB/AQAAhQEAAIYBAACAAQAAhwEAAIABAACGAQAAgQEAAIEBAACCAQAAewEAAIIBAACBAQAAiAEAAIMBAACFAQAAfwEAAIUBAACDAQAAiQEAAIQBAACKAQAAiwEAAIoBAACEAQAAhQEAAIwBAACGAQAAhwEAAIYBAACMAQAAjQEAAI4BAACBAQAAhgEAAIEBAACOAQAAiAEAAIUBAACPAQAAigEAAI8BAACFAQAAiQEAAIoBAACQAQAAiwEAAJABAACKAQAAkQEAAJIBAACNAQAAjAEAAI0BAACSAQAAkwEAAI0BAACOAQAAhgEAAI4BAACNAQAAlAEAAI8BAACRAQAAigEAAJEBAACPAQAAlQEAAJEBAACWAQAAkAEAAJYBAACRAQAAlwEAAJgBAACTAQAAkgEAAJMBAACYAQAAmQEAAJMBAACUAQAAjQEAAJQBAACTAQAAmgEAAJUBAACXAQAAkQEAAJcBAACVAQAAmwEAAJcBAACcAQAAlgEAAJwBAACXAQAAnQEAAJ4BAACZAQAAmAEAAJkBAACeAQAAnwEAAJkBAACaAQAAkwEAAJoBAACZAQAAoAEAAJsBAACdAQAAlwEAAJ0BAACbAQAAoQEAAJ0BAACiAQAAnAEAAKIBAACdAQAAowEAAKQBAACfAQAAngEAAJ8BAACkAQAApQEAAJ8BAACgAQAAmQEAAKABAACfAQAApgEAAKEBAACjAQAAnQEAAKMBAAChAQAApwEAAKMBAACoAQAAogEAAKgBAACjAQAAqQEAAKgBAAClAQAApAEAAKUBAACoAQAAqQEAAKUBAACmAQAAnwEAAKYBAAClAQAAqgEAAKcBAACpAQAAowEAAKkBAACnAQAAqwEAAKkBAACqAQAApQEAAKoBAACpAQAAqwEAAFoBAABtAQAAcwEAAG0BAABaAQAAWQEAAG0BAABZAQAAZwEAAGcBAABZAQAAZAEAAGQBAABZAQAAWAEAAGQBAABYAQAAaQEAAGkBAABYAQAAbwEAAG8BAABYAQAAVwEAAG8BAABXAQAAdQEAAHUBAABXAQAAVgEAAHUBAABWAQAAewEAAHsBAABWAQAAgQEAAIEBAABWAQAAVQEAAIEBAABVAQAAhgEAAIYBAABVAQAAVAEAAIYBAABUAQAAjQEAAI0BAABUAQAAkwEAAJMBAABUAQAAUwEAAJMBAABTAQAAmQEAAJkBAABTAQAATgEAAE4BAABTAQAANwEAADcBAABTAQAAUgEAADcBAABSAQAANQEAADUBAABSAQAATwEAAFwBAABeAQAAXQEAAF4BAABcAQAAWwEAAF4BAABbAQAAXwEAAF8BAABbAQAAWgEAAF8BAABaAQAAcwEAAF8BAABzAQAAYAEAAGABAABzAQAAeQEAAGABAAB5AQAAfwEAAGABAAB/AQAAYQEAAGEBAAB/AQAAhQEAAGEBAACFAQAAigEAAGEBAACKAQAAYgEAAGIBAACKAQAAkQEAAGIBAACRAQAAYwEAAGMBAACRAQAAlwEAAGMBAACXAQAAnQEAAGMBAACdAQAAUAEAAFABAACdAQAAowEAAFABAACjAQAAUQEAAFEBAACjAQAAqQEAAFEBAACpAQAApQEAAFEBAAClAQAATgEAAE4BAAClAQAAnwEAAE4BAACfAQAAmQEAAJkBAACfAQAATgEAAJ8BAAClAQAATgEAAE4BAAClAQAAUQEAAKUBAACpAQAAUQEAAKkBAACjAQAAUQEAAFEBAACjAQAAUAEAAKMBAACdAQAAUAEAAFABAACdAQAAYwEAAJ0BAACXAQAAYwEAAJcBAACRAQAAYwEAAGMBAACRAQAAYgEAAJEBAACKAQAAYgEAAGIBAACKAQAAYQEAAIoBAACFAQAAYQEAAIUBAAB/AQAAYQEAAGEBAAB/AQAAYAEAAH8BAAB5AQAAYAEAAHkBAABzAQAAYAEAAGABAABzAQAAXwEAAHMBAABaAQAAXwEAAFoBAABbAQAAXwEAAF8BAABbAQAAXgEAAFsBAABcAQAAXgEAAF0BAABeAQAAXAEAAE8BAABSAQAANQEAADUBAABSAQAANwEAAFIBAABTAQAANwEAADcBAABTAQAATgEAAE4BAABTAQAAmQEAAJkBAABTAQAAkwEAAFMBAABUAQAAkwEAAJMBAABUAQAAjQEAAI0BAABUAQAAhgEAAFQBAABVAQAAhgEAAIYBAABVAQAAgQEAAFUBAABWAQAAgQEAAIEBAABWAQAAewEAAHsBAABWAQAAdQEAAFYBAABXAQAAdQEAAHUBAABXAQAAbwEAAFcBAABYAQAAbwEAAG8BAABYAQAAaQEAAGkBAABYAQAAZAEAAFgBAABZAQAAZAEAAGQBAABZAQAAZwEAAGcBAABZAQAAbQEAAFkBAABaAQAAbQEAAHMBAABtAQAAWgEAAHEBAAB9AQAAdwEAAH0BAABxAQAAawEAAH0BAABrAQAAgwEAAIMBAABrAQAAagEAAIMBAABqAQAAiQEAAIkBAABqAQAAcAEAAIkBAABwAQAAjwEAAI8BAABwAQAAdgEAAI8BAAB2AQAAlQEAAJUBAAB2AQAAfAEAAJUBAAB8AQAAmwEAAJsBAAB8AQAAggEAAJsBAACCAQAAoQEAAKEBAACCAQAAiAEAAKEBAACIAQAApwEAAKcBAACIAQAAjgEAAKcBAACOAQAAqwEAAKsBAACOAQAAlAEAAKsBAACUAQAAqgEAAKoBAACUAQAAmgEAAKoBAACaAQAApgEAAKYBAACaAQAAoAEAAKABAACaAQAApgEAAKYBAACaAQAAqgEAAJoBAACUAQAAqgEAAKoBAACUAQAAqwEAAJQBAACOAQAAqwEAAKsBAACOAQAApwEAAI4BAACIAQAApwEAAKcBAACIAQAAoQEAAIgBAACCAQAAoQEAAKEBAACCAQAAmwEAAIIBAAB8AQAAmwEAAJsBAAB8AQAAlQEAAHwBAAB2AQAAlQEAAJUBAAB2AQAAjwEAAHYBAABwAQAAjwEAAI8BAABwAQAAiQEAAHABAABqAQAAiQEAAIkBAABqAQAAgwEAAGoBAABrAQAAgwEAAIMBAABrAQAAfQEAAGsBAABxAQAAfQEAAHcBAAB9AQAAcQEAAKwBAACtAQAArgEAAK0BAACsAQAArwEAALABAACxAQAAsgEAALEBAACwAQAAswEAALMBAACwAQAAtAEAALMBAAC0AQAAtQEAALUBAAC0AQAAtgEAALUBAAC2AQAAtwEAALcBAAC2AQAAuAEAALcBAAC4AQAAuQEAALkBAAC4AQAAugEAALkBAAC6AQAAuwEAALsBAAC6AQAAvAEAALsBAAC8AQAAvQEAAL0BAAC8AQAAvgEAAL0BAAC+AQAAvwEAAL8BAAC+AQAAwAEAAL8BAADAAQAAwQEAAMEBAADAAQAAwgEAAMEBAADCAQAAwwEAAMMBAADCAQAArAEAAMMBAACsAQAAxAEAAMQBAACsAQAArgEAAMQBAACuAQAAxQEAAMIBAACvAQAArAEAAK8BAADCAQAAxgEAAK4BAADHAQAAxQEAAMcBAACuAQAArQEAAMgBAADAAQAAvgEAAMABAADIAQAAyQEAAMkBAADCAQAAwAEAAMIBAADJAQAAxgEAAMUBAADKAQAAxAEAAMoBAADFAQAAxwEAAMQBAADLAQAAwwEAAMsBAADEAQAAygEAAMMBAADMAQAAwQEAAMwBAADDAQAAywEAAMwBAAC/AQAAwQEAAL8BAADMAQAAzQEAAL8BAADOAQAAvQEAAM4BAAC/AQAAzQEAAL0BAADPAQAAuwEAAM8BAAC9AQAAzgEAALsBAADQAQAAuQEAANABAAC7AQAAzwEAALkBAADRAQAAtwEAANEBAAC5AQAA0AEAALcBAADSAQAAtQEAANIBAAC3AQAA0QEAANIBAACzAQAAtQEAALMBAADSAQAA0wEAANMBAACxAQAAswEAALEBAADTAQAA1AEAANQBAACyAQAAsQEAALIBAADUAQAA1QEAANUBAACwAQAAsgEAALABAADVAQAA1gEAANYBAAC0AQAAsAEAALQBAADWAQAA1wEAANcBAAC2AQAAtAEAALYBAADXAQAA2AEAALYBAADZAQAAuAEAANkBAAC2AQAA2AEAANkBAAC6AQAAuAEAALoBAADZAQAA2gEAANoBAAC8AQAAugEAALwBAADaAQAA2wEAANsBAAC+AQAAvAEAAL4BAADbAQAAyAEAANwBAADdAQAA3gEAAN0BAADcAQAA3wEAAOABAADcAQAA3gEAANwBAADgAQAA4QEAAOIBAADfAQAA3AEAAN8BAADiAQAA4wEAAN8BAADkAQAA3QEAAOQBAADfAQAA5QEAAOYBAADhAQAA4AEAAOEBAADmAQAA5wEAAOEBAADiAQAA3AEAAOIBAADhAQAA6AEAAOMBAADlAQAA3wEAAOUBAADjAQAA6QEAAOUBAADqAQAA5AEAAOoBAADlAQAA6wEAAOwBAADnAQAA5gEAAOcBAADsAQAA7QEAAOcBAADoAQAA4QEAAOgBAADnAQAA7gEAAOkBAADrAQAA5QEAAOsBAADpAQAA7wEAAOsBAADwAQAA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JAIAACsCAAAnAgAAKAIAACcCAAArAgAAJQIAACUCAAArAgAAJwIAACgCAAAnAgAAKwIAACwCAAAmAgAAJwIAACYCAAAsAgAAKQIAACkCAAAsAgAAJgIAACcCAAAmAgAALAIAACQCAAAtAgAAKAIAAC0CAAAkAgAAKgIAACoCAAAkAgAALQIAACgCAAAtAgAAJAIAACoCAAAsAgAALQIAACwCAAAqAgAAKQIAACkCAAAqAgAALAIAAC0CAAAsAgAAKgIAACUCAAAuAgAALwIAAC4CAAAlAgAAKwIAAC4CAAArAgAAMAIAADACAAArAgAAMQIAADECAAArAgAAMgIAADICAAArAgAAMwIAADMCAAArAgAANAIAADQCAAArAgAANQIAADUCAAArAgAANgIAADYCAAArAgAANwIAADcCAAArAgAAOAIAADgCAAArAgAAOQIAADkCAAArAgAAOgIAADoCAAArAgAAOQIAADkCAAArAgAAOAIAADgCAAArAgAANwIAADcCAAArAgAANgIAADYCAAArAgAANQIAADUCAAArAgAANAIAADQCAAArAgAAMwIAADMCAAArAgAAMgIAADICAAArAgAAMQIAADECAAArAgAAMAIAADACAAArAgAALgIAACsCAAAlAgAALgIAAC8CAAAuAgAAJQIAACsCAAA7AgAAOgIAADsCAAArAgAAKAIAACgCAAArAgAAOwIAADoCAAA7AgAAKwIAADwCAAAlAgAALwIAACUCAAA8AgAAJwIAACcCAAA8AgAAJQIAAC8CAAAlAgAAPAIAAD0CAAAsAgAAPgIAACwCAAA9AgAALQIAAC0CAAA9AgAAPwIAAC0CAAA/AgAAQAIAAC0CAABAAgAAQQIAAC0CAABBAgAAQgIAAC0CAABCAgAAQwIAAC0CAABDAgAARAIAAC0CAABEAgAARQIAAC0CAABFAgAARgIAAC0CAABGAgAARwIAAC0CAABHAgAASAIAAC0CAABIAgAASQIAAEkCAABIAgAALQIAAEgCAABHAgAALQIAAEcCAABGAgAALQIAAEYCAABFAgAALQIAAEUCAABEAgAALQIAAEQCAABDAgAALQIAAEMCAABCAgAALQIAAEICAABBAgAALQIAAEECAABAAgAALQIAAEACAAA/AgAALQIAAD8CAAA9AgAALQIAAC0CAAA9AgAALAIAAD4CAAAsAgAAPQIAAEoCAAAsAgAALQIAACwCAABKAgAASwIAAEsCAABKAgAALAIAAC0CAAAsAgAASgIAADkCAAA7AgAATAIAADsCAAA5AgAAOgIAADoCAAA5AgAAOwIAAEwCAAA7AgAAOQIAADgCAABMAgAATQIAAEwCAAA4AgAAOQIAADkCAAA4AgAATAIAAE0CAABMAgAAOAIAADcCAABNAgAATgIAAE0CAAA3AgAAOAIAADgCAAA3AgAATQIAAE4CAABNAgAANwIAADYCAABOAgAATwIAAE4CAAA2AgAANwIAADcCAAA2AgAATgIAAE8CAABOAgAANgIAAFACAAA2AgAATwIAADYCAABQAgAANQIAADUCAABQAgAANgIAAE8CAAA2AgAAUAIAADQCAABQAgAAUQIAAFACAAA0AgAANQIAADUCAAA0AgAAUAIAAFECAABQAgAANAIAAFICAAA0AgAAUQIAADQCAABSAgAAMwIAADMCAABSAgAANAIAAFECAAA0AgAAUgIAAFMCAAAzAgAAUgIAADMCAABTAgAAMgIAADICAABTAgAAMwIAAFICAAAzAgAAUwIAAFQCAAAyAgAAUwIAADICAABUAgAAMQIAADECAABUAgAAMgIAAFMCAAAyAgAAVAIAAFUCAAAxAgAAVAIAADECAABVAgAAMAIAADACAABVAgAAMQIAAFQCAAAxAgAAVQIAAFYCAAAwAgAAVQIAADACAABWAgAALgIAAC4CAABWAgAAMAIAAFUCAAAwAgAAVgIAADwCAAAuAgAAVgIAAC4CAAA8AgAALwIAAC8CAAA8AgAALgIAAFYCAAAuAgAAPAIAAEsCAAA+AgAALAIAAD4CAABLAgAAVwIAAFcCAABLAgAAPgIAACwCAAA+AgAASwIAAFcCAAA9AgAAPgIAAD0CAABXAgAAWAIAAFgCAABXAgAAPQIAAD4CAAA9AgAAVwIAAFgCAAA/AgAAPQIAAD8CAABYAgAAWQIAAFkCAABYAgAAPwIAAD0CAAA/AgAAWAIAAFkCAABAAgAAPwIAAEACAABZAgAAWgIAAFoCAABZAgAAQAIAAD8CAABAAgAAWQIAAFoCAABBAgAAQAIAAEECAABaAgAAWwIAAFsCAABaAgAAQQIAAEACAABBAgAAWgIAAEECAABcAgAAQgIAAFwCAABBAgAAWwIAAFsCAABBAgAAXAIAAEICAABcAgAAQQIAAEICAABdAgAAQwIAAF0CAABCAgAAXAIAAFwCAABCAgAAXQIAAEMCAABdAgAAQgIAAEMCAABeAgAARAIAAF4CAABDAgAAXQIAAF0CAABDAgAAXgIAAEQCAABeAgAAQwIAAF4CAABFAgAARAIAAEUCAABeAgAAXwIAAF8CAABeAgAARQIAAEQCAABFAgAAXgIAAEUCAABgAgAARgIAAGACAABFAgAAXwIAAF8CAABFAgAAYAIAAEYCAABgAgAARQIAAEYCAABhAgAARwIAAGECAABGAgAAYAIAAGACAABGAgAAYQIAAEcCAABhAgAARgIAAEcCAABiAgAASAIAAGICAABHAgAAYQIAAGECAABHAgAAYgIAAEgCAABiAgAARwIAAEgCAABjAgAASQIAAGMCAABIAgAAYgIAAGICAABIAgAAYwIAAEkCAABjAgAASAIAAEkCAABKAgAALQIAAEoCAABJAgAAYwIAAGMCAABJAgAASgIAAC0CAABKAgAASQIAAEsCAABYAgAAVwIAAFgCAABLAgAASgIAAFgCAABKAgAAWQIAAFkCAABKAgAAWgIAAFoCAABKAgAAWwIAAFsCAABKAgAAXAIAAFwCAABKAgAAXQIAAF0CAABKAgAAXgIAAF4CAABKAgAAXwIAAF8CAABKAgAAYAIAAGACAABKAgAAYQIAAGECAABKAgAAYgIAAGICAABKAgAAYwIAAGMCAABKAgAAYgIAAGICAABKAgAAYQIAAGECAABKAgAAYAIAAGACAABKAgAAXwIAAF8CAABKAgAAXgIAAF4CAABKAgAAXQIAAF0CAABKAgAAXAIAAFwCAABKAgAAWwIAAFsCAABKAgAAWgIAAFoCAABKAgAAWQIAAFkCAABKAgAAWAIAAEoCAABLAgAAWAIAAFcCAABYAgAASwIAAGQCAABlAgAAZgIAAGUCAABkAgAAZwIAAGgCAABpAgAAagIAAGkCAABoAgAAawIAAGsCAABoAgAAbAIAAGsCAABsAgAAbQIAAG0CAABsAgAAbgIAAG0CAABuAgAAbwIAAG8CAABuAgAAcAIAAG8CAABwAgAAcQIAAHECAABwAgAAcgIAAHECAAByAgAAcwIAAHMCAAByAgAAdAIAAHMCAAB0AgAAdQIAAHUCAAB0AgAAdgIAAHUCAAB2AgAAdwIAAHcCAAB2AgAAeAIAAHcCAAB4AgAAeQIAAHkCAAB4AgAAegIAAHkCAAB6AgAAewIAAHsCAAB6AgAAZAIAAHsCAABkAgAAfAIAAHwCAABkAgAAZgIAAHwCAABmAgAAfQIAAHoCAABnAgAAZAIAAGcCAAB6AgAAfgIAAGYCAAB/AgAAfQIAAH8CAABmAgAAZQIAAIACAAB4AgAAdgIAAHgCAACAAgAAgQIAAIECAAB6AgAAeAIAAHoCAACBAgAAfgIAAH0CAACCAgAAfAIAAIICAAB9AgAAfwIAAHwCAACDAgAAewIAAIMCAAB8AgAAggIAAHsCAACEAgAAeQIAAIQCAAB7AgAAgwIAAIQCAAB3AgAAeQIAAHcCAACEAgAAhQIAAHcCAACGAgAAdQIAAIYCAAB3AgAAhQIAAHUCAACHAgAAcwIAAIcCAAB1AgAAhgIAAHMCAACIAgAAcQIAAIgCAABzAgAAhwIAAHECAACJAgAAbwIAAIkCAABxAgAAiAIAAG8CAACKAgAAbQIAAIoCAABvAgAAiQIAAIoCAABrAgAAbQIAAGsCAACKAgAAiwIAAIsCAABpAgAAawIAAGkCAACLAgAAjAIAAIwCAABqAgAAaQIAAGoCAACMAgAAjQIAAI0CAABoAgAAagIAAGgCAACNAgAAjgIAAI4CAABsAgAAaAIAAGwCAACOAgAAjwIAAI8CAABuAgAAbAIAAG4CAACPAgAAkAIAAG4CAACRAgAAcAIAAJECAABuAgAAkAIAAJECAAByAgAAcAIAAHICAACRAgAAkgIAAJICAAB0AgAAcgIAAHQCAACSAgAAkwIAAJMCAAB2AgAAdAIAAHYCAACTAgAAgAIAAJQCAACVAgAAlgIAAJUCAACUAgAAlwIAAJgCAACUAgAAlgIAAJQCAACYAgAAmQIAAJoCAACXAgAAlAIAAJcCAACaAgAAmwIAAJcCAACcAgAAlQIAAJwCAACXAgAAnQIAAJ4CAACZAgAAmAIAAJkCAACeAgAAnwIAAJkCAACaAgAAlAIAAJoCAACZAgAAoAIAAJsCAACdAgAAlwIAAJ0CAACbAgAAoQIAAJ0CAACiAgAAnAIAAKICAACdAgAAowIAAKQCAACfAgAAngIAAJ8CAACkAgAApQIAAJ8CAACgAgAAmQIAAKACAACfAgAApgIAAKECAACjAgAAnQIAAKMCAAChAgAApwIAAKMCAACoAgAAogIAAKgCAACjAgAAqQIAAKoCAAClAgAApAIAAKUCAACqAgAAqwIAAKUCAACmAgAAnwIAAKYCAAClAgAArAIAAKcCAACpAgAAowIAAKkCAACnAgAArQIAAKkCAACuAgAAqAIAAK4CAACpAgAArwIAALACAACrAgAAqgIAAKsCAACwAgAAsQIAAKsCAACsAgAApQIAAKwCAACrAgAAsgIAAK0CAACvAgAAqQIAAK8CAACtAgAAswIAAK8CAAC0AgAArgIAALQCAACvAgAAtQIAALYCAACwAgAAtwIAALACAAC2AgAAsQIAALECAACyAgAAqwIAALICAACxAgAAuAIAALMCAAC1AgAArwIAALUCAACzAgAAuQIAALQCAAC6AgAAuwIAALoCAAC0AgAAtQIAALwCAAC2AgAAtwIAALYCAAC8AgAAvQIAAL4CAACxAgAAtgIAALECAAC+AgAAuAIAALUCAAC/AgAAugIAAL8CAAC1AgAAuQIAALoCAADAAgAAuwIAAMACAAC6AgAAwQIAAMICAAC9AgAAvAIAAL0CAADCAgAAwwIAAL0CAAC+AgAAtgIAAL4CAAC9AgAAxAIAAL8CAADBAgAAugIAAMECAAC/AgAAxQIAAMECAADGAgAAwAIAAMYCAADBAgAAxwIAAMgCAADDAgAAwgIAAMMCAADIAgAAyQIAAMMCAADEAgAAvQIAAMQCAADDAgAAygIAAMUCAADHAgAAwQIAAMcCAADFAgAAywIAAMcCAADMAgAAxgIAAMwCAADHAgAAzQIAAM4CAADJAgAAyAIAAMkCAADOAgAAzwIAAMkCAADKAgAAwwIAAMoCAADJAgAA0AIAAMsCAADNAgAAxwIAAM0CAADLAgAA0QIAAM0CAADSAgAAzAIAANICAADNAgAA0wIAANQCAADPAgAAzgIAAM8CAADUAgAA1QIAAM8CAADQAgAAyQIAANACAADPAgAA1gIAANECAADTAgAAzQIAANMCAADRAgAA1wIAANMCAADYAgAA0gIAANgCAADTAgAA2QIAANgCAADVAgAA1AIAANUCAADYAgAA2QIAANUCAADWAgAAzwIAANYCAADVAgAA2gIAANcCAADZAgAA0wIAANkCAADXAgAA2wIAANkCAADaAgAA1QIAANoCAADZAgAA2wIAAIoCAACdAgAAowIAAJ0CAACKAgAAiQIAAJ0CAACJAgAAlwIAAJcCAACJAgAAlAIAAJQCAACJAgAAiAIAAJQCAACIAgAAmQIAAJkCAACIAgAAnwIAAJ8CAACIAgAAhwIAAJ8CAACHAgAApQIAAKUCAACHAgAAhgIAAKUCAACGAgAAqwIAAKsCAACGAgAAsQIAALECAACGAgAAhQIAALECAACFAgAAtgIAALYCAACFAgAAhAIAALYCAACEAgAAvQIAAL0CAACEAgAAwwIAAMMCAACEAgAAgwIAAMMCAACDAgAAyQIAAMkCAACDAgAAfgIAAH4CAACDAgAAZwIAAGcCAACDAgAAggIAAGcCAACCAgAAZQIAAGUCAACCAgAAfwIAAIwCAACOAgAAjQIAAI4CAACMAgAAiwIAAI4CAACLAgAAjwIAAI8CAACLAgAAigIAAI8CAACKAgAAowIAAI8CAACjAgAAkAIAAJACAACjAgAAqQIAAJACAACpAgAArwIAAJACAACvAgAAkQIAAJECAACvAgAAtQIAAJECAAC1AgAAugIAAJECAAC6AgAAkgIAAJICAAC6AgAAwQIAAJICAADBAgAAkwIAAJMCAADBAgAAxwIAAJMCAADHAgAAzQIAAJMCAADNAgAAgAIAAIACAADNAgAA0wIAAIACAADTAgAAgQIAAIECAADTAgAA2QIAAIECAADZAgAA1QIAAIECAADVAgAAfgIAAH4CAADVAgAAzwIAAH4CAADPAgAAyQIAAMkCAADPAgAAfgIAAM8CAADVAgAAfgIAAH4CAADVAgAAgQIAANUCAADZAgAAgQIAANkCAADTAgAAgQIAAIECAADTAgAAgAIAANMCAADNAgAAgAIAAIACAADNAgAAkwIAAM0CAADHAgAAkwIAAMcCAADBAgAAkwIAAJMCAADBAgAAkgIAAMECAAC6AgAAkgIAAJICAAC6AgAAkQIAALoCAAC1AgAAkQIAALUCAACvAgAAkQIAAJECAACvAgAAkAIAAK8CAACpAgAAkAIAAKkCAACjAgAAkAIAAJACAACjAgAAjwIAAKMCAACKAgAAjwIAAIoCAACLAgAAjwIAAI8CAACLAgAAjgIAAIsCAACMAgAAjgIAAI0CAACOAgAAjAIAAH8CAACCAgAAZQIAAGUCAACCAgAAZwIAAIICAACDAgAAZwIAAGcCAACDAgAAfgIAAH4CAACDAgAAyQIAAMkCAACDAgAAwwIAAIMCAACEAgAAwwIAAMMCAACEAgAAvQIAAL0CAACEAgAAtgIAAIQCAACFAgAAtgIAALYCAACFAgAAsQIAAIUCAACGAgAAsQIAALECAACGAgAAqwIAAKsCAACGAgAApQIAAIYCAACHAgAApQIAAKUCAACHAgAAnwIAAIcCAACIAgAAnwIAAJ8CAACIAgAAmQIAAJkCAACIAgAAlAIAAIgCAACJAgAAlAIAAJQCAACJAgAAlwIAAJcCAACJAgAAnQIAAIkCAACKAgAAnQIAAKMCAACdAgAAigIAAKECAACtAgAApwIAAK0CAAChAgAAmwIAAK0CAACbAgAAswIAALMCAACbAgAAmgIAALMCAACaAgAAuQIAALkCAACaAgAAoAIAALkCAACgAgAAvwIAAL8CAACgAgAApgIAAL8CAACmAgAAxQIAAMUCAACmAgAArAIAAMUCAACsAgAAywIAAMsCAACsAgAAsgIAAMsCAACyAgAA0QIAANECAACyAgAAuAIAANECAAC4AgAA1wIAANcCAAC4AgAAvgIAANcCAAC+AgAA2wIAANsCAAC+AgAAxAIAANsCAADEAgAA2gIAANoCAADEAgAAygIAANoCAADKAgAA1gIAANYCAADKAgAA0AIAANACAADKAgAA1gIAANYCAADKAgAA2gIAAMoCAADEAgAA2gIAANoCAADEAgAA2wIAAMQCAAC+AgAA2wIAANsCAAC+AgAA1wIAAL4CAAC4AgAA1wIAANcCAAC4AgAA0QIAALgCAACyAgAA0QIAANECAACyAgAAywIAALICAACsAgAAywIAAMsCAACsAgAAxQIAAKwCAACmAgAAxQIAAMUCAACmAgAAvwIAAKYCAACgAgAAvwIAAL8CAACgAgAAuQIAAKACAACaAgAAuQIAALkCAACaAgAAswIAAJoCAACbAgAAswIAALMCAACbAgAArQIAAJsCAAChAgAArQIAAKcCAACtAgAAoQIAANwCAADdAgAA3gIAAN8CAADdAgAA3AIAAN0CAADgAgAA3gIAAOECAADcAgAA3gIAANwCAADiAgAA3wIAAN4CAADgAgAA4wIAAOECAADiAgAA3AIAAOECAADeAgAA5AIAAN4CAADjAgAA5AIAAOECAADlAgAA4gIAAOECAADkAgAA5gIAAOQCAADjAgAA5wIAAOUCAADhAgAA5gIAAOYCAADkAgAA5wIAAOgCAADpAgAA6gIAAOsCAADpAgAA6AIAAOkCAADsAgAA6gIAAO0CAADoAgAA6gIAAOgCAADuAgAA6wIAAOoCAADsAgAA7wIAAO0CAADuAgAA6AIAAO0CAADqAgAA8AIAAOoCAADvAgAA8AIAAO0CAADxAgAA7gIAAO0CAADwAgAA8gIAAPACAADvAgAA8wIAAPECAADtAgAA8gIAAPICAADwAgAA8wIAAPQCAAD1AgAA9gIAAPYCAAD1AgAA9AIAAPcCAAD4AgAA+QIAAPgCAAD3AgAA+gIAAPoCAAD3AgAA+wIAAPoCAAD7AgAA/AIAAPwCAAD7AgAA/QIAAPwCAAD9AgAA/gIAAP4CAAD9AgAA/wIAAP4CAAD/AgAAAAMAAAADAAD/AgAA9gIAAAADAAD2AgAAAQMAAAEDAAD2AgAA9QIAAPUCAAD2AgAAAQMAAAEDAAD2AgAAAAMAAPYCAAD/AgAAAAMAAAADAAD/AgAA/gIAAP8CAAD9AgAA/gIAAP4CAAD9AgAA/AIAAP0CAAD7AgAA/AIAAPwCAAD7AgAA+gIAAPsCAAD3AgAA+gIAAPoCAAD3AgAA+AIAAPkCAAD4AgAA9wIAAPQCAAD2AgAA/wIAAP8CAAD2AgAA9AIAAAIDAAD1AgAA9AIAAPQCAAD1AgAAAgMAAAMDAAABAwAA9QIAAPUCAAABAwAAAwMAAAMDAAAAAwAAAQMAAAEDAAAAAwAAAwMAAAADAAAEAwAA/gIAAP4CAAAEAwAAAAMAAAQDAAD8AgAA/gIAAP4CAAD8AgAABAMAAAQDAAD6AgAA/AIAAPwCAAD6AgAABAMAAAQDAAD4AgAA+gIAAPoCAAD4AgAABAMAAPcCAAD5AgAABQMAAAUDAAD5AgAA9wIAAAYDAAD7AgAA9wIAAPcCAAD7AgAABgMAAAYDAAD9AgAA+wIAAPsCAAD9AgAABgMAAP8CAAD9AgAABgMAAAYDAAD9AgAA/wIAAPQCAAD/AgAABgMAAAYDAAD/AgAA9AIAAAcDAAD1AgAAAgMAAAIDAAD1AgAABwMAAAcDAAADAwAA9QIAAPUCAAADAwAABwMAAAMDAAAEAwAAAAMAAAADAAAEAwAAAwMAAAQDAAAIAwAA+AIAAPgCAAAIAwAABAMAAAYDAAD3AgAABQMAAAUDAAD3AgAABgMAAAkDAAAHAwAAAgMAAAcDAAAJAwAACgMAAAoDAAAJAwAACwMAAAoDAAALAwAADAMAAAwDAAALAwAACgMAAAsDAAAJAwAACgMAAAoDAAAJAwAABwMAAAIDAAAHAwAACQMAAA0DAAAOAwAADwMAABADAAAOAwAADQMAAA4DAAARAwAADwMAABIDAAANAwAADwMAAA0DAAATAwAAEAMAAA8DAAARAwAAFAMAABIDAAATAwAADQMAABIDAAAPAwAAFQMAAA8DAAAUAwAAFQMAABIDAAAWAwAAEwMAABIDAAAVAwAAFwMAABUDAAAUAwAAGAMAABYDAAASAwAAFwMAABcDAAAVAwAAGAMAAA8DAAAOAwAADQMAAA0DAAAOAwAAEAMAAA8DAAARAwAADgMAAA8DAAANAwAAEgMAABADAAATAwAADQMAABQDAAARAwAADwMAAA0DAAATAwAAEgMAABUDAAAPAwAAEgMAABUDAAAUAwAADwMAABMDAAAWAwAAEgMAABcDAAAVAwAAEgMAABgDAAAUAwAAFQMAABcDAAASAwAAFgMAABgDAAAVAwAAFwMAABkDAAAaAwAAGwMAABwDAAAaAwAAGQMAABoDAAAdAwAAGwMAAB4DAAAZAwAAGwMAABkDAAAfAwAAHAMAABsDAAAdAwAAIAMAAB4DAAAfAwAAGQMAAB4DAAAbAwAAIQMAABsDAAAgAwAAIQMAAB4DAAAiAwAAHwMAAB4DAAAhAwAAIwMAACEDAAAgAwAAJAMAACIDAAAeAwAAIwMAACMDAAAhAwAAJAMAACUDAAAmAwAAJwMAACgDAAAmAwAAJQMAACYDAAApAwAAJwMAACoDAAAlAwAAJwMAACUDAAArAwAAKAMAACcDAAApAwAALAMAACoDAAArAwAAJQMAACoDAAAnAwAALQMAACcDAAAsAwAALQMAACoDAAAuAwAAKwMAACoDAAAtAwAALwMAAC0DAAAsAwAAMAMAAC4DAAAqAwAALwMAAC8DAAAtAwAAMAMAACcDAAAmAwAAJQMAACUDAAAmAwAAKAMAACcDAAApAwAAJgMAACcDAAAlAwAAKgMAACgDAAArAwAAJQMAACwDAAApAwAAJwMAACUDAAArAwAAKgMAAC0DAAAnAwAAKgMAAC0DAAAsAwAAJwMAACsDAAAuAwAAKgMAAC8DAAAtAwAAKgMAADADAAAsAwAALQMAAC8DAAAqAwAALgMAADADAAAtAwAALwMAADEDAAAyAwAAMwMAADQDAAAyAwAAMQMAADIDAAA1AwAAMwMAADYDAAAxAwAAMwMAADEDAAA3AwAANAMAADMDAAA1AwAAOAMAADYDAAA3AwAAMQMAADYDAAAzAwAAOQMAADMDAAA4AwAAOQMAADYDAAA6AwAANwMAADYDAAA5AwAAOwMAADkDAAA4AwAANAAAADoDAAA2AwAAOwMAADsDAAA5AwAANAAAADMDAAAyAwAAMQMAADEDAAAyAwAANAMAADMDAAA1AwAAMgMAADMDAAAxAwAANgMAADQDAAA3AwAAMQMAADgDAAA1AwAAMwMAADEDAAA3AwAANgMAADkDAAAzAwAANgMAADkDAAA4AwAAMwMAADcDAAA6AwAANgMAADsDAAA5AwAANgMAADQAAAA4AwAAOQMAADsDAAA2AwAAOgMAADQAAAA5AwAAOwMAABADAAA8AwAAEQMAADwDAAAQAwAAPQMAAD0DAAAQAwAAPAMAABEDAAA8AwAAEAMAABgDAAA8AwAAPgMAADwDAAAYAwAAEQMAABEDAAAYAwAAPAMAAD4DAAA8AwAAGAMAABADAAA/AwAAPQMAAD8DAAAQAwAAFgMAABYDAAAQAwAAPwMAAD0DAAA/AwAAEAMAAD4DAAAWAwAAGAMAABYDAAA+AwAAPwMAAD8DAAA+AwAAFgMAABgDAAAWAwAAPgMAABwDAABAAwAAHQMAAEADAAAcAwAAQQMAAEEDAAAcAwAAQAMAAB0DAABAAwAAHAMAACQDAABAAwAAQgMAAEADAAAkAwAAHQMAAB0DAAAkAwAAQAMAAEIDAABAAwAAJAMAABwDAABDAwAAQQMAAEMDAAAcAwAAIgMAACIDAAAcAwAAQwMAAEEDAABDAwAAHAMAAEIDAAAiAwAAJAMAACIDAABCAwAAQwMAAEMDAABCAwAAIgMAACQDAAAiAwAAQgMAAEQDAABFAwAARgMAAEUDAABEAwAARwMAAEcDAABEAwAARQMAAEYDAABFAwAARAMAAEgDAABFAwAARwMAAEUDAABIAwAASQMAAEkDAABIAwAARQMAAEcDAABFAwAA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&quot;;;renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(window.devicePixelRatio);renderer.setSize(window.innerWidth,window.innerHeight);document.body.appendChild(renderer.domElement);loader=new THREE.GLTFLoader();loader.load(&quot;data:text/plain;base64,&quot;+base64_data,function(gltf){scene.add(gltf.scene);camera=gltf.cameras[0];controls=new THREE.TrackballControls(camera,renderer.domElement);controls.rotateSpeed=1.0;controls.zoomSpeed=1.2;controls.panSpeed=0.8;controls.noZoom=false;controls.noPan=false;controls.staticMoving=true;controls.dynamicDampingFactor=0.3;controls.keys=[65,83,68];controls.addEventListener(&quot;change&quot;,render);centerControls(scene,camera,controls);render();window.addEventListener(&quot;resize&quot;,onWindowResize,false);animate();onWindowResize();});}
 function onWindowResize(){camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);controls.handleResize();render();}
 function animate(){requestAnimationFrame(animate);controls.update();}
 function render(){tracklight.position.copy(camera.position);renderer.render(scene,camera);}
 init();</script></body>
-</html>" width="100%" height="500px" style="border:none;"></iframe> 
+</html>" width="100%" height="500px" style="border:none;"></iframe></div>
 
 
 
 To convert a mesh file to a point cloud we first need to sample points on the mesh
-surface. `.sample()` performs a unifrom random sampling. Here we sample at 2048 locations
+surface. `.sample()` performs a uniform random sampling. Here we sample at 2048 locations
 and visualize in `matplotlib`.
-
 
 
 ```python
@@ -1347,11 +2623,12 @@ ax = fig.add_subplot(111, projection="3d")
 ax.scatter(points[:, 0], points[:, 1], points[:, 2])
 ax.set_axis_off()
 plt.show()
-
 ```
 
 
+    
 ![png](/img/examples/vision/pointnet/pointnet_10_0.png)
+    
 
 
 To generate a `tf.data.Dataset()` we need to first parse through the ModelNet data
@@ -1360,11 +2637,9 @@ standard python list and converted to a `numpy` array. We also store the current
 enumerate index value as the object label and use a dictionary to recall this later.
 
 
-
 ```python
 
 def parse_dataset(num_points=2048):
-
     train_points = []
     train_labels = []
     test_points = []
@@ -1396,12 +2671,10 @@ def parse_dataset(num_points=2048):
         class_map,
     )
 
-
 ```
 
 Set the number of points to sample and batch size and parse the dataset. This can take
 ~5minutes to complete.
-
 
 
 ```python
@@ -1412,21 +2685,29 @@ BATCH_SIZE = 32
 train_points, test_points, train_labels, test_labels, CLASS_MAP = parse_dataset(
     NUM_POINTS
 )
-
 ```
 
 <div class="k-default-codeblock">
 ```
 processing class: bathtub
-processing class: desk
+
 processing class: monitor
-processing class: sofa
-processing class: chair
-processing class: toilet
+
+processing class: desk
+
 processing class: dresser
-processing class: table
+
+processing class: toilet
+
 processing class: bed
+
+processing class: sofa
+
+processing class: chair
+
 processing class: night_stand
+
+processing class: table
 
 ```
 </div>
@@ -1436,30 +2717,32 @@ Data augmentation is important when working with point cloud data. We create a
 augmentation function to jitter and shuffle the train dataset.
 
 
-
 ```python
 
 def augment(points, label):
     # jitter points
-    points += tf.random.uniform(points.shape, -0.005, 0.005, dtype=tf.float64)
+    points += keras.random.uniform(points.shape, -0.005, 0.005, dtype="float64")
     # shuffle points
-    points = tf.random.shuffle(points)
+    points = keras.random.shuffle(points)
     return points, label
 
 
-train_dataset = tf.data.Dataset.from_tensor_slices((train_points, train_labels))
-test_dataset = tf.data.Dataset.from_tensor_slices((test_points, test_labels))
+train_size = 0.8
+dataset = tf_data.Dataset.from_tensor_slices((train_points, train_labels))
+test_dataset = tf_data.Dataset.from_tensor_slices((test_points, test_labels))
+train_dataset_size = int(len(dataset) * train_size)
 
-train_dataset = train_dataset.shuffle(len(train_points)).map(augment).batch(BATCH_SIZE)
+dataset = dataset.shuffle(len(train_points)).map(augment)
 test_dataset = test_dataset.shuffle(len(test_points)).batch(BATCH_SIZE)
 
+train_dataset = dataset.take(train_dataset_size).batch(BATCH_SIZE)
+validation_dataset = dataset.skip(train_dataset_size).batch(BATCH_SIZE)
 ```
 
 ### Build a model
 
-Each convolution and fully-connected layer (with exception for end layers) consits of
+Each convolution and fully-connected layer (with exception for end layers) consists of
 Convolution / Dense -> Batch Normalization -> ReLU Activation.
-
 
 
 ```python
@@ -1475,7 +2758,6 @@ def dense_bn(x, filters):
     x = layers.BatchNormalization(momentum=0.0)(x)
     return layers.Activation("relu")(x)
 
-
 ```
 
 PointNet consists of two core components. The primary MLP network, and the transformer
@@ -1486,33 +2768,29 @@ feature space (n, 3). As per the original paper we constrain the transformation 
 close to an orthogonal matrix (i.e. ||X*X^T - I|| = 0).
 
 
-
 ```python
 
 class OrthogonalRegularizer(keras.regularizers.Regularizer):
     def __init__(self, num_features, l2reg=0.001):
         self.num_features = num_features
         self.l2reg = l2reg
-        self.eye = tf.eye(num_features)
+        self.eye = ops.eye(num_features)
 
     def __call__(self, x):
-        x = tf.reshape(x, (-1, self.num_features, self.num_features))
-        xxt = tf.tensordot(x, x, axes=(2, 2))
-        xxt = tf.reshape(xxt, (-1, self.num_features, self.num_features))
-        return tf.reduce_sum(self.l2reg * tf.square(xxt - self.eye))
-
+        x = ops.reshape(x, (-1, self.num_features, self.num_features))
+        xxt = ops.tensordot(x, x, axes=(2, 2))
+        xxt = ops.reshape(xxt, (-1, self.num_features, self.num_features))
+        return ops.sum(self.l2reg * ops.square(xxt - self.eye))
 
 ```
 
  We can then define a general function to build T-net layers.
 
 
-
 ```python
 
 def tnet(inputs, num_features):
-
-    # Initalise bias as the indentity matrix
+    # Initialise bias as the identity matrix
     bias = keras.initializers.Constant(np.eye(num_features).flatten())
     reg = OrthogonalRegularizer(num_features)
 
@@ -1532,14 +2810,12 @@ def tnet(inputs, num_features):
     # Apply affine transformation to input features
     return layers.Dot(axes=(2, 1))([inputs, feat_T])
 
-
 ```
 
 The main network can be then implemented in the same manner where the t-net mini models
 can be dropped in a layers in the graph. Here we replicate the network architecture
 published in the original paper but with half the number of weights at each layer as we
 are using the smaller 10 class ModelNet dataset.
-
 
 
 ```python
@@ -1562,157 +2838,212 @@ outputs = layers.Dense(NUM_CLASSES, activation="softmax")(x)
 
 model = keras.Model(inputs=inputs, outputs=outputs, name="pointnet")
 model.summary()
-
 ```
 
-<div class="k-default-codeblock">
-```
-Model: "pointnet"
-__________________________________________________________________________________________________
-Layer (type)                    Output Shape         Param #     Connected to                     
-==================================================================================================
-input_1 (InputLayer)            [(None, 2048, 3)]    0                                            
-__________________________________________________________________________________________________
-conv1d (Conv1D)                 (None, 2048, 32)     128         input_1[0][0]                    
-__________________________________________________________________________________________________
-batch_normalization (BatchNorma (None, 2048, 32)     128         conv1d[0][0]                     
-__________________________________________________________________________________________________
-activation (Activation)         (None, 2048, 32)     0           batch_normalization[0][0]        
-__________________________________________________________________________________________________
-conv1d_1 (Conv1D)               (None, 2048, 64)     2112        activation[0][0]                 
-__________________________________________________________________________________________________
-batch_normalization_1 (BatchNor (None, 2048, 64)     256         conv1d_1[0][0]                   
-__________________________________________________________________________________________________
-activation_1 (Activation)       (None, 2048, 64)     0           batch_normalization_1[0][0]      
-__________________________________________________________________________________________________
-conv1d_2 (Conv1D)               (None, 2048, 512)    33280       activation_1[0][0]               
-__________________________________________________________________________________________________
-batch_normalization_2 (BatchNor (None, 2048, 512)    2048        conv1d_2[0][0]                   
-__________________________________________________________________________________________________
-activation_2 (Activation)       (None, 2048, 512)    0           batch_normalization_2[0][0]      
-__________________________________________________________________________________________________
-global_max_pooling1d (GlobalMax (None, 512)          0           activation_2[0][0]               
-__________________________________________________________________________________________________
-dense (Dense)                   (None, 256)          131328      global_max_pooling1d[0][0]       
-__________________________________________________________________________________________________
-batch_normalization_3 (BatchNor (None, 256)          1024        dense[0][0]                      
-__________________________________________________________________________________________________
-activation_3 (Activation)       (None, 256)          0           batch_normalization_3[0][0]      
-__________________________________________________________________________________________________
-dense_1 (Dense)                 (None, 128)          32896       activation_3[0][0]               
-__________________________________________________________________________________________________
-batch_normalization_4 (BatchNor (None, 128)          512         dense_1[0][0]                    
-__________________________________________________________________________________________________
-activation_4 (Activation)       (None, 128)          0           batch_normalization_4[0][0]      
-__________________________________________________________________________________________________
-dense_2 (Dense)                 (None, 9)            1161        activation_4[0][0]               
-__________________________________________________________________________________________________
-reshape (Reshape)               (None, 3, 3)         0           dense_2[0][0]                    
-__________________________________________________________________________________________________
-dot (Dot)                       (None, 2048, 3)      0           input_1[0][0]                    
-                                                                 reshape[0][0]                    
-__________________________________________________________________________________________________
-conv1d_3 (Conv1D)               (None, 2048, 32)     128         dot[0][0]                        
-__________________________________________________________________________________________________
-batch_normalization_5 (BatchNor (None, 2048, 32)     128         conv1d_3[0][0]                   
-__________________________________________________________________________________________________
-activation_5 (Activation)       (None, 2048, 32)     0           batch_normalization_5[0][0]      
-__________________________________________________________________________________________________
-conv1d_4 (Conv1D)               (None, 2048, 32)     1056        activation_5[0][0]               
-__________________________________________________________________________________________________
-batch_normalization_6 (BatchNor (None, 2048, 32)     128         conv1d_4[0][0]                   
-__________________________________________________________________________________________________
-activation_6 (Activation)       (None, 2048, 32)     0           batch_normalization_6[0][0]      
-__________________________________________________________________________________________________
-conv1d_5 (Conv1D)               (None, 2048, 32)     1056        activation_6[0][0]               
-__________________________________________________________________________________________________
-batch_normalization_7 (BatchNor (None, 2048, 32)     128         conv1d_5[0][0]                   
-__________________________________________________________________________________________________
-activation_7 (Activation)       (None, 2048, 32)     0           batch_normalization_7[0][0]      
-__________________________________________________________________________________________________
-conv1d_6 (Conv1D)               (None, 2048, 64)     2112        activation_7[0][0]               
-__________________________________________________________________________________________________
-batch_normalization_8 (BatchNor (None, 2048, 64)     256         conv1d_6[0][0]                   
-__________________________________________________________________________________________________
-activation_8 (Activation)       (None, 2048, 64)     0           batch_normalization_8[0][0]      
-__________________________________________________________________________________________________
-conv1d_7 (Conv1D)               (None, 2048, 512)    33280       activation_8[0][0]               
-__________________________________________________________________________________________________
-batch_normalization_9 (BatchNor (None, 2048, 512)    2048        conv1d_7[0][0]                   
-__________________________________________________________________________________________________
-activation_9 (Activation)       (None, 2048, 512)    0           batch_normalization_9[0][0]      
-__________________________________________________________________________________________________
-global_max_pooling1d_1 (GlobalM (None, 512)          0           activation_9[0][0]               
-__________________________________________________________________________________________________
-dense_3 (Dense)                 (None, 256)          131328      global_max_pooling1d_1[0][0]     
-__________________________________________________________________________________________________
-batch_normalization_10 (BatchNo (None, 256)          1024        dense_3[0][0]                    
-__________________________________________________________________________________________________
-activation_10 (Activation)      (None, 256)          0           batch_normalization_10[0][0]     
-__________________________________________________________________________________________________
-dense_4 (Dense)                 (None, 128)          32896       activation_10[0][0]              
-__________________________________________________________________________________________________
-batch_normalization_11 (BatchNo (None, 128)          512         dense_4[0][0]                    
-__________________________________________________________________________________________________
-activation_11 (Activation)      (None, 128)          0           batch_normalization_11[0][0]     
-__________________________________________________________________________________________________
-dense_5 (Dense)                 (None, 1024)         132096      activation_11[0][0]              
-__________________________________________________________________________________________________
-reshape_1 (Reshape)             (None, 32, 32)       0           dense_5[0][0]                    
-__________________________________________________________________________________________________
-dot_1 (Dot)                     (None, 2048, 32)     0           activation_6[0][0]               
-                                                                 reshape_1[0][0]                  
-__________________________________________________________________________________________________
-conv1d_8 (Conv1D)               (None, 2048, 32)     1056        dot_1[0][0]                      
-__________________________________________________________________________________________________
-batch_normalization_12 (BatchNo (None, 2048, 32)     128         conv1d_8[0][0]                   
-__________________________________________________________________________________________________
-activation_12 (Activation)      (None, 2048, 32)     0           batch_normalization_12[0][0]     
-__________________________________________________________________________________________________
-conv1d_9 (Conv1D)               (None, 2048, 64)     2112        activation_12[0][0]              
-__________________________________________________________________________________________________
-batch_normalization_13 (BatchNo (None, 2048, 64)     256         conv1d_9[0][0]                   
-__________________________________________________________________________________________________
-activation_13 (Activation)      (None, 2048, 64)     0           batch_normalization_13[0][0]     
-__________________________________________________________________________________________________
-conv1d_10 (Conv1D)              (None, 2048, 512)    33280       activation_13[0][0]              
-__________________________________________________________________________________________________
-batch_normalization_14 (BatchNo (None, 2048, 512)    2048        conv1d_10[0][0]                  
-__________________________________________________________________________________________________
-activation_14 (Activation)      (None, 2048, 512)    0           batch_normalization_14[0][0]     
-__________________________________________________________________________________________________
-global_max_pooling1d_2 (GlobalM (None, 512)          0           activation_14[0][0]              
-__________________________________________________________________________________________________
-dense_6 (Dense)                 (None, 256)          131328      global_max_pooling1d_2[0][0]     
-__________________________________________________________________________________________________
-batch_normalization_15 (BatchNo (None, 256)          1024        dense_6[0][0]                    
-__________________________________________________________________________________________________
-activation_15 (Activation)      (None, 256)          0           batch_normalization_15[0][0]     
-__________________________________________________________________________________________________
-dropout (Dropout)               (None, 256)          0           activation_15[0][0]              
-__________________________________________________________________________________________________
-dense_7 (Dense)                 (None, 128)          32896       dropout[0][0]                    
-__________________________________________________________________________________________________
-batch_normalization_16 (BatchNo (None, 128)          512         dense_7[0][0]                    
-__________________________________________________________________________________________________
-activation_16 (Activation)      (None, 128)          0           batch_normalization_16[0][0]     
-__________________________________________________________________________________________________
-dropout_1 (Dropout)             (None, 128)          0           activation_16[0][0]              
-__________________________________________________________________________________________________
-dense_8 (Dense)                 (None, 10)           1290        dropout_1[0][0]                  
-==================================================================================================
-Total params: 748,979
-Trainable params: 742,899
-Non-trainable params: 6,080
-__________________________________________________________________________________________________
 
-```
-</div>
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "pointnet"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)        </span>┃<span style="font-weight: bold"> Output Shape      </span>┃<span style="font-weight: bold"> Param # </span>┃<span style="font-weight: bold"> Connected to         </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
+│ input_layer         │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">3</span>)   │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ -                    │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">128</span> │ input_layer[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]    │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalization │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">128</span> │ conv1d[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]         │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation          │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │   <span style="color: #00af00; text-decoration-color: #00af00">2,112</span> │ activation[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]     │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">256</span> │ conv1d_1[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]       │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_1        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d_2 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>) │  <span style="color: #00af00; text-decoration-color: #00af00">33,280</span> │ activation_1[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>) │   <span style="color: #00af00; text-decoration-color: #00af00">2,048</span> │ conv1d_2[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]       │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_2        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>) │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ global_max_pooling… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ activation_2[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">GlobalMaxPooling1…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dense (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │ <span style="color: #00af00; text-decoration-color: #00af00">131,328</span> │ global_max_pooling1… │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │   <span style="color: #00af00; text-decoration-color: #00af00">1,024</span> │ dense[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]          │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_3        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dense_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)       │  <span style="color: #00af00; text-decoration-color: #00af00">32,896</span> │ activation_3[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)       │     <span style="color: #00af00; text-decoration-color: #00af00">512</span> │ dense_1[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]        │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_4        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dense_2 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>)         │   <span style="color: #00af00; text-decoration-color: #00af00">1,161</span> │ activation_4[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ reshape (<span style="color: #0087ff; text-decoration-color: #0087ff">Reshape</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">3</span>, <span style="color: #00af00; text-decoration-color: #00af00">3</span>)      │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ dense_2[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]        │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dot (<span style="color: #0087ff; text-decoration-color: #0087ff">Dot</span>)           │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">3</span>)   │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ input_layer[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>],   │
+│                     │                   │         │ reshape[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]        │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d_3 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">128</span> │ dot[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]            │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">128</span> │ conv1d_3[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]       │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_5        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d_4 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │   <span style="color: #00af00; text-decoration-color: #00af00">1,056</span> │ activation_5[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">128</span> │ conv1d_4[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]       │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_6        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d_5 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │   <span style="color: #00af00; text-decoration-color: #00af00">1,056</span> │ activation_6[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">128</span> │ conv1d_5[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]       │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_7        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d_6 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │   <span style="color: #00af00; text-decoration-color: #00af00">2,112</span> │ activation_7[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">256</span> │ conv1d_6[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]       │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_8        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d_7 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>) │  <span style="color: #00af00; text-decoration-color: #00af00">33,280</span> │ activation_8[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>) │   <span style="color: #00af00; text-decoration-color: #00af00">2,048</span> │ conv1d_7[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]       │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_9        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>) │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ global_max_pooling… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ activation_9[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">GlobalMaxPooling1…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dense_3 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │ <span style="color: #00af00; text-decoration-color: #00af00">131,328</span> │ global_max_pooling1… │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │   <span style="color: #00af00; text-decoration-color: #00af00">1,024</span> │ dense_3[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]        │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_10       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dense_4 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)       │  <span style="color: #00af00; text-decoration-color: #00af00">32,896</span> │ activation_10[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]  │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)       │     <span style="color: #00af00; text-decoration-color: #00af00">512</span> │ dense_4[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]        │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_11       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dense_5 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">1024</span>)      │ <span style="color: #00af00; text-decoration-color: #00af00">132,096</span> │ activation_11[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]  │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ reshape_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Reshape</span>) │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)    │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ dense_5[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]        │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dot_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dot</span>)         │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ activation_6[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>],  │
+│                     │                   │         │ reshape_1[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d_8 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │   <span style="color: #00af00; text-decoration-color: #00af00">1,056</span> │ dot_1[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]          │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">128</span> │ conv1d_8[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]       │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_12       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)  │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d_9 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │   <span style="color: #00af00; text-decoration-color: #00af00">2,112</span> │ activation_12[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]  │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">256</span> │ conv1d_9[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]       │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_13       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ conv1d_10 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv1D</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>) │  <span style="color: #00af00; text-decoration-color: #00af00">33,280</span> │ activation_13[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]  │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>) │   <span style="color: #00af00; text-decoration-color: #00af00">2,048</span> │ conv1d_10[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]      │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_14       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>) │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ global_max_pooling… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">512</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ activation_14[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]  │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">GlobalMaxPooling1…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dense_6 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │ <span style="color: #00af00; text-decoration-color: #00af00">131,328</span> │ global_max_pooling1… │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │   <span style="color: #00af00; text-decoration-color: #00af00">1,024</span> │ dense_6[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]        │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_15       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dropout (<span style="color: #0087ff; text-decoration-color: #0087ff">Dropout</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ activation_15[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]  │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dense_7 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)       │  <span style="color: #00af00; text-decoration-color: #00af00">32,896</span> │ dropout[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]        │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ batch_normalizatio… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)       │     <span style="color: #00af00; text-decoration-color: #00af00">512</span> │ dense_7[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]        │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">BatchNormalizatio…</span> │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ activation_16       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ batch_normalization… │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Activation</span>)        │                   │         │                      │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dropout_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dropout</span>) │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">128</span>)       │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ activation_16[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]  │
+├─────────────────────┼───────────────────┼─────────┼──────────────────────┤
+│ dense_8 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">10</span>)        │   <span style="color: #00af00; text-decoration-color: #00af00">1,290</span> │ dropout_1[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]      │
+└─────────────────────┴───────────────────┴─────────┴──────────────────────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">748,979</span> (2.86 MB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">742,899</span> (2.83 MB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">6,080</span> (23.75 KB)
+</pre>
+
+
+
 ### Train model
 
 Once the model is defined it can be trained like any other standard classification model
 using `.compile()` and `.fit()`.
-
 
 
 ```python
@@ -1722,54 +3053,14215 @@ model.compile(
     metrics=["sparse_categorical_accuracy"],
 )
 
-model.fit(train_dataset, epochs=20, validation_data=test_dataset)
-
+model.fit(train_dataset, epochs=20, validation_data=validation_dataset)
 ```
 
 <div class="k-default-codeblock">
 ```
 Epoch 1/20
-125/125 [==============================] - 28s 221ms/step - loss: 3.5897 - sparse_categorical_accuracy: 0.2724 - val_loss: 5804697916006203392.0000 - val_sparse_categorical_accuracy: 0.3073
-Epoch 2/20
-125/125 [==============================] - 27s 215ms/step - loss: 3.1970 - sparse_categorical_accuracy: 0.3443 - val_loss: 836343949164544.0000 - val_sparse_categorical_accuracy: 0.3425
-Epoch 3/20
-125/125 [==============================] - 27s 215ms/step - loss: 2.8959 - sparse_categorical_accuracy: 0.4260 - val_loss: 15107376738729984.0000 - val_sparse_categorical_accuracy: 0.3084
-Epoch 4/20
-125/125 [==============================] - 27s 215ms/step - loss: 2.7148 - sparse_categorical_accuracy: 0.4939 - val_loss: 6823221.0000 - val_sparse_categorical_accuracy: 0.3304
-Epoch 5/20
-125/125 [==============================] - 27s 215ms/step - loss: 2.5500 - sparse_categorical_accuracy: 0.5560 - val_loss: 675110905872323182592.0000 - val_sparse_categorical_accuracy: 0.4493
-Epoch 6/20
-125/125 [==============================] - 27s 215ms/step - loss: 2.3595 - sparse_categorical_accuracy: 0.6081 - val_loss: 600389124096.0000 - val_sparse_categorical_accuracy: 0.5749
-Epoch 7/20
-125/125 [==============================] - 27s 215ms/step - loss: 2.2485 - sparse_categorical_accuracy: 0.6394 - val_loss: 680423464582760103936.0000 - val_sparse_categorical_accuracy: 0.4912
-Epoch 8/20
-125/125 [==============================] - 27s 215ms/step - loss: 2.1945 - sparse_categorical_accuracy: 0.6575 - val_loss: 44108689408.0000 - val_sparse_categorical_accuracy: 0.6410
-Epoch 9/20
-125/125 [==============================] - 27s 215ms/step - loss: 2.1318 - sparse_categorical_accuracy: 0.6725 - val_loss: 873314112.0000 - val_sparse_categorical_accuracy: 0.6112
-Epoch 10/20
-125/125 [==============================] - 27s 215ms/step - loss: 2.0140 - sparse_categorical_accuracy: 0.7018 - val_loss: 13168980992.0000 - val_sparse_categorical_accuracy: 0.6784
-Epoch 11/20
-125/125 [==============================] - 27s 215ms/step - loss: 1.9929 - sparse_categorical_accuracy: 0.7056 - val_loss: 36888236785664.0000 - val_sparse_categorical_accuracy: 0.6586
-Epoch 12/20
-125/125 [==============================] - 27s 215ms/step - loss: 1.9542 - sparse_categorical_accuracy: 0.7166 - val_loss: 85375.9844 - val_sparse_categorical_accuracy: 0.7026
-Epoch 13/20
-125/125 [==============================] - 27s 215ms/step - loss: 1.8648 - sparse_categorical_accuracy: 0.7447 - val_loss: 7.7962 - val_sparse_categorical_accuracy: 0.5441
-Epoch 14/20
-125/125 [==============================] - 27s 215ms/step - loss: 1.9016 - sparse_categorical_accuracy: 0.7444 - val_loss: 66469.9062 - val_sparse_categorical_accuracy: 0.6134
-Epoch 15/20
-125/125 [==============================] - 27s 215ms/step - loss: 1.8003 - sparse_categorical_accuracy: 0.7695 - val_loss: 519227186348032.0000 - val_sparse_categorical_accuracy: 0.6949
-Epoch 16/20
-125/125 [==============================] - 27s 215ms/step - loss: 1.8019 - sparse_categorical_accuracy: 0.7702 - val_loss: 5263462156149188460544.0000 - val_sparse_categorical_accuracy: 0.6520
-Epoch 17/20
-125/125 [==============================] - 27s 215ms/step - loss: 1.7177 - sparse_categorical_accuracy: 0.7903 - val_loss: 142240048.0000 - val_sparse_categorical_accuracy: 0.7941
-Epoch 18/20
-125/125 [==============================] - 27s 216ms/step - loss: 1.7548 - sparse_categorical_accuracy: 0.7855 - val_loss: 2.6049 - val_sparse_categorical_accuracy: 0.5022
-Epoch 19/20
-125/125 [==============================] - 27s 215ms/step - loss: 1.7101 - sparse_categorical_accuracy: 0.8003 - val_loss: 1152819181305987072.0000 - val_sparse_categorical_accuracy: 0.7753
-Epoch 20/20
-125/125 [==============================] - 27s 215ms/step - loss: 1.6812 - sparse_categorical_accuracy: 0.8176 - val_loss: 12854714433536.0000 - val_sparse_categorical_accuracy: 0.7390
 
-<tensorflow.python.keras.callbacks.History at 0x7f07e5dd3940>
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  16:59 10s/step - loss: 70.7465 - sparse_categorical_accuracy: 0.2188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  2:06 1s/step - loss: 69.8872 - sparse_categorical_accuracy: 0.1953  
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  2:00 1s/step - loss: 69.4798 - sparse_categorical_accuracy: 0.1823
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:57 1s/step - loss: 68.7454 - sparse_categorical_accuracy: 0.1719
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:53 1s/step - loss: 67.8508 - sparse_categorical_accuracy: 0.1700
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:50 1s/step - loss: 67.0352 - sparse_categorical_accuracy: 0.1703
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:47 1s/step - loss: 66.3409 - sparse_categorical_accuracy: 0.1702
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:45 1s/step - loss: 65.5973 - sparse_categorical_accuracy: 0.1734
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:43 1s/step - loss: 64.8169 - sparse_categorical_accuracy: 0.1761
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:41 1s/step - loss: 64.0699 - sparse_categorical_accuracy: 0.1769
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:39 1s/step - loss: 63.3220 - sparse_categorical_accuracy: 0.1779
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 62.6677 - sparse_categorical_accuracy: 0.1776
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 62.0234 - sparse_categorical_accuracy: 0.1778
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 61.4256 - sparse_categorical_accuracy: 0.1774
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 60.8435 - sparse_categorical_accuracy: 0.1772
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 60.2982 - sparse_categorical_accuracy: 0.1771
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 59.7788 - sparse_categorical_accuracy: 0.1773
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 59.2792 - sparse_categorical_accuracy: 0.1777
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 58.7959 - sparse_categorical_accuracy: 0.1782
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 58.3345 - sparse_categorical_accuracy: 0.1787
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 57.8916 - sparse_categorical_accuracy: 0.1794
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 57.4650 - sparse_categorical_accuracy: 0.1803
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 57.0690 - sparse_categorical_accuracy: 0.1811
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 56.6876 - sparse_categorical_accuracy: 0.1819
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:20 1s/step - loss: 56.3285 - sparse_categorical_accuracy: 0.1827
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:19 1s/step - loss: 55.9864 - sparse_categorical_accuracy: 0.1834
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:18 1s/step - loss: 55.6550 - sparse_categorical_accuracy: 0.1843
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:17 1s/step - loss: 55.3351 - sparse_categorical_accuracy: 0.1852
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 55.0261 - sparse_categorical_accuracy: 0.1863
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:15 1s/step - loss: 54.7329 - sparse_categorical_accuracy: 0.1872
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:13 1s/step - loss: 54.4503 - sparse_categorical_accuracy: 0.1882
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:12 1s/step - loss: 54.1778 - sparse_categorical_accuracy: 0.1891
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 53.9170 - sparse_categorical_accuracy: 0.1900
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 53.6651 - sparse_categorical_accuracy: 0.1909
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:09 1s/step - loss: 53.4239 - sparse_categorical_accuracy: 0.1916
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:08 1s/step - loss: 53.1926 - sparse_categorical_accuracy: 0.1922
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:07 1s/step - loss: 52.9695 - sparse_categorical_accuracy: 0.1929
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 52.7542 - sparse_categorical_accuracy: 0.1935
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 52.5469 - sparse_categorical_accuracy: 0.1940
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:03 1s/step - loss: 52.3461 - sparse_categorical_accuracy: 0.1946
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:02 1s/step - loss: 52.1509 - sparse_categorical_accuracy: 0.1950
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 51.9608 - sparse_categorical_accuracy: 0.1955
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 51.7759 - sparse_categorical_accuracy: 0.1960
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 51.5960 - sparse_categorical_accuracy: 0.1966 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  58s 1s/step - loss: 51.4224 - sparse_categorical_accuracy: 0.1971
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  57s 1s/step - loss: 51.2539 - sparse_categorical_accuracy: 0.1976
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 51.0897 - sparse_categorical_accuracy: 0.1982
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 50.9300 - sparse_categorical_accuracy: 0.1987
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 50.7742 - sparse_categorical_accuracy: 0.1992
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  52s 1s/step - loss: 50.6223 - sparse_categorical_accuracy: 0.1997
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 50.4747 - sparse_categorical_accuracy: 0.2001
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 50.3312 - sparse_categorical_accuracy: 0.2006
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 50.1910 - sparse_categorical_accuracy: 0.2011
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 50.0539 - sparse_categorical_accuracy: 0.2017
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  47s 1s/step - loss: 49.9200 - sparse_categorical_accuracy: 0.2022
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 49.7896 - sparse_categorical_accuracy: 0.2027
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 49.6620 - sparse_categorical_accuracy: 0.2032
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 49.5372 - sparse_categorical_accuracy: 0.2037
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 49.4152 - sparse_categorical_accuracy: 0.2041
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  42s 1s/step - loss: 49.2957 - sparse_categorical_accuracy: 0.2046
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  41s 1s/step - loss: 49.1790 - sparse_categorical_accuracy: 0.2050
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 49.0646 - sparse_categorical_accuracy: 0.2054
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 48.9525 - sparse_categorical_accuracy: 0.2058
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 48.8427 - sparse_categorical_accuracy: 0.2062
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  36s 1s/step - loss: 48.7353 - sparse_categorical_accuracy: 0.2065
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 48.6299 - sparse_categorical_accuracy: 0.2069
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 48.5266 - sparse_categorical_accuracy: 0.2072
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 48.4277 - sparse_categorical_accuracy: 0.2075
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 48.3308 - sparse_categorical_accuracy: 0.2078
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  31s 1s/step - loss: 48.2357 - sparse_categorical_accuracy: 0.2081
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 48.1423 - sparse_categorical_accuracy: 0.2084
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 48.0505 - sparse_categorical_accuracy: 0.2087
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 47.9604 - sparse_categorical_accuracy: 0.2090
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 47.8719 - sparse_categorical_accuracy: 0.2093
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  26s 1s/step - loss: 47.7852 - sparse_categorical_accuracy: 0.2096
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 47.7000 - sparse_categorical_accuracy: 0.2098
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 47.6164 - sparse_categorical_accuracy: 0.2101
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 47.5342 - sparse_categorical_accuracy: 0.2104
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 47.4536 - sparse_categorical_accuracy: 0.2106
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  21s 1s/step - loss: 47.3744 - sparse_categorical_accuracy: 0.2109
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 47.2967 - sparse_categorical_accuracy: 0.2112
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 47.2202 - sparse_categorical_accuracy: 0.2114
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 47.1450 - sparse_categorical_accuracy: 0.2117
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 47.0711 - sparse_categorical_accuracy: 0.2119
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 46.9984 - sparse_categorical_accuracy: 0.2122
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 46.9270 - sparse_categorical_accuracy: 0.2124
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 46.8568 - sparse_categorical_accuracy: 0.2126
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 46.7877 - sparse_categorical_accuracy: 0.2129
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 46.7196 - sparse_categorical_accuracy: 0.2131
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 46.6525 - sparse_categorical_accuracy: 0.2133
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 46.5865 - sparse_categorical_accuracy: 0.2135 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 46.5215 - sparse_categorical_accuracy: 0.2137
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 46.4574 - sparse_categorical_accuracy: 0.2139
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 46.3946 - sparse_categorical_accuracy: 0.2141
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 46.3327 - sparse_categorical_accuracy: 0.2143
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 46.2717 - sparse_categorical_accuracy: 0.2145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 46.2115 - sparse_categorical_accuracy: 0.2147
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 46.1522 - sparse_categorical_accuracy: 0.2149
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 46.0937 - sparse_categorical_accuracy: 0.2151
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 46.0345 - sparse_categorical_accuracy: 0.2154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 119s 1s/step - loss: 45.9764 - sparse_categorical_accuracy: 0.2156 - val_loss: 4122951.0000 - val_sparse_categorical_accuracy: 0.3154
+
+
+<div class="k-default-codeblock">
+```
+Epoch 2/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:44 1s/step - loss: 36.7920 - sparse_categorical_accuracy: 0.2500
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:42 1s/step - loss: 36.8501 - sparse_categorical_accuracy: 0.2188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:39 1s/step - loss: 36.8194 - sparse_categorical_accuracy: 0.2049
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 36.7948 - sparse_categorical_accuracy: 0.1947
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 36.7802 - sparse_categorical_accuracy: 0.1907
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 36.7761 - sparse_categorical_accuracy: 0.1911
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 36.7720 - sparse_categorical_accuracy: 0.1937
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 36.7660 - sparse_categorical_accuracy: 0.1964
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 36.7617 - sparse_categorical_accuracy: 0.1977
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 36.7567 - sparse_categorical_accuracy: 0.1992
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 36.7558 - sparse_categorical_accuracy: 0.2007
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 36.7534 - sparse_categorical_accuracy: 0.2022
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 36.7539 - sparse_categorical_accuracy: 0.2033
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 36.7521 - sparse_categorical_accuracy: 0.2049
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.7500 - sparse_categorical_accuracy: 0.2064
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 36.7464 - sparse_categorical_accuracy: 0.2087
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 36.7410 - sparse_categorical_accuracy: 0.2116
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 36.7356 - sparse_categorical_accuracy: 0.2138
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 36.7314 - sparse_categorical_accuracy: 0.2157
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 36.7275 - sparse_categorical_accuracy: 0.2178
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 36.7235 - sparse_categorical_accuracy: 0.2196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 36.7189 - sparse_categorical_accuracy: 0.2218
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 36.7141 - sparse_categorical_accuracy: 0.2241
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:17 1s/step - loss: 36.7087 - sparse_categorical_accuracy: 0.2262
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 36.7027 - sparse_categorical_accuracy: 0.2283
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 36.6970 - sparse_categorical_accuracy: 0.2303
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 36.6911 - sparse_categorical_accuracy: 0.2325
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 36.6862 - sparse_categorical_accuracy: 0.2342
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:12 1s/step - loss: 36.6818 - sparse_categorical_accuracy: 0.2357
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 36.6766 - sparse_categorical_accuracy: 0.2372
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 36.6717 - sparse_categorical_accuracy: 0.2387
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 36.6670 - sparse_categorical_accuracy: 0.2403
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 36.6629 - sparse_categorical_accuracy: 0.2418
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 36.6591 - sparse_categorical_accuracy: 0.2431
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 36.6551 - sparse_categorical_accuracy: 0.2444
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 36.6513 - sparse_categorical_accuracy: 0.2456
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 36.6478 - sparse_categorical_accuracy: 0.2467
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 36.6441 - sparse_categorical_accuracy: 0.2477
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 36.6405 - sparse_categorical_accuracy: 0.2487
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 36.6368 - sparse_categorical_accuracy: 0.2497
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 36.6331 - sparse_categorical_accuracy: 0.2507
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 36.6330 - sparse_categorical_accuracy: 0.2515 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 36.6330 - sparse_categorical_accuracy: 0.2523
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 36.6331 - sparse_categorical_accuracy: 0.2531
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 36.6330 - sparse_categorical_accuracy: 0.2538
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 36.6330 - sparse_categorical_accuracy: 0.2546
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 36.6330 - sparse_categorical_accuracy: 0.2554
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 36.6330 - sparse_categorical_accuracy: 0.2561
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 36.6331 - sparse_categorical_accuracy: 0.2568
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 36.6331 - sparse_categorical_accuracy: 0.2575
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 36.6332 - sparse_categorical_accuracy: 0.2582
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 36.6332 - sparse_categorical_accuracy: 0.2588
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 36.6331 - sparse_categorical_accuracy: 0.2594
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 36.6330 - sparse_categorical_accuracy: 0.2600
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 36.6329 - sparse_categorical_accuracy: 0.2606
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 36.6331 - sparse_categorical_accuracy: 0.2612
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 36.6332 - sparse_categorical_accuracy: 0.2618
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 36.6332 - sparse_categorical_accuracy: 0.2624
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 36.6331 - sparse_categorical_accuracy: 0.2630
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  41s 1s/step - loss: 36.6331 - sparse_categorical_accuracy: 0.2636
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 36.6330 - sparse_categorical_accuracy: 0.2641
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 36.6330 - sparse_categorical_accuracy: 0.2646
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 36.6329 - sparse_categorical_accuracy: 0.2652
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 36.6329 - sparse_categorical_accuracy: 0.2657
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  36s 1s/step - loss: 36.6330 - sparse_categorical_accuracy: 0.2662
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 36.6332 - sparse_categorical_accuracy: 0.2667
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 36.6336 - sparse_categorical_accuracy: 0.2671
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 36.6340 - sparse_categorical_accuracy: 0.2674
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 36.6346 - sparse_categorical_accuracy: 0.2678
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 36.6352 - sparse_categorical_accuracy: 0.2682
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 36.6359 - sparse_categorical_accuracy: 0.2685
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 36.6365 - sparse_categorical_accuracy: 0.2688
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 36.6371 - sparse_categorical_accuracy: 0.2690
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 36.6377 - sparse_categorical_accuracy: 0.2693
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 36.6384 - sparse_categorical_accuracy: 0.2696
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 36.6389 - sparse_categorical_accuracy: 0.2698
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 36.6394 - sparse_categorical_accuracy: 0.2700
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 36.6398 - sparse_categorical_accuracy: 0.2703
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 36.6401 - sparse_categorical_accuracy: 0.2706
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 36.6406 - sparse_categorical_accuracy: 0.2708
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 36.6411 - sparse_categorical_accuracy: 0.2710
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 36.6415 - sparse_categorical_accuracy: 0.2712
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 36.6419 - sparse_categorical_accuracy: 0.2714
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 36.6423 - sparse_categorical_accuracy: 0.2716
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 36.6426 - sparse_categorical_accuracy: 0.2718
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 36.6429 - sparse_categorical_accuracy: 0.2720
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 36.6431 - sparse_categorical_accuracy: 0.2723
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 36.6432 - sparse_categorical_accuracy: 0.2725
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 36.6433 - sparse_categorical_accuracy: 0.2727
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 36.6434 - sparse_categorical_accuracy: 0.2730
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 36.6435 - sparse_categorical_accuracy: 0.2732 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 36.6435 - sparse_categorical_accuracy: 0.2734
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 36.6434 - sparse_categorical_accuracy: 0.2736
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 36.6432 - sparse_categorical_accuracy: 0.2738
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 36.6430 - sparse_categorical_accuracy: 0.2740
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 36.6427 - sparse_categorical_accuracy: 0.2742
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 36.6424 - sparse_categorical_accuracy: 0.2744
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 36.6421 - sparse_categorical_accuracy: 0.2746
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 36.6418 - sparse_categorical_accuracy: 0.2748
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 36.6402 - sparse_categorical_accuracy: 0.2749
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 108s 1s/step - loss: 36.6386 - sparse_categorical_accuracy: 0.2751 - val_loss: 20961250112658389073920.0000 - val_sparse_categorical_accuracy: 0.3191
+
+
+<div class="k-default-codeblock">
+```
+Epoch 3/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  57:33 35s/step - loss: 35.9745 - sparse_categorical_accuracy: 0.3438
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:39 1s/step - loss: 36.1432 - sparse_categorical_accuracy: 0.3359  
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 36.1628 - sparse_categorical_accuracy: 0.3420
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:39 1s/step - loss: 36.1912 - sparse_categorical_accuracy: 0.3424
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 36.2222 - sparse_categorical_accuracy: 0.3390
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 36.2318 - sparse_categorical_accuracy: 0.3345
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 36.2484 - sparse_categorical_accuracy: 0.3301
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 36.2639 - sparse_categorical_accuracy: 0.3284
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 36.2697 - sparse_categorical_accuracy: 0.3282
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 36.2697 - sparse_categorical_accuracy: 0.3304
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 36.2697 - sparse_categorical_accuracy: 0.3316
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 36.2714 - sparse_categorical_accuracy: 0.3319
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 36.2731 - sparse_categorical_accuracy: 0.3319
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 36.2716 - sparse_categorical_accuracy: 0.3325
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 36.2714 - sparse_categorical_accuracy: 0.3327
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.2703 - sparse_categorical_accuracy: 0.3325
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 36.2685 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 36.2665 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 36.2672 - sparse_categorical_accuracy: 0.3320
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 36.2689 - sparse_categorical_accuracy: 0.3316
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 36.2700 - sparse_categorical_accuracy: 0.3311
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 36.2712 - sparse_categorical_accuracy: 0.3307
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 36.2732 - sparse_categorical_accuracy: 0.3301
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 36.2753 - sparse_categorical_accuracy: 0.3293
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:18 1s/step - loss: 36.2772 - sparse_categorical_accuracy: 0.3284
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 36.2789 - sparse_categorical_accuracy: 0.3275
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 36.2803 - sparse_categorical_accuracy: 0.3266
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 36.2832 - sparse_categorical_accuracy: 0.3258
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 36.2886 - sparse_categorical_accuracy: 0.3251
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:12 1s/step - loss: 36.2944 - sparse_categorical_accuracy: 0.3245
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 36.3001 - sparse_categorical_accuracy: 0.3237
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 36.3053 - sparse_categorical_accuracy: 0.3231
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 36.3102 - sparse_categorical_accuracy: 0.3226
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 36.3150 - sparse_categorical_accuracy: 0.3221
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:07 1s/step - loss: 36.3196 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 36.3239 - sparse_categorical_accuracy: 0.3212
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 36.3281 - sparse_categorical_accuracy: 0.3209
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 36.3322 - sparse_categorical_accuracy: 0.3204
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 36.3358 - sparse_categorical_accuracy: 0.3201
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:02 1s/step - loss: 36.3392 - sparse_categorical_accuracy: 0.3199
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 36.3423 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 36.3453 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 36.3482 - sparse_categorical_accuracy: 0.3193 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 36.3509 - sparse_categorical_accuracy: 0.3193
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 36.3534 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 36.3557 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 36.3577 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 36.3597 - sparse_categorical_accuracy: 0.3190
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 36.3617 - sparse_categorical_accuracy: 0.3188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 36.3636 - sparse_categorical_accuracy: 0.3186
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 36.3654 - sparse_categorical_accuracy: 0.3183
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 36.3671 - sparse_categorical_accuracy: 0.3181
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 36.3687 - sparse_categorical_accuracy: 0.3179
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 36.3705 - sparse_categorical_accuracy: 0.3177
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 36.3723 - sparse_categorical_accuracy: 0.3175
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 36.3744 - sparse_categorical_accuracy: 0.3173
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 36.3764 - sparse_categorical_accuracy: 0.3171
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 36.3784 - sparse_categorical_accuracy: 0.3170
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 36.3805 - sparse_categorical_accuracy: 0.3168
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  41s 1s/step - loss: 36.3824 - sparse_categorical_accuracy: 0.3167
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 36.3843 - sparse_categorical_accuracy: 0.3166
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 36.3862 - sparse_categorical_accuracy: 0.3165
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 36.3879 - sparse_categorical_accuracy: 0.3164
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 36.3893 - sparse_categorical_accuracy: 0.3163
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  36s 1s/step - loss: 36.3907 - sparse_categorical_accuracy: 0.3163
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 36.3921 - sparse_categorical_accuracy: 0.3162
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 36.3933 - sparse_categorical_accuracy: 0.3162
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 36.3944 - sparse_categorical_accuracy: 0.3161
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 36.3953 - sparse_categorical_accuracy: 0.3161
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  31s 1s/step - loss: 36.3962 - sparse_categorical_accuracy: 0.3160
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 36.3971 - sparse_categorical_accuracy: 0.3160
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 36.3978 - sparse_categorical_accuracy: 0.3159
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 36.3986 - sparse_categorical_accuracy: 0.3159
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 36.3994 - sparse_categorical_accuracy: 0.3158
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 36.4003 - sparse_categorical_accuracy: 0.3157
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 36.4011 - sparse_categorical_accuracy: 0.3157
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 36.4019 - sparse_categorical_accuracy: 0.3156
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 36.4026 - sparse_categorical_accuracy: 0.3156
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 36.4032 - sparse_categorical_accuracy: 0.3155
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 36.4038 - sparse_categorical_accuracy: 0.3155
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 36.4045 - sparse_categorical_accuracy: 0.3155
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 36.4051 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 36.4058 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 36.4066 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 36.4072 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 36.4079 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 36.4085 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 36.4091 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 36.4097 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 36.4104 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 36.4110 - sparse_categorical_accuracy: 0.3154 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 36.4117 - sparse_categorical_accuracy: 0.3153
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 36.4123 - sparse_categorical_accuracy: 0.3153
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 36.4129 - sparse_categorical_accuracy: 0.3152
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 36.4135 - sparse_categorical_accuracy: 0.3152
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 36.4142 - sparse_categorical_accuracy: 0.3152
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 36.4150 - sparse_categorical_accuracy: 0.3151
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 36.4157 - sparse_categorical_accuracy: 0.3151
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 36.4164 - sparse_categorical_accuracy: 0.3151
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 36.4156 - sparse_categorical_accuracy: 0.3150
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 142s 1s/step - loss: 36.4148 - sparse_categorical_accuracy: 0.3150 - val_loss: 14661139300352.0000 - val_sparse_categorical_accuracy: 0.2240
+
+
+<div class="k-default-codeblock">
+```
+Epoch 4/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:40 1s/step - loss: 36.7380 - sparse_categorical_accuracy: 0.5312
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:40 1s/step - loss: 36.7969 - sparse_categorical_accuracy: 0.4844
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 36.7860 - sparse_categorical_accuracy: 0.4653
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 36.7852 - sparse_categorical_accuracy: 0.4447
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 36.7560 - sparse_categorical_accuracy: 0.4370
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 36.7412 - sparse_categorical_accuracy: 0.4293
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 36.7300 - sparse_categorical_accuracy: 0.4221
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 36.7233 - sparse_categorical_accuracy: 0.4148
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 36.7190 - sparse_categorical_accuracy: 0.4073
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 36.7201 - sparse_categorical_accuracy: 0.3990
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 36.7176 - sparse_categorical_accuracy: 0.3925
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 36.7097 - sparse_categorical_accuracy: 0.3882
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 36.7017 - sparse_categorical_accuracy: 0.3850
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 36.6936 - sparse_categorical_accuracy: 0.3819
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 36.6858 - sparse_categorical_accuracy: 0.3786
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.6785 - sparse_categorical_accuracy: 0.3752
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.6711 - sparse_categorical_accuracy: 0.3723
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 36.6637 - sparse_categorical_accuracy: 0.3695
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 36.6692 - sparse_categorical_accuracy: 0.3668
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 36.6728 - sparse_categorical_accuracy: 0.3647
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 36.6748 - sparse_categorical_accuracy: 0.3631
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 36.6766 - sparse_categorical_accuracy: 0.3616
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 36.6783 - sparse_categorical_accuracy: 0.3601
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 36.6799 - sparse_categorical_accuracy: 0.3588
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:17 1s/step - loss: 36.6818 - sparse_categorical_accuracy: 0.3576
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 36.6836 - sparse_categorical_accuracy: 0.3565
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 36.6852 - sparse_categorical_accuracy: 0.3555
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 36.6879 - sparse_categorical_accuracy: 0.3545
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 36.6908 - sparse_categorical_accuracy: 0.3535
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:12 1s/step - loss: 36.6939 - sparse_categorical_accuracy: 0.3525
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 36.6971 - sparse_categorical_accuracy: 0.3515
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 36.7002 - sparse_categorical_accuracy: 0.3506
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 36.7032 - sparse_categorical_accuracy: 0.3498
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 36.7059 - sparse_categorical_accuracy: 0.3492
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:07 1s/step - loss: 36.7085 - sparse_categorical_accuracy: 0.3487
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 36.7110 - sparse_categorical_accuracy: 0.3481
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 36.7138 - sparse_categorical_accuracy: 0.3476
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 36.7167 - sparse_categorical_accuracy: 0.3472
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 36.7196 - sparse_categorical_accuracy: 0.3468
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:02 1s/step - loss: 36.7225 - sparse_categorical_accuracy: 0.3463
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 36.7254 - sparse_categorical_accuracy: 0.3459
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 36.7283 - sparse_categorical_accuracy: 0.3455
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 36.7311 - sparse_categorical_accuracy: 0.3450 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 36.7339 - sparse_categorical_accuracy: 0.3446
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  57s 1s/step - loss: 36.7364 - sparse_categorical_accuracy: 0.3441
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 36.7387 - sparse_categorical_accuracy: 0.3437
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 36.7410 - sparse_categorical_accuracy: 0.3432
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 36.7433 - sparse_categorical_accuracy: 0.3428
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 36.7454 - sparse_categorical_accuracy: 0.3424
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 36.7475 - sparse_categorical_accuracy: 0.3420
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 36.7496 - sparse_categorical_accuracy: 0.3416
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 36.7515 - sparse_categorical_accuracy: 0.3413
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 36.7532 - sparse_categorical_accuracy: 0.3410
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 36.7547 - sparse_categorical_accuracy: 0.3407
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 36.7561 - sparse_categorical_accuracy: 0.3404
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 36.7575 - sparse_categorical_accuracy: 0.3401
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 36.7590 - sparse_categorical_accuracy: 0.3398
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 36.7603 - sparse_categorical_accuracy: 0.3396
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 36.7617 - sparse_categorical_accuracy: 0.3393
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  41s 1s/step - loss: 36.7629 - sparse_categorical_accuracy: 0.3390
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 36.7641 - sparse_categorical_accuracy: 0.3387
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 36.7653 - sparse_categorical_accuracy: 0.3383
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 36.7665 - sparse_categorical_accuracy: 0.3380
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 36.7676 - sparse_categorical_accuracy: 0.3376
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  36s 1s/step - loss: 36.7687 - sparse_categorical_accuracy: 0.3373
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 36.7696 - sparse_categorical_accuracy: 0.3369
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 36.7705 - sparse_categorical_accuracy: 0.3366
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 36.7713 - sparse_categorical_accuracy: 0.3363
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 36.7720 - sparse_categorical_accuracy: 0.3360
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  31s 1s/step - loss: 36.7725 - sparse_categorical_accuracy: 0.3357
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 36.7730 - sparse_categorical_accuracy: 0.3354
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 36.7734 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 36.7736 - sparse_categorical_accuracy: 0.3350
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 36.7739 - sparse_categorical_accuracy: 0.3348
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  26s 1s/step - loss: 36.7742 - sparse_categorical_accuracy: 0.3345
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 36.7744 - sparse_categorical_accuracy: 0.3343
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 36.7746 - sparse_categorical_accuracy: 0.3340
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 36.7747 - sparse_categorical_accuracy: 0.3338
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 36.7747 - sparse_categorical_accuracy: 0.3335
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 36.7747 - sparse_categorical_accuracy: 0.3333
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 36.7746 - sparse_categorical_accuracy: 0.3330
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 36.7745 - sparse_categorical_accuracy: 0.3328
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 36.7743 - sparse_categorical_accuracy: 0.3325
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 36.7741 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 36.7739 - sparse_categorical_accuracy: 0.3320
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 36.7737 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 36.7735 - sparse_categorical_accuracy: 0.3315
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 36.7732 - sparse_categorical_accuracy: 0.3312
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 36.7729 - sparse_categorical_accuracy: 0.3310
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 36.7727 - sparse_categorical_accuracy: 0.3307
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 36.7724 - sparse_categorical_accuracy: 0.3305 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 36.7721 - sparse_categorical_accuracy: 0.3303
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 36.7718 - sparse_categorical_accuracy: 0.3300
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 36.7714 - sparse_categorical_accuracy: 0.3298
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 36.7711 - sparse_categorical_accuracy: 0.3296
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 36.7707 - sparse_categorical_accuracy: 0.3294
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 36.7704 - sparse_categorical_accuracy: 0.3293
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 36.7701 - sparse_categorical_accuracy: 0.3291
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 36.7697 - sparse_categorical_accuracy: 0.3289
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 36.7677 - sparse_categorical_accuracy: 0.3288
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 110s 1s/step - loss: 36.7658 - sparse_categorical_accuracy: 0.3286 - val_loss: 2640681721921536.0000 - val_sparse_categorical_accuracy: 0.3542
+
+
+<div class="k-default-codeblock">
+```
+Epoch 5/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:43 1s/step - loss: 36.6004 - sparse_categorical_accuracy: 0.2188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:42 1s/step - loss: 36.5184 - sparse_categorical_accuracy: 0.2734
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:43 1s/step - loss: 36.4827 - sparse_categorical_accuracy: 0.2969
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:42 1s/step - loss: 36.4396 - sparse_categorical_accuracy: 0.3086
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:42 1s/step - loss: 36.4243 - sparse_categorical_accuracy: 0.3131
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:40 1s/step - loss: 36.4060 - sparse_categorical_accuracy: 0.3165
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 36.4471 - sparse_categorical_accuracy: 0.3178
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 36.4807 - sparse_categorical_accuracy: 0.3177
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 36.5028 - sparse_categorical_accuracy: 0.3163
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 36.5155 - sparse_categorical_accuracy: 0.3162
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 36.5232 - sparse_categorical_accuracy: 0.3151
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 36.5263 - sparse_categorical_accuracy: 0.3147
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 36.5277 - sparse_categorical_accuracy: 0.3145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 36.5289 - sparse_categorical_accuracy: 0.3139
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 36.5328 - sparse_categorical_accuracy: 0.3130
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 36.5365 - sparse_categorical_accuracy: 0.3120
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 36.5411 - sparse_categorical_accuracy: 0.3116
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 36.5457 - sparse_categorical_accuracy: 0.3119
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 36.5504 - sparse_categorical_accuracy: 0.3127
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.5570 - sparse_categorical_accuracy: 0.3130
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 36.5644 - sparse_categorical_accuracy: 0.3134
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 36.5724 - sparse_categorical_accuracy: 0.3134
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 36.5828 - sparse_categorical_accuracy: 0.3136
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 36.6011 - sparse_categorical_accuracy: 0.3138
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:20 1s/step - loss: 36.6181 - sparse_categorical_accuracy: 0.3137
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:19 1s/step - loss: 36.6334 - sparse_categorical_accuracy: 0.3140
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:18 1s/step - loss: 36.6477 - sparse_categorical_accuracy: 0.3142
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:17 1s/step - loss: 36.6605 - sparse_categorical_accuracy: 0.3147
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 36.6723 - sparse_categorical_accuracy: 0.3149
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:15 1s/step - loss: 36.6831 - sparse_categorical_accuracy: 0.3153
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:14 1s/step - loss: 36.6929 - sparse_categorical_accuracy: 0.3157
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:13 1s/step - loss: 36.7023 - sparse_categorical_accuracy: 0.3160
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:12 1s/step - loss: 36.7110 - sparse_categorical_accuracy: 0.3161
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 36.7188 - sparse_categorical_accuracy: 0.3161
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:10 1s/step - loss: 36.7264 - sparse_categorical_accuracy: 0.3161
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:09 1s/step - loss: 36.7333 - sparse_categorical_accuracy: 0.3160
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:08 1s/step - loss: 36.7404 - sparse_categorical_accuracy: 0.3160
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:07 1s/step - loss: 36.7483 - sparse_categorical_accuracy: 0.3158
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 36.7558 - sparse_categorical_accuracy: 0.3156
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:05 1s/step - loss: 36.7629 - sparse_categorical_accuracy: 0.3155
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:04 1s/step - loss: 36.7698 - sparse_categorical_accuracy: 0.3153
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:03 1s/step - loss: 36.7760 - sparse_categorical_accuracy: 0.3151
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 36.7818 - sparse_categorical_accuracy: 0.3150
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 36.7870 - sparse_categorical_accuracy: 0.3149
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  59s 1s/step - loss: 36.7922 - sparse_categorical_accuracy: 0.3147 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  58s 1s/step - loss: 36.7971 - sparse_categorical_accuracy: 0.3145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  57s 1s/step - loss: 36.8016 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 36.8057 - sparse_categorical_accuracy: 0.3143
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 36.8098 - sparse_categorical_accuracy: 0.3142
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  54s 1s/step - loss: 36.8136 - sparse_categorical_accuracy: 0.3141
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  53s 1s/step - loss: 36.8172 - sparse_categorical_accuracy: 0.3141
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  52s 1s/step - loss: 36.8203 - sparse_categorical_accuracy: 0.3141
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 36.8234 - sparse_categorical_accuracy: 0.3141
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 36.8262 - sparse_categorical_accuracy: 0.3141
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  48s 1s/step - loss: 36.8288 - sparse_categorical_accuracy: 0.3140
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  47s 1s/step - loss: 36.8313 - sparse_categorical_accuracy: 0.3140
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 36.8338 - sparse_categorical_accuracy: 0.3139
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 36.8362 - sparse_categorical_accuracy: 0.3139
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 36.8383 - sparse_categorical_accuracy: 0.3139
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  43s 1s/step - loss: 36.8402 - sparse_categorical_accuracy: 0.3138
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  42s 1s/step - loss: 36.8420 - sparse_categorical_accuracy: 0.3137
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  41s 1s/step - loss: 36.8436 - sparse_categorical_accuracy: 0.3137
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 36.8450 - sparse_categorical_accuracy: 0.3136
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 36.8501 - sparse_categorical_accuracy: 0.3135
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  37s 1s/step - loss: 36.8548 - sparse_categorical_accuracy: 0.3134
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  36s 1s/step - loss: 36.8594 - sparse_categorical_accuracy: 0.3133
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 36.8637 - sparse_categorical_accuracy: 0.3132
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 36.8679 - sparse_categorical_accuracy: 0.3132
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 36.8722 - sparse_categorical_accuracy: 0.3131
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  32s 1s/step - loss: 36.8765 - sparse_categorical_accuracy: 0.3130
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  31s 1s/step - loss: 36.8808 - sparse_categorical_accuracy: 0.3129
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 36.8851 - sparse_categorical_accuracy: 0.3128
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 36.8893 - sparse_categorical_accuracy: 0.3127
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 36.8934 - sparse_categorical_accuracy: 0.3126
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  26s 1s/step - loss: 36.8974 - sparse_categorical_accuracy: 0.3125
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 36.9016 - sparse_categorical_accuracy: 0.3124
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 36.9056 - sparse_categorical_accuracy: 0.3123
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 36.9097 - sparse_categorical_accuracy: 0.3122
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 36.9137 - sparse_categorical_accuracy: 0.3121
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  21s 1s/step - loss: 36.9180 - sparse_categorical_accuracy: 0.3120
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 36.9223 - sparse_categorical_accuracy: 0.3119
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 36.9265 - sparse_categorical_accuracy: 0.3118
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 36.9306 - sparse_categorical_accuracy: 0.3117
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 36.9348 - sparse_categorical_accuracy: 0.3116
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  16s 1s/step - loss: 36.9389 - sparse_categorical_accuracy: 0.3115
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 36.9430 - sparse_categorical_accuracy: 0.3114
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 36.9471 - sparse_categorical_accuracy: 0.3113
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 36.9511 - sparse_categorical_accuracy: 0.3112
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 36.9550 - sparse_categorical_accuracy: 0.3112
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 36.9589 - sparse_categorical_accuracy: 0.3111
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 36.9626 - sparse_categorical_accuracy: 0.3110 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 36.9663 - sparse_categorical_accuracy: 0.3109
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 36.9700 - sparse_categorical_accuracy: 0.3108
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 36.9734 - sparse_categorical_accuracy: 0.3107
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 36.9768 - sparse_categorical_accuracy: 0.3106
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 36.9801 - sparse_categorical_accuracy: 0.3105
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 36.9834 - sparse_categorical_accuracy: 0.3104
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 36.9866 - sparse_categorical_accuracy: 0.3103
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 36.9898 - sparse_categorical_accuracy: 0.3102
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 36.9913 - sparse_categorical_accuracy: 0.3101
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 112s 1s/step - loss: 36.9928 - sparse_categorical_accuracy: 0.3100 - val_loss: 2087371157504536015273984.0000 - val_sparse_categorical_accuracy: 0.3004
+
+
+<div class="k-default-codeblock">
+```
+Epoch 6/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:43 1s/step - loss: 37.1168 - sparse_categorical_accuracy: 0.1875
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:48 1s/step - loss: 37.1688 - sparse_categorical_accuracy: 0.1719
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:46 1s/step - loss: 37.1452 - sparse_categorical_accuracy: 0.1944
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:44 1s/step - loss: 37.0992 - sparse_categorical_accuracy: 0.2220
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:43 1s/step - loss: 37.0764 - sparse_categorical_accuracy: 0.2376
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:43 1s/step - loss: 37.0523 - sparse_categorical_accuracy: 0.2492
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:42 1s/step - loss: 37.0250 - sparse_categorical_accuracy: 0.2602
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:40 1s/step - loss: 36.9997 - sparse_categorical_accuracy: 0.2692
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 36.9775 - sparse_categorical_accuracy: 0.2755
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 36.9576 - sparse_categorical_accuracy: 0.2805
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 36.9399 - sparse_categorical_accuracy: 0.2849
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 36.9274 - sparse_categorical_accuracy: 0.2881
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 36.9169 - sparse_categorical_accuracy: 0.2911
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 36.9084 - sparse_categorical_accuracy: 0.2931
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 36.8988 - sparse_categorical_accuracy: 0.2952
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 36.8877 - sparse_categorical_accuracy: 0.2976
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 36.8768 - sparse_categorical_accuracy: 0.3001
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.8669 - sparse_categorical_accuracy: 0.3020
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 36.8565 - sparse_categorical_accuracy: 0.3036
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 36.8455 - sparse_categorical_accuracy: 0.3054
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 36.8350 - sparse_categorical_accuracy: 0.3068
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 36.8242 - sparse_categorical_accuracy: 0.3080
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 36.8151 - sparse_categorical_accuracy: 0.3088
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 36.8065 - sparse_categorical_accuracy: 0.3096
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:19 1s/step - loss: 36.7989 - sparse_categorical_accuracy: 0.3102
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:18 1s/step - loss: 36.7921 - sparse_categorical_accuracy: 0.3105
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:17 1s/step - loss: 36.7860 - sparse_categorical_accuracy: 0.3107
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 36.7804 - sparse_categorical_accuracy: 0.3107
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 36.7753 - sparse_categorical_accuracy: 0.3109
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:14 1s/step - loss: 36.7707 - sparse_categorical_accuracy: 0.3113
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:13 1s/step - loss: 36.7666 - sparse_categorical_accuracy: 0.3118
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:12 1s/step - loss: 36.7625 - sparse_categorical_accuracy: 0.3123
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 36.7581 - sparse_categorical_accuracy: 0.3129
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 36.7541 - sparse_categorical_accuracy: 0.3132
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:08 1s/step - loss: 36.7502 - sparse_categorical_accuracy: 0.3134
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:07 1s/step - loss: 36.7466 - sparse_categorical_accuracy: 0.3136
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 36.7429 - sparse_categorical_accuracy: 0.3138
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 36.7391 - sparse_categorical_accuracy: 0.3140
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 36.7354 - sparse_categorical_accuracy: 0.3141
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:03 1s/step - loss: 36.7317 - sparse_categorical_accuracy: 0.3141
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:02 1s/step - loss: 36.7280 - sparse_categorical_accuracy: 0.3141
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 36.7242 - sparse_categorical_accuracy: 0.3142
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 36.7205 - sparse_categorical_accuracy: 0.3142
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 36.7167 - sparse_categorical_accuracy: 0.3143 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  58s 1s/step - loss: 36.7129 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 36.7114 - sparse_categorical_accuracy: 0.3145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 36.7097 - sparse_categorical_accuracy: 0.3146
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 36.7081 - sparse_categorical_accuracy: 0.3147
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 36.7067 - sparse_categorical_accuracy: 0.3148
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  52s 1s/step - loss: 36.7053 - sparse_categorical_accuracy: 0.3149
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 36.7043 - sparse_categorical_accuracy: 0.3150
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 36.7035 - sparse_categorical_accuracy: 0.3151
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 36.7027 - sparse_categorical_accuracy: 0.3152
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 36.7020 - sparse_categorical_accuracy: 0.3153
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  47s 1s/step - loss: 36.7013 - sparse_categorical_accuracy: 0.3153
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 36.7005 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 36.6997 - sparse_categorical_accuracy: 0.3155
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 36.6991 - sparse_categorical_accuracy: 0.3155
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 36.6983 - sparse_categorical_accuracy: 0.3156
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  41s 1s/step - loss: 36.6977 - sparse_categorical_accuracy: 0.3156
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 36.6974 - sparse_categorical_accuracy: 0.3156
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 36.6971 - sparse_categorical_accuracy: 0.3156
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 36.6968 - sparse_categorical_accuracy: 0.3156
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 36.6963 - sparse_categorical_accuracy: 0.3157
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  36s 1s/step - loss: 36.6959 - sparse_categorical_accuracy: 0.3157
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 36.6954 - sparse_categorical_accuracy: 0.3158
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 36.6949 - sparse_categorical_accuracy: 0.3159
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 36.6944 - sparse_categorical_accuracy: 0.3160
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 36.6939 - sparse_categorical_accuracy: 0.3161
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  31s 1s/step - loss: 36.6933 - sparse_categorical_accuracy: 0.3162
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 36.6927 - sparse_categorical_accuracy: 0.3163
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 36.6921 - sparse_categorical_accuracy: 0.3164
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 36.6914 - sparse_categorical_accuracy: 0.3165
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 36.6907 - sparse_categorical_accuracy: 0.3166
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 36.6901 - sparse_categorical_accuracy: 0.3166
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 36.6897 - sparse_categorical_accuracy: 0.3167
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 36.6892 - sparse_categorical_accuracy: 0.3167
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 36.6887 - sparse_categorical_accuracy: 0.3168
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 36.6882 - sparse_categorical_accuracy: 0.3169
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 36.6878 - sparse_categorical_accuracy: 0.3170
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 36.6872 - sparse_categorical_accuracy: 0.3171
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 36.6867 - sparse_categorical_accuracy: 0.3172
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 36.6862 - sparse_categorical_accuracy: 0.3173
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 36.6858 - sparse_categorical_accuracy: 0.3173
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 36.6853 - sparse_categorical_accuracy: 0.3174
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 36.6847 - sparse_categorical_accuracy: 0.3175
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 36.6842 - sparse_categorical_accuracy: 0.3175
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 36.6835 - sparse_categorical_accuracy: 0.3176
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 36.6829 - sparse_categorical_accuracy: 0.3176
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 36.6823 - sparse_categorical_accuracy: 0.3177
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 36.6817 - sparse_categorical_accuracy: 0.3177 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 36.6810 - sparse_categorical_accuracy: 0.3177
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 36.6804 - sparse_categorical_accuracy: 0.3177
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 36.6802 - sparse_categorical_accuracy: 0.3178
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 36.6800 - sparse_categorical_accuracy: 0.3178
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 36.6798 - sparse_categorical_accuracy: 0.3179
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 36.6797 - sparse_categorical_accuracy: 0.3179
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 36.6795 - sparse_categorical_accuracy: 0.3180
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 36.6792 - sparse_categorical_accuracy: 0.3180
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 36.6775 - sparse_categorical_accuracy: 0.3181
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 108s 1s/step - loss: 36.6758 - sparse_categorical_accuracy: 0.3182 - val_loss: 598952362161209344.0000 - val_sparse_categorical_accuracy: 0.4180
+
+
+<div class="k-default-codeblock">
+```
+Epoch 7/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:46 1s/step - loss: 36.5799 - sparse_categorical_accuracy: 0.2188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:45 1s/step - loss: 39.4707 - sparse_categorical_accuracy: 0.2422
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:44 1s/step - loss: 39.7202 - sparse_categorical_accuracy: 0.2622
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:41 1s/step - loss: 39.6028 - sparse_categorical_accuracy: 0.2826
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:39 1s/step - loss: 39.4266 - sparse_categorical_accuracy: 0.2923
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 39.2664 - sparse_categorical_accuracy: 0.3000
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 39.1370 - sparse_categorical_accuracy: 0.3050
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 39.0332 - sparse_categorical_accuracy: 0.3064
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 38.9412 - sparse_categorical_accuracy: 0.3090
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 38.8614 - sparse_categorical_accuracy: 0.3115
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 38.7961 - sparse_categorical_accuracy: 0.3127
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 38.7323 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 38.6772 - sparse_categorical_accuracy: 0.3161
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 38.6311 - sparse_categorical_accuracy: 0.3166
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 38.5887 - sparse_categorical_accuracy: 0.3172
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 38.5600 - sparse_categorical_accuracy: 0.3173
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 38.5358 - sparse_categorical_accuracy: 0.3172
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 38.5143 - sparse_categorical_accuracy: 0.3170
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 38.4937 - sparse_categorical_accuracy: 0.3166
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 38.4737 - sparse_categorical_accuracy: 0.3164
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 38.4543 - sparse_categorical_accuracy: 0.3164
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 38.4364 - sparse_categorical_accuracy: 0.3163
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 38.4201 - sparse_categorical_accuracy: 0.3161
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 38.4052 - sparse_categorical_accuracy: 0.3162
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:17 1s/step - loss: 38.3898 - sparse_categorical_accuracy: 0.3165
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 38.3748 - sparse_categorical_accuracy: 0.3167
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 38.3601 - sparse_categorical_accuracy: 0.3167
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 38.3457 - sparse_categorical_accuracy: 0.3167
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 38.3315 - sparse_categorical_accuracy: 0.3168
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:12 1s/step - loss: 38.3167 - sparse_categorical_accuracy: 0.3172
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 38.3021 - sparse_categorical_accuracy: 0.3175
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 38.2873 - sparse_categorical_accuracy: 0.3179
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 38.2722 - sparse_categorical_accuracy: 0.3184
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 38.2571 - sparse_categorical_accuracy: 0.3189
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:07 1s/step - loss: 38.2425 - sparse_categorical_accuracy: 0.3193
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 38.2277 - sparse_categorical_accuracy: 0.3197
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 38.2132 - sparse_categorical_accuracy: 0.3199
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 38.1989 - sparse_categorical_accuracy: 0.3201
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 38.1846 - sparse_categorical_accuracy: 0.3204
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 38.1707 - sparse_categorical_accuracy: 0.3206
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 38.1595 - sparse_categorical_accuracy: 0.3209
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 38.1484 - sparse_categorical_accuracy: 0.3211 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 38.1373 - sparse_categorical_accuracy: 0.3213
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 38.1262 - sparse_categorical_accuracy: 0.3214
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 38.1152 - sparse_categorical_accuracy: 0.3215
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 38.1040 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 38.0932 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 38.0824 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 38.0716 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 38.0609 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 38.0535 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 38.0460 - sparse_categorical_accuracy: 0.3217
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 38.0384 - sparse_categorical_accuracy: 0.3217
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 38.0309 - sparse_categorical_accuracy: 0.3217
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 38.0235 - sparse_categorical_accuracy: 0.3218
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 38.0162 - sparse_categorical_accuracy: 0.3218
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 38.0092 - sparse_categorical_accuracy: 0.3217
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 38.0029 - sparse_categorical_accuracy: 0.3217
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 37.9967 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  41s 1s/step - loss: 37.9907 - sparse_categorical_accuracy: 0.3215
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 37.9848 - sparse_categorical_accuracy: 0.3215
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 37.9791 - sparse_categorical_accuracy: 0.3214
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 37.9734 - sparse_categorical_accuracy: 0.3214
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 37.9678 - sparse_categorical_accuracy: 0.3213
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 37.9623 - sparse_categorical_accuracy: 0.3212
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 37.9570 - sparse_categorical_accuracy: 0.3211
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 37.9519 - sparse_categorical_accuracy: 0.3211
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 37.9469 - sparse_categorical_accuracy: 0.3210
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 37.9424 - sparse_categorical_accuracy: 0.3209
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 37.9380 - sparse_categorical_accuracy: 0.3208
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 37.9341 - sparse_categorical_accuracy: 0.3208
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 37.9304 - sparse_categorical_accuracy: 0.3207
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 37.9269 - sparse_categorical_accuracy: 0.3206
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 37.9234 - sparse_categorical_accuracy: 0.3206
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 37.9199 - sparse_categorical_accuracy: 0.3205
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 37.9165 - sparse_categorical_accuracy: 0.3204
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 37.9135 - sparse_categorical_accuracy: 0.3203
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 37.9104 - sparse_categorical_accuracy: 0.3202
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 37.9071 - sparse_categorical_accuracy: 0.3202
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 37.9039 - sparse_categorical_accuracy: 0.3201
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 37.9007 - sparse_categorical_accuracy: 0.3201
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 37.8974 - sparse_categorical_accuracy: 0.3200
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 37.8941 - sparse_categorical_accuracy: 0.3200
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 37.8908 - sparse_categorical_accuracy: 0.3200
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 37.8875 - sparse_categorical_accuracy: 0.3199
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 37.8840 - sparse_categorical_accuracy: 0.3199
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 37.8806 - sparse_categorical_accuracy: 0.3199
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 37.8770 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 37.8734 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 37.8697 - sparse_categorical_accuracy: 0.3197
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 37.8660 - sparse_categorical_accuracy: 0.3197 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 37.8622 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 37.8583 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 37.8545 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 37.8505 - sparse_categorical_accuracy: 0.3194
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 37.8465 - sparse_categorical_accuracy: 0.3194
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 37.8424 - sparse_categorical_accuracy: 0.3193
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 37.8384 - sparse_categorical_accuracy: 0.3193
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 37.8342 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 37.8286 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 107s 1s/step - loss: 37.8231 - sparse_categorical_accuracy: 0.3192 - val_loss: 1330149064704.0000 - val_sparse_categorical_accuracy: 0.3367
+
+
+<div class="k-default-codeblock">
+```
+Epoch 8/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:42 1s/step - loss: 36.6512 - sparse_categorical_accuracy: 0.2500
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:44 1s/step - loss: 36.6798 - sparse_categorical_accuracy: 0.2734
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:40 1s/step - loss: 36.6432 - sparse_categorical_accuracy: 0.2899
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:40 1s/step - loss: 36.5739 - sparse_categorical_accuracy: 0.3132
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:39 1s/step - loss: 36.5407 - sparse_categorical_accuracy: 0.3268
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 36.5485 - sparse_categorical_accuracy: 0.3331
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 36.5576 - sparse_categorical_accuracy: 0.3371
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 36.5698 - sparse_categorical_accuracy: 0.3385
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 36.5745 - sparse_categorical_accuracy: 0.3394
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 36.5792 - sparse_categorical_accuracy: 0.3389
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 36.5810 - sparse_categorical_accuracy: 0.3376
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 36.5798 - sparse_categorical_accuracy: 0.3361
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 36.5791 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 36.5762 - sparse_categorical_accuracy: 0.3354
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 36.5728 - sparse_categorical_accuracy: 0.3355
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.5684 - sparse_categorical_accuracy: 0.3359
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 36.5666 - sparse_categorical_accuracy: 0.3356
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 36.5648 - sparse_categorical_accuracy: 0.3348
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 36.5629 - sparse_categorical_accuracy: 0.3337
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 36.5608 - sparse_categorical_accuracy: 0.3327
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 36.5580 - sparse_categorical_accuracy: 0.3321
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 36.5553 - sparse_categorical_accuracy: 0.3314
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 36.5536 - sparse_categorical_accuracy: 0.3305
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 36.5524 - sparse_categorical_accuracy: 0.3294
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:17 1s/step - loss: 36.5546 - sparse_categorical_accuracy: 0.3286
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 36.5562 - sparse_categorical_accuracy: 0.3276
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 36.5576 - sparse_categorical_accuracy: 0.3267
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 36.5586 - sparse_categorical_accuracy: 0.3258
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 36.5592 - sparse_categorical_accuracy: 0.3251
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 36.5596 - sparse_categorical_accuracy: 0.3245
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 36.5592 - sparse_categorical_accuracy: 0.3241
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 36.5586 - sparse_categorical_accuracy: 0.3238
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 36.5576 - sparse_categorical_accuracy: 0.3236
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 36.5560 - sparse_categorical_accuracy: 0.3234
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 36.5542 - sparse_categorical_accuracy: 0.3233
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 36.5522 - sparse_categorical_accuracy: 0.3231
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 36.5500 - sparse_categorical_accuracy: 0.3231
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 36.5481 - sparse_categorical_accuracy: 0.3230
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 36.5463 - sparse_categorical_accuracy: 0.3228
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 36.5443 - sparse_categorical_accuracy: 0.3227
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 36.5423 - sparse_categorical_accuracy: 0.3225
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 36.5402 - sparse_categorical_accuracy: 0.3223 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 36.5381 - sparse_categorical_accuracy: 0.3220
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 36.5362 - sparse_categorical_accuracy: 0.3218
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 36.5354 - sparse_categorical_accuracy: 0.3215
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 36.5343 - sparse_categorical_accuracy: 0.3212
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 36.5330 - sparse_categorical_accuracy: 0.3209
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 36.5316 - sparse_categorical_accuracy: 0.3207
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 36.5302 - sparse_categorical_accuracy: 0.3205
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 36.5287 - sparse_categorical_accuracy: 0.3204
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 36.5272 - sparse_categorical_accuracy: 0.3203
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 36.5257 - sparse_categorical_accuracy: 0.3202
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 36.5242 - sparse_categorical_accuracy: 0.3201
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  46s 1s/step - loss: 36.5229 - sparse_categorical_accuracy: 0.3200
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 36.5216 - sparse_categorical_accuracy: 0.3199
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 36.5203 - sparse_categorical_accuracy: 0.3197
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 36.5188 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 36.5173 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  41s 1s/step - loss: 36.5157 - sparse_categorical_accuracy: 0.3194
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 36.5140 - sparse_categorical_accuracy: 0.3193
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 36.5122 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 36.5105 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 36.5086 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 36.5067 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 36.5048 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 36.5030 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 36.5011 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 36.4993 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 36.4974 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 36.4955 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 36.4937 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 36.4919 - sparse_categorical_accuracy: 0.3193
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 36.4902 - sparse_categorical_accuracy: 0.3194
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 36.4886 - sparse_categorical_accuracy: 0.3194
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 36.4871 - sparse_categorical_accuracy: 0.3194
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 36.4858 - sparse_categorical_accuracy: 0.3194
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 36.4845 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 36.4834 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 36.4824 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 36.4813 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 36.4804 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 36.4794 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 36.4785 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 36.4776 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 36.4767 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 36.4759 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 36.4750 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 36.4742 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 36.4735 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 36.4727 - sparse_categorical_accuracy: 0.3197
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 36.4719 - sparse_categorical_accuracy: 0.3197 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 36.4711 - sparse_categorical_accuracy: 0.3197
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 36.4702 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 36.4693 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 36.4686 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 36.4678 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 36.4670 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 36.4663 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 36.4656 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 36.4633 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 107s 1s/step - loss: 36.4611 - sparse_categorical_accuracy: 0.3198 - val_loss: 55461990629376.0000 - val_sparse_categorical_accuracy: 0.3805
+
+
+<div class="k-default-codeblock">
+```
+Epoch 9/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:48 1s/step - loss: 36.1902 - sparse_categorical_accuracy: 0.4062
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:42 1s/step - loss: 36.1628 - sparse_categorical_accuracy: 0.3594
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:42 1s/step - loss: 36.1877 - sparse_categorical_accuracy: 0.3438
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:40 1s/step - loss: 36.2174 - sparse_categorical_accuracy: 0.3320
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 36.2312 - sparse_categorical_accuracy: 0.3294
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 36.2290 - sparse_categorical_accuracy: 0.3309
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 36.2177 - sparse_categorical_accuracy: 0.3321
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 36.2049 - sparse_categorical_accuracy: 0.3331
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 36.2052 - sparse_categorical_accuracy: 0.3319
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 36.2082 - sparse_categorical_accuracy: 0.3309
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 36.2106 - sparse_categorical_accuracy: 0.3298
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 36.2138 - sparse_categorical_accuracy: 0.3292
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 36.2142 - sparse_categorical_accuracy: 0.3288
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 36.2186 - sparse_categorical_accuracy: 0.3282
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 36.2206 - sparse_categorical_accuracy: 0.3278
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.2294 - sparse_categorical_accuracy: 0.3283
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 36.2382 - sparse_categorical_accuracy: 0.3287
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 36.2450 - sparse_categorical_accuracy: 0.3294
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 36.2496 - sparse_categorical_accuracy: 0.3303
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 36.2549 - sparse_categorical_accuracy: 0.3309
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 36.2586 - sparse_categorical_accuracy: 0.3315
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 36.2609 - sparse_categorical_accuracy: 0.3324
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 36.2630 - sparse_categorical_accuracy: 0.3330
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 36.2647 - sparse_categorical_accuracy: 0.3333
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:17 1s/step - loss: 36.2664 - sparse_categorical_accuracy: 0.3339
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 36.2682 - sparse_categorical_accuracy: 0.3343
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 36.2697 - sparse_categorical_accuracy: 0.3344
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 36.2714 - sparse_categorical_accuracy: 0.3345
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 36.2728 - sparse_categorical_accuracy: 0.3344
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:12 1s/step - loss: 36.2743 - sparse_categorical_accuracy: 0.3343
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 36.2755 - sparse_categorical_accuracy: 0.3340
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 36.2773 - sparse_categorical_accuracy: 0.3338
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 36.2785 - sparse_categorical_accuracy: 0.3337
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 36.2792 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 36.2797 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 36.2802 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 36.2807 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 36.2810 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 36.2810 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 36.2809 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 36.2809 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 36.2820 - sparse_categorical_accuracy: 0.3336 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 36.2831 - sparse_categorical_accuracy: 0.3337
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 36.2839 - sparse_categorical_accuracy: 0.3337
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 36.2848 - sparse_categorical_accuracy: 0.3337
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 36.2857 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 36.2874 - sparse_categorical_accuracy: 0.3335
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 36.2893 - sparse_categorical_accuracy: 0.3335
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 36.2912 - sparse_categorical_accuracy: 0.3334
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 36.2930 - sparse_categorical_accuracy: 0.3333
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 36.2946 - sparse_categorical_accuracy: 0.3334
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 36.2961 - sparse_categorical_accuracy: 0.3334
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 36.2975 - sparse_categorical_accuracy: 0.3334
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 36.2989 - sparse_categorical_accuracy: 0.3334
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 36.3000 - sparse_categorical_accuracy: 0.3335
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 36.3012 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 36.3021 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 36.3031 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 36.3040 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  41s 1s/step - loss: 36.3048 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 36.3055 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 36.3060 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 36.3065 - sparse_categorical_accuracy: 0.3337
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 36.3070 - sparse_categorical_accuracy: 0.3337
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  36s 1s/step - loss: 36.3075 - sparse_categorical_accuracy: 0.3338
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 36.3080 - sparse_categorical_accuracy: 0.3338
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 36.3088 - sparse_categorical_accuracy: 0.3338
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 36.3095 - sparse_categorical_accuracy: 0.3339
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 36.3101 - sparse_categorical_accuracy: 0.3339
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 36.3108 - sparse_categorical_accuracy: 0.3340
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 36.3115 - sparse_categorical_accuracy: 0.3341
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 36.3121 - sparse_categorical_accuracy: 0.3342
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 36.3127 - sparse_categorical_accuracy: 0.3342
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 36.3133 - sparse_categorical_accuracy: 0.3343
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 36.3142 - sparse_categorical_accuracy: 0.3344
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 36.3150 - sparse_categorical_accuracy: 0.3345
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 36.3158 - sparse_categorical_accuracy: 0.3345
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 36.3166 - sparse_categorical_accuracy: 0.3346
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 36.3174 - sparse_categorical_accuracy: 0.3347
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 36.3180 - sparse_categorical_accuracy: 0.3348
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 36.3186 - sparse_categorical_accuracy: 0.3350
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 36.3191 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 36.3194 - sparse_categorical_accuracy: 0.3353
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 36.3198 - sparse_categorical_accuracy: 0.3355
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 36.3201 - sparse_categorical_accuracy: 0.3357
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 36.3204 - sparse_categorical_accuracy: 0.3358
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 36.3207 - sparse_categorical_accuracy: 0.3359
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 36.3210 - sparse_categorical_accuracy: 0.3360
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 36.3215 - sparse_categorical_accuracy: 0.3361
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 36.3218 - sparse_categorical_accuracy: 0.3362
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 36.3222 - sparse_categorical_accuracy: 0.3363 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 36.3225 - sparse_categorical_accuracy: 0.3364
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 36.3228 - sparse_categorical_accuracy: 0.3365
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 36.3230 - sparse_categorical_accuracy: 0.3365
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 36.3232 - sparse_categorical_accuracy: 0.3366
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 36.3234 - sparse_categorical_accuracy: 0.3367
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 36.3235 - sparse_categorical_accuracy: 0.3368
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 36.3236 - sparse_categorical_accuracy: 0.3368
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 36.3236 - sparse_categorical_accuracy: 0.3369
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 36.3222 - sparse_categorical_accuracy: 0.3370
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 107s 1s/step - loss: 36.3207 - sparse_categorical_accuracy: 0.3371 - val_loss: 79361986265088.0000 - val_sparse_categorical_accuracy: 0.3680
+
+
+<div class="k-default-codeblock">
+```
+Epoch 10/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  58:50 36s/step - loss: 36.7173 - sparse_categorical_accuracy: 0.4062
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:42 1s/step - loss: 36.4852 - sparse_categorical_accuracy: 0.3906  
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 36.3769 - sparse_categorical_accuracy: 0.3819
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 36.3024 - sparse_categorical_accuracy: 0.3822
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 36.2685 - sparse_categorical_accuracy: 0.3845
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 36.2423 - sparse_categorical_accuracy: 0.3855
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 36.2239 - sparse_categorical_accuracy: 0.3840
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 36.2047 - sparse_categorical_accuracy: 0.3843
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 36.1833 - sparse_categorical_accuracy: 0.3837
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 36.1658 - sparse_categorical_accuracy: 0.3825
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 36.1490 - sparse_categorical_accuracy: 0.3816
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 36.1342 - sparse_categorical_accuracy: 0.3804
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 36.1258 - sparse_categorical_accuracy: 0.3792
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.1192 - sparse_categorical_accuracy: 0.3783
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.1131 - sparse_categorical_accuracy: 0.3771
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 36.1093 - sparse_categorical_accuracy: 0.3756
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 36.1054 - sparse_categorical_accuracy: 0.3740
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 36.1022 - sparse_categorical_accuracy: 0.3727
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 36.1001 - sparse_categorical_accuracy: 0.3713
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 36.0968 - sparse_categorical_accuracy: 0.3706
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 36.0938 - sparse_categorical_accuracy: 0.3700
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 36.0911 - sparse_categorical_accuracy: 0.3692
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 36.0882 - sparse_categorical_accuracy: 0.3684
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:16 1s/step - loss: 36.0863 - sparse_categorical_accuracy: 0.3673
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 36.0843 - sparse_categorical_accuracy: 0.3664
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 36.0827 - sparse_categorical_accuracy: 0.3657
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 36.0816 - sparse_categorical_accuracy: 0.3648
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 36.0803 - sparse_categorical_accuracy: 0.3640
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:11 1s/step - loss: 36.0787 - sparse_categorical_accuracy: 0.3633
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 36.0772 - sparse_categorical_accuracy: 0.3627
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 36.0758 - sparse_categorical_accuracy: 0.3622
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 36.0746 - sparse_categorical_accuracy: 0.3617
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 36.0738 - sparse_categorical_accuracy: 0.3611
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:06 1s/step - loss: 36.0728 - sparse_categorical_accuracy: 0.3605
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 36.0722 - sparse_categorical_accuracy: 0.3600
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 36.0717 - sparse_categorical_accuracy: 0.3595
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 36.0716 - sparse_categorical_accuracy: 0.3590
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 36.0718 - sparse_categorical_accuracy: 0.3585
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 36.0723 - sparse_categorical_accuracy: 0.3580
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 36.0727 - sparse_categorical_accuracy: 0.3574
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 36.0730 - sparse_categorical_accuracy: 0.3568 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 36.0735 - sparse_categorical_accuracy: 0.3562
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 36.0742 - sparse_categorical_accuracy: 0.3557
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 36.0748 - sparse_categorical_accuracy: 0.3552
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 36.0752 - sparse_categorical_accuracy: 0.3548
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 36.0757 - sparse_categorical_accuracy: 0.3544
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 36.0761 - sparse_categorical_accuracy: 0.3540
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 36.0769 - sparse_categorical_accuracy: 0.3536
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 36.0776 - sparse_categorical_accuracy: 0.3532
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 36.0782 - sparse_categorical_accuracy: 0.3529
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 36.0788 - sparse_categorical_accuracy: 0.3527
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 36.0793 - sparse_categorical_accuracy: 0.3525
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 36.0799 - sparse_categorical_accuracy: 0.3523
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  46s 1s/step - loss: 36.0804 - sparse_categorical_accuracy: 0.3521
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 36.0808 - sparse_categorical_accuracy: 0.3520
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 36.0812 - sparse_categorical_accuracy: 0.3519
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 36.0816 - sparse_categorical_accuracy: 0.3518
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 36.0819 - sparse_categorical_accuracy: 0.3517
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 36.0821 - sparse_categorical_accuracy: 0.3516
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 36.0823 - sparse_categorical_accuracy: 0.3515
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 36.0826 - sparse_categorical_accuracy: 0.3514
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 36.0829 - sparse_categorical_accuracy: 0.3513
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 36.0832 - sparse_categorical_accuracy: 0.3512
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 36.0835 - sparse_categorical_accuracy: 0.3511
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 36.0838 - sparse_categorical_accuracy: 0.3510
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 36.0841 - sparse_categorical_accuracy: 0.3508
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 36.0846 - sparse_categorical_accuracy: 0.3507
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 36.0851 - sparse_categorical_accuracy: 0.3505
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 36.0856 - sparse_categorical_accuracy: 0.3503
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 36.0861 - sparse_categorical_accuracy: 0.3501
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 36.0867 - sparse_categorical_accuracy: 0.3499
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 36.0872 - sparse_categorical_accuracy: 0.3497
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 36.0878 - sparse_categorical_accuracy: 0.3495
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 36.0883 - sparse_categorical_accuracy: 0.3494
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 36.0888 - sparse_categorical_accuracy: 0.3492
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 36.0894 - sparse_categorical_accuracy: 0.3490
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 36.0899 - sparse_categorical_accuracy: 0.3488
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 36.0903 - sparse_categorical_accuracy: 0.3487
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 36.0906 - sparse_categorical_accuracy: 0.3485
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 36.0911 - sparse_categorical_accuracy: 0.3484
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 36.0914 - sparse_categorical_accuracy: 0.3483
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 36.0917 - sparse_categorical_accuracy: 0.3482
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 36.0920 - sparse_categorical_accuracy: 0.3481
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 36.0922 - sparse_categorical_accuracy: 0.3480
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 36.0925 - sparse_categorical_accuracy: 0.3479
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 36.0928 - sparse_categorical_accuracy: 0.3478
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 36.0930 - sparse_categorical_accuracy: 0.3478
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 36.0932 - sparse_categorical_accuracy: 0.3477
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 36.0935 - sparse_categorical_accuracy: 0.3476
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 36.0937 - sparse_categorical_accuracy: 0.3476
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 36.0939 - sparse_categorical_accuracy: 0.3476 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 36.0941 - sparse_categorical_accuracy: 0.3475
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 36.0943 - sparse_categorical_accuracy: 0.3475
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 36.0944 - sparse_categorical_accuracy: 0.3475
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 36.0947 - sparse_categorical_accuracy: 0.3474
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 36.0950 - sparse_categorical_accuracy: 0.3474
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 36.0955 - sparse_categorical_accuracy: 0.3474
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 36.0961 - sparse_categorical_accuracy: 0.3474
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 36.0966 - sparse_categorical_accuracy: 0.3475
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 36.0956 - sparse_categorical_accuracy: 0.3475
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 142s 1s/step - loss: 36.0947 - sparse_categorical_accuracy: 0.3475 - val_loss: 14927241216.0000 - val_sparse_categorical_accuracy: 0.3054
+
+
+<div class="k-default-codeblock">
+```
+Epoch 11/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  58:42 36s/step - loss: 36.1768 - sparse_categorical_accuracy: 0.3438
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 36.3035 - sparse_categorical_accuracy: 0.3125  
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:39 1s/step - loss: 36.3690 - sparse_categorical_accuracy: 0.3090
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:39 1s/step - loss: 36.4012 - sparse_categorical_accuracy: 0.3138
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 36.4168 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 36.4449 - sparse_categorical_accuracy: 0.3247
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 36.4684 - sparse_categorical_accuracy: 0.3287
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 36.4986 - sparse_categorical_accuracy: 0.3305
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 36.5271 - sparse_categorical_accuracy: 0.3328
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 36.5636 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 36.6122 - sparse_categorical_accuracy: 0.3342
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 36.6884 - sparse_categorical_accuracy: 0.3348
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 36.7833 - sparse_categorical_accuracy: 0.3353
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 36.8994 - sparse_categorical_accuracy: 0.3350
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 37.0178 - sparse_categorical_accuracy: 0.3349
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 37.1292 - sparse_categorical_accuracy: 0.3337
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 37.2272 - sparse_categorical_accuracy: 0.3332
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 37.3126 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 37.3916 - sparse_categorical_accuracy: 0.3314
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 37.4582 - sparse_categorical_accuracy: 0.3308
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 37.5152 - sparse_categorical_accuracy: 0.3302
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 37.5639 - sparse_categorical_accuracy: 0.3298
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 37.6056 - sparse_categorical_accuracy: 0.3292
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:17 1s/step - loss: 37.6425 - sparse_categorical_accuracy: 0.3286
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 37.6735 - sparse_categorical_accuracy: 0.3283
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 37.6993 - sparse_categorical_accuracy: 0.3281
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 37.7214 - sparse_categorical_accuracy: 0.3280
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 37.7406 - sparse_categorical_accuracy: 0.3277
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:12 1s/step - loss: 37.7565 - sparse_categorical_accuracy: 0.3274
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 37.7714 - sparse_categorical_accuracy: 0.3272
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 37.7842 - sparse_categorical_accuracy: 0.3268
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 37.7953 - sparse_categorical_accuracy: 0.3264
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 37.8040 - sparse_categorical_accuracy: 0.3260
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 37.8219 - sparse_categorical_accuracy: 0.3258
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 37.8379 - sparse_categorical_accuracy: 0.3256
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 37.8525 - sparse_categorical_accuracy: 0.3254
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 37.8659 - sparse_categorical_accuracy: 0.3253
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 37.8796 - sparse_categorical_accuracy: 0.3250
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 37.8931 - sparse_categorical_accuracy: 0.3247
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 37.9096 - sparse_categorical_accuracy: 0.3244
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 37.9253 - sparse_categorical_accuracy: 0.3241
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 37.9405 - sparse_categorical_accuracy: 0.3238 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 37.9553 - sparse_categorical_accuracy: 0.3236
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  56s 1s/step - loss: 37.9707 - sparse_categorical_accuracy: 0.3235
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 37.9869 - sparse_categorical_accuracy: 0.3232
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 38.0034 - sparse_categorical_accuracy: 0.3231
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 38.0206 - sparse_categorical_accuracy: 0.3229
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 38.0382 - sparse_categorical_accuracy: 0.3227
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  51s 1s/step - loss: 38.0558 - sparse_categorical_accuracy: 0.3226
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 38.0737 - sparse_categorical_accuracy: 0.3224
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 38.0920 - sparse_categorical_accuracy: 0.3222
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 38.1100 - sparse_categorical_accuracy: 0.3221
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 38.1299 - sparse_categorical_accuracy: 0.3220
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  46s 1s/step - loss: 38.1498 - sparse_categorical_accuracy: 0.3220
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 38.1689 - sparse_categorical_accuracy: 0.3219
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 38.1871 - sparse_categorical_accuracy: 0.3218
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 38.2045 - sparse_categorical_accuracy: 0.3217
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 38.2213 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  41s 1s/step - loss: 38.2376 - sparse_categorical_accuracy: 0.3215
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 38.2533 - sparse_categorical_accuracy: 0.3214
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 38.2683 - sparse_categorical_accuracy: 0.3213
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 38.2826 - sparse_categorical_accuracy: 0.3213
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 38.2961 - sparse_categorical_accuracy: 0.3212
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 38.3092 - sparse_categorical_accuracy: 0.3211
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 38.3217 - sparse_categorical_accuracy: 0.3210
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 38.3339 - sparse_categorical_accuracy: 0.3209
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 38.3452 - sparse_categorical_accuracy: 0.3208
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 38.3558 - sparse_categorical_accuracy: 0.3208
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 38.3657 - sparse_categorical_accuracy: 0.3207
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 38.3748 - sparse_categorical_accuracy: 0.3207
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 38.3835 - sparse_categorical_accuracy: 0.3206
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 38.3918 - sparse_categorical_accuracy: 0.3205
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 38.3994 - sparse_categorical_accuracy: 0.3204
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 38.4065 - sparse_categorical_accuracy: 0.3203
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 38.4139 - sparse_categorical_accuracy: 0.3202
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 38.4209 - sparse_categorical_accuracy: 0.3200
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 38.4286 - sparse_categorical_accuracy: 0.3199
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 38.4358 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 38.4423 - sparse_categorical_accuracy: 0.3197
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 38.4483 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 38.4539 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 38.4589 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 38.4636 - sparse_categorical_accuracy: 0.3195
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 38.4679 - sparse_categorical_accuracy: 0.3194
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 38.4719 - sparse_categorical_accuracy: 0.3194
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 38.4755 - sparse_categorical_accuracy: 0.3193
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 38.4788 - sparse_categorical_accuracy: 0.3193
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 38.4819 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 38.4846 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 38.4870 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 38.4891 - sparse_categorical_accuracy: 0.3190 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 38.4916 - sparse_categorical_accuracy: 0.3190
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 38.4937 - sparse_categorical_accuracy: 0.3189
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 38.4957 - sparse_categorical_accuracy: 0.3189
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 38.4974 - sparse_categorical_accuracy: 0.3188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 38.4990 - sparse_categorical_accuracy: 0.3188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 38.5005 - sparse_categorical_accuracy: 0.3188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 38.5019 - sparse_categorical_accuracy: 0.3188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 38.5032 - sparse_categorical_accuracy: 0.3187
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 38.5028 - sparse_categorical_accuracy: 0.3187
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 141s 1s/step - loss: 38.5024 - sparse_categorical_accuracy: 0.3187 - val_loss: 1930753792.0000 - val_sparse_categorical_accuracy: 0.2315
+
+
+<div class="k-default-codeblock">
+```
+Epoch 12/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:00:07 36s/step - loss: 42.1152 - sparse_categorical_accuracy: 0.3750
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 40.9939 - sparse_categorical_accuracy: 0.3359    
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:36 997ms/step - loss: 40.3854 - sparse_categorical_accuracy: 0.3212
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 40.0082 - sparse_categorical_accuracy: 0.3151   
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 39.7856 - sparse_categorical_accuracy: 0.3121
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1000ms/step - loss: 39.6142 - sparse_categorical_accuracy: 0.3078
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 39.4890 - sparse_categorical_accuracy: 0.3072    
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:31 1000ms/step - loss: 39.3828 - sparse_categorical_accuracy: 0.3059
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 39.2872 - sparse_categorical_accuracy: 0.3032    
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 39.1979 - sparse_categorical_accuracy: 0.3025
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 39.1176 - sparse_categorical_accuracy: 0.3022
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 39.0417 - sparse_categorical_accuracy: 0.3026
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 38.9724 - sparse_categorical_accuracy: 0.3032
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 38.9077 - sparse_categorical_accuracy: 0.3041
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 38.8489 - sparse_categorical_accuracy: 0.3044
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 38.7940 - sparse_categorical_accuracy: 0.3044
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 38.7408 - sparse_categorical_accuracy: 0.3048
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 38.6905 - sparse_categorical_accuracy: 0.3049
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 38.6466 - sparse_categorical_accuracy: 0.3050
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 38.6091 - sparse_categorical_accuracy: 0.3051
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 38.5744 - sparse_categorical_accuracy: 0.3053
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 38.5416 - sparse_categorical_accuracy: 0.3052
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 38.5095 - sparse_categorical_accuracy: 0.3049
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:17 1s/step - loss: 38.4786 - sparse_categorical_accuracy: 0.3046
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 38.4478 - sparse_categorical_accuracy: 0.3044
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 38.4185 - sparse_categorical_accuracy: 0.3044
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 38.3905 - sparse_categorical_accuracy: 0.3044
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:12 1s/step - loss: 38.3624 - sparse_categorical_accuracy: 0.3047
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:11 1s/step - loss: 38.3360 - sparse_categorical_accuracy: 0.3051
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 38.3099 - sparse_categorical_accuracy: 0.3056
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 38.2850 - sparse_categorical_accuracy: 0.3060
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 38.2604 - sparse_categorical_accuracy: 0.3064
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 38.2364 - sparse_categorical_accuracy: 0.3069
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:06 1s/step - loss: 38.2127 - sparse_categorical_accuracy: 0.3075
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 38.1893 - sparse_categorical_accuracy: 0.3082
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 38.1665 - sparse_categorical_accuracy: 0.3089
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 38.1445 - sparse_categorical_accuracy: 0.3094
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 38.1229 - sparse_categorical_accuracy: 0.3100
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:01 1s/step - loss: 38.1031 - sparse_categorical_accuracy: 0.3107
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 38.0841 - sparse_categorical_accuracy: 0.3113
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 38.0655 - sparse_categorical_accuracy: 0.3119 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 38.0472 - sparse_categorical_accuracy: 0.3125
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 38.0293 - sparse_categorical_accuracy: 0.3130
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  56s 1s/step - loss: 38.0117 - sparse_categorical_accuracy: 0.3136
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 37.9946 - sparse_categorical_accuracy: 0.3140
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 37.9778 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 37.9615 - sparse_categorical_accuracy: 0.3149
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 37.9455 - sparse_categorical_accuracy: 0.3153
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  51s 1s/step - loss: 37.9298 - sparse_categorical_accuracy: 0.3156
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 37.9144 - sparse_categorical_accuracy: 0.3160
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 37.8994 - sparse_categorical_accuracy: 0.3163
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 37.8846 - sparse_categorical_accuracy: 0.3167
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 37.8702 - sparse_categorical_accuracy: 0.3171
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  46s 1s/step - loss: 37.8563 - sparse_categorical_accuracy: 0.3174
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 37.8424 - sparse_categorical_accuracy: 0.3178
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 37.8294 - sparse_categorical_accuracy: 0.3181
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 37.8166 - sparse_categorical_accuracy: 0.3184
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 37.8041 - sparse_categorical_accuracy: 0.3186
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  41s 1s/step - loss: 37.7917 - sparse_categorical_accuracy: 0.3189
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 37.7796 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 37.7678 - sparse_categorical_accuracy: 0.3194
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 37.7561 - sparse_categorical_accuracy: 0.3196
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 37.7444 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 37.7330 - sparse_categorical_accuracy: 0.3200
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 37.7218 - sparse_categorical_accuracy: 0.3202
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 37.7106 - sparse_categorical_accuracy: 0.3204
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 37.6996 - sparse_categorical_accuracy: 0.3205
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 37.6887 - sparse_categorical_accuracy: 0.3207
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 37.6780 - sparse_categorical_accuracy: 0.3209
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 37.6676 - sparse_categorical_accuracy: 0.3210
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 37.6572 - sparse_categorical_accuracy: 0.3212
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 37.6470 - sparse_categorical_accuracy: 0.3213
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 37.6370 - sparse_categorical_accuracy: 0.3215
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 37.6272 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 37.6175 - sparse_categorical_accuracy: 0.3218
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 37.6079 - sparse_categorical_accuracy: 0.3219
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 37.5986 - sparse_categorical_accuracy: 0.3221
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 37.5894 - sparse_categorical_accuracy: 0.3222
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 37.5804 - sparse_categorical_accuracy: 0.3223
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 37.5721 - sparse_categorical_accuracy: 0.3224
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 37.5639 - sparse_categorical_accuracy: 0.3226
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 37.5557 - sparse_categorical_accuracy: 0.3227
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 37.5477 - sparse_categorical_accuracy: 0.3229
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 37.5400 - sparse_categorical_accuracy: 0.3230
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 37.5324 - sparse_categorical_accuracy: 0.3232
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 37.5249 - sparse_categorical_accuracy: 0.3233
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 37.5174 - sparse_categorical_accuracy: 0.3235
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 37.5100 - sparse_categorical_accuracy: 0.3237
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 37.5027 - sparse_categorical_accuracy: 0.3238
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 37.4956 - sparse_categorical_accuracy: 0.3240
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 37.4886 - sparse_categorical_accuracy: 0.3241 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 37.4816 - sparse_categorical_accuracy: 0.3243
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 37.4747 - sparse_categorical_accuracy: 0.3244
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 37.4679 - sparse_categorical_accuracy: 0.3246
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 37.4613 - sparse_categorical_accuracy: 0.3247
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 37.4547 - sparse_categorical_accuracy: 0.3249
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 37.4482 - sparse_categorical_accuracy: 0.3250
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 37.4417 - sparse_categorical_accuracy: 0.3252
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 37.4353 - sparse_categorical_accuracy: 0.3253
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 37.4279 - sparse_categorical_accuracy: 0.3255
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 142s 1s/step - loss: 37.4206 - sparse_categorical_accuracy: 0.3256 - val_loss: 1793616557963500563988480.0000 - val_sparse_categorical_accuracy: 0.2328
+
+
+<div class="k-default-codeblock">
+```
+Epoch 13/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  59:52 36s/step - loss: 43.0665 - sparse_categorical_accuracy: 0.1875
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:41 1s/step - loss: 41.4007 - sparse_categorical_accuracy: 0.2344  
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 40.5478 - sparse_categorical_accuracy: 0.2361
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 39.9836 - sparse_categorical_accuracy: 0.2513
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 39.6005 - sparse_categorical_accuracy: 0.2623
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 39.4050 - sparse_categorical_accuracy: 0.2663
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 39.2307 - sparse_categorical_accuracy: 0.2659
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 39.0731 - sparse_categorical_accuracy: 0.2688
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 38.9341 - sparse_categorical_accuracy: 0.2721
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 38.8113 - sparse_categorical_accuracy: 0.2768
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 38.7010 - sparse_categorical_accuracy: 0.2811
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 38.6074 - sparse_categorical_accuracy: 0.2837
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 38.5211 - sparse_categorical_accuracy: 0.2853
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 38.4446 - sparse_categorical_accuracy: 0.2863
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 38.3741 - sparse_categorical_accuracy: 0.2876
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 38.3085 - sparse_categorical_accuracy: 0.2893
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 38.2497 - sparse_categorical_accuracy: 0.2910
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 38.1954 - sparse_categorical_accuracy: 0.2925
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 38.1438 - sparse_categorical_accuracy: 0.2942
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 38.0973 - sparse_categorical_accuracy: 0.2962
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 38.0548 - sparse_categorical_accuracy: 0.2978
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 38.0137 - sparse_categorical_accuracy: 0.2996
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 37.9745 - sparse_categorical_accuracy: 0.3013
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:17 1s/step - loss: 37.9374 - sparse_categorical_accuracy: 0.3029
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 37.9020 - sparse_categorical_accuracy: 0.3044
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 37.8688 - sparse_categorical_accuracy: 0.3058
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 37.8374 - sparse_categorical_accuracy: 0.3069
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 37.8071 - sparse_categorical_accuracy: 0.3081
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:12 1s/step - loss: 37.7780 - sparse_categorical_accuracy: 0.3092
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 37.7549 - sparse_categorical_accuracy: 0.3103
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 37.7322 - sparse_categorical_accuracy: 0.3112
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 37.7103 - sparse_categorical_accuracy: 0.3122
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 37.6895 - sparse_categorical_accuracy: 0.3130
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 37.6693 - sparse_categorical_accuracy: 0.3139
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 37.6500 - sparse_categorical_accuracy: 0.3147
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 37.6313 - sparse_categorical_accuracy: 0.3155
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 37.6136 - sparse_categorical_accuracy: 0.3163
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 37.5964 - sparse_categorical_accuracy: 0.3170
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 37.5801 - sparse_categorical_accuracy: 0.3176
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 37.5643 - sparse_categorical_accuracy: 0.3182
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 37.5490 - sparse_categorical_accuracy: 0.3187
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 37.5343 - sparse_categorical_accuracy: 0.3192 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 37.5202 - sparse_categorical_accuracy: 0.3197
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 37.5065 - sparse_categorical_accuracy: 0.3202
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 37.4937 - sparse_categorical_accuracy: 0.3207
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 37.4820 - sparse_categorical_accuracy: 0.3210
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 37.4705 - sparse_categorical_accuracy: 0.3213
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 37.4600 - sparse_categorical_accuracy: 0.3216
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  51s 1s/step - loss: 37.4499 - sparse_categorical_accuracy: 0.3220
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 37.4459 - sparse_categorical_accuracy: 0.3223
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 37.4418 - sparse_categorical_accuracy: 0.3226
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 37.4394 - sparse_categorical_accuracy: 0.3229
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 37.4379 - sparse_categorical_accuracy: 0.3231
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  46s 1s/step - loss: 37.4367 - sparse_categorical_accuracy: 0.3233
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 37.4355 - sparse_categorical_accuracy: 0.3234
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 37.4344 - sparse_categorical_accuracy: 0.3236
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 37.4333 - sparse_categorical_accuracy: 0.3237
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 37.4332 - sparse_categorical_accuracy: 0.3239
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  41s 1s/step - loss: 37.4330 - sparse_categorical_accuracy: 0.3240
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 37.4355 - sparse_categorical_accuracy: 0.3242
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 37.4376 - sparse_categorical_accuracy: 0.3243
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 37.4397 - sparse_categorical_accuracy: 0.3244
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 37.4570 - sparse_categorical_accuracy: 0.3245
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 37.4780 - sparse_categorical_accuracy: 0.3246
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 37.4992 - sparse_categorical_accuracy: 0.3246
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 37.5211 - sparse_categorical_accuracy: 0.3247
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 37.5453 - sparse_categorical_accuracy: 0.3248
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 37.6848 - sparse_categorical_accuracy: 0.3249
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 37.8449 - sparse_categorical_accuracy: 0.3250
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 38.0000 - sparse_categorical_accuracy: 0.3250
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 38.1557 - sparse_categorical_accuracy: 0.3251
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 38.5126 - sparse_categorical_accuracy: 0.3250
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 39.0564 - sparse_categorical_accuracy: 0.3250
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 39.5901 - sparse_categorical_accuracy: 0.3249
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 40.1041 - sparse_categorical_accuracy: 0.3249
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 40.6028 - sparse_categorical_accuracy: 0.3248
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 41.1546 - sparse_categorical_accuracy: 0.3247
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 41.7197 - sparse_categorical_accuracy: 0.3246
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 42.2922 - sparse_categorical_accuracy: 0.3245
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 42.8838 - sparse_categorical_accuracy: 0.3244
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 43.4631 - sparse_categorical_accuracy: 0.3243
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 44.0304 - sparse_categorical_accuracy: 0.3242
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 44.8038 - sparse_categorical_accuracy: 0.3241
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 45.5640 - sparse_categorical_accuracy: 0.3240
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 46.2985 - sparse_categorical_accuracy: 0.3240
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 47.0196 - sparse_categorical_accuracy: 0.3239
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 47.7189 - sparse_categorical_accuracy: 0.3238
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 48.3950 - sparse_categorical_accuracy: 0.3237
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 49.0544 - sparse_categorical_accuracy: 0.3236
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 49.6933 - sparse_categorical_accuracy: 0.3235
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 50.3141 - sparse_categorical_accuracy: 0.3234 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 51.0231 - sparse_categorical_accuracy: 0.3234
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 51.7102 - sparse_categorical_accuracy: 0.3233
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 52.3764 - sparse_categorical_accuracy: 0.3232
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 53.0224 - sparse_categorical_accuracy: 0.3231
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 53.6491 - sparse_categorical_accuracy: 0.3230
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 54.2575 - sparse_categorical_accuracy: 0.3230
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 54.8483 - sparse_categorical_accuracy: 0.3229
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 55.4269 - sparse_categorical_accuracy: 0.3228
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 55.9873 - sparse_categorical_accuracy: 0.3227
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 142s 1s/step - loss: 56.5366 - sparse_categorical_accuracy: 0.3226 - val_loss: 505209651200.0000 - val_sparse_categorical_accuracy: 0.2528
+
+
+<div class="k-default-codeblock">
+```
+Epoch 14/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:46 1s/step - loss: 72.5004 - sparse_categorical_accuracy: 0.2812
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:37 992ms/step - loss: 84.3191 - sparse_categorical_accuracy: 0.2891
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:36 995ms/step - loss: 86.3062 - sparse_categorical_accuracy: 0.2865
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 102.5759 - sparse_categorical_accuracy: 0.2891  
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 111.2810 - sparse_categorical_accuracy: 0.2925
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 116.4263 - sparse_categorical_accuracy: 0.2950
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 120.4184 - sparse_categorical_accuracy: 0.2949
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 122.9799 - sparse_categorical_accuracy: 0.2976
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 123.9803 - sparse_categorical_accuracy: 0.2985
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 124.1441 - sparse_categorical_accuracy: 0.2996
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 123.8266 - sparse_categorical_accuracy: 0.2997
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 148.8502 - sparse_categorical_accuracy: 0.2999
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 167.8486 - sparse_categorical_accuracy: 0.3009
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 182.3929 - sparse_categorical_accuracy: 0.3014
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 193.6643 - sparse_categorical_accuracy: 0.3017
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 202.4236 - sparse_categorical_accuracy: 0.3023
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 209.2320 - sparse_categorical_accuracy: 0.3023
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 215.1761 - sparse_categorical_accuracy: 0.3022
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 219.8418 - sparse_categorical_accuracy: 0.3026
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 241.0950 - sparse_categorical_accuracy: 0.3032
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 262.8609 - sparse_categorical_accuracy: 0.3038
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 281.3412 - sparse_categorical_accuracy: 0.3045
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 297.2592 - sparse_categorical_accuracy: 0.3051
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:17 1s/step - loss: 310.9528 - sparse_categorical_accuracy: 0.3058
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 322.7583 - sparse_categorical_accuracy: 0.3064
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 333.3093 - sparse_categorical_accuracy: 0.3068
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 346.8104 - sparse_categorical_accuracy: 0.3072
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 358.5458 - sparse_categorical_accuracy: 0.3073
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:12 1s/step - loss: 368.7500 - sparse_categorical_accuracy: 0.3072
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 378.8999 - sparse_categorical_accuracy: 0.3072
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 388.4263 - sparse_categorical_accuracy: 0.3071
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 396.7980 - sparse_categorical_accuracy: 0.3070
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 404.4334 - sparse_categorical_accuracy: 0.3069
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 411.2321 - sparse_categorical_accuracy: 0.3070
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 417.2190 - sparse_categorical_accuracy: 0.3070
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 422.5132 - sparse_categorical_accuracy: 0.3070
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 427.1383 - sparse_categorical_accuracy: 0.3070
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 431.2506 - sparse_categorical_accuracy: 0.3070
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 434.8232 - sparse_categorical_accuracy: 0.3070
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 437.9098 - sparse_categorical_accuracy: 0.3068
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 440.6833 - sparse_categorical_accuracy: 0.3066
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 443.0559 - sparse_categorical_accuracy: 0.3064 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 445.1284 - sparse_categorical_accuracy: 0.3063
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 446.8688 - sparse_categorical_accuracy: 0.3062
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 448.4276 - sparse_categorical_accuracy: 0.3060
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 449.8117 - sparse_categorical_accuracy: 0.3059
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 450.9800 - sparse_categorical_accuracy: 0.3058
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 451.9573 - sparse_categorical_accuracy: 0.3058
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 452.7186 - sparse_categorical_accuracy: 0.3058
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 453.3130 - sparse_categorical_accuracy: 0.3058
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 453.7388 - sparse_categorical_accuracy: 0.3057
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 454.0486 - sparse_categorical_accuracy: 0.3056
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 454.2064 - sparse_categorical_accuracy: 0.3055
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  46s 1s/step - loss: 454.2328 - sparse_categorical_accuracy: 0.3053
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 454.1332 - sparse_categorical_accuracy: 0.3052
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 453.9173 - sparse_categorical_accuracy: 0.3050
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 453.5970 - sparse_categorical_accuracy: 0.3048
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 453.1803 - sparse_categorical_accuracy: 0.3046
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  41s 1s/step - loss: 452.6779 - sparse_categorical_accuracy: 0.3044
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 452.0964 - sparse_categorical_accuracy: 0.3042
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 451.4410 - sparse_categorical_accuracy: 0.3040
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 450.7515 - sparse_categorical_accuracy: 0.3038
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 449.9997 - sparse_categorical_accuracy: 0.3036
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 449.1942 - sparse_categorical_accuracy: 0.3034
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 448.3498 - sparse_categorical_accuracy: 0.3032
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 447.4845 - sparse_categorical_accuracy: 0.3030
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 446.5741 - sparse_categorical_accuracy: 0.3028
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 445.6242 - sparse_categorical_accuracy: 0.3026
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 444.6494 - sparse_categorical_accuracy: 0.3024
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 443.6421 - sparse_categorical_accuracy: 0.3022
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 442.6296 - sparse_categorical_accuracy: 0.3020
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 441.5871 - sparse_categorical_accuracy: 0.3019
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 440.5179 - sparse_categorical_accuracy: 0.3017
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 439.4271 - sparse_categorical_accuracy: 0.3016
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 438.3216 - sparse_categorical_accuracy: 0.3014
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 437.1978 - sparse_categorical_accuracy: 0.3013
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 436.0553 - sparse_categorical_accuracy: 0.3012
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 434.9005 - sparse_categorical_accuracy: 0.3011
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 433.7516 - sparse_categorical_accuracy: 0.3010
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 432.6144 - sparse_categorical_accuracy: 0.3010
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 431.4657 - sparse_categorical_accuracy: 0.3010
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 430.3048 - sparse_categorical_accuracy: 0.3009
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 429.1349 - sparse_categorical_accuracy: 0.3009
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 427.9555 - sparse_categorical_accuracy: 0.3009
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 426.7693 - sparse_categorical_accuracy: 0.3009
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 425.5820 - sparse_categorical_accuracy: 0.3009
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 424.3880 - sparse_categorical_accuracy: 0.3009
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 423.1917 - sparse_categorical_accuracy: 0.3009
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 421.9930 - sparse_categorical_accuracy: 0.3009
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 420.7901 - sparse_categorical_accuracy: 0.3008
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 419.5866 - sparse_categorical_accuracy: 0.3008 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 418.3845 - sparse_categorical_accuracy: 0.3008
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 417.1804 - sparse_categorical_accuracy: 0.3008
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 415.9749 - sparse_categorical_accuracy: 0.3008
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 414.7687 - sparse_categorical_accuracy: 0.3008
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 413.5732 - sparse_categorical_accuracy: 0.3007
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 412.3854 - sparse_categorical_accuracy: 0.3007
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 411.1977 - sparse_categorical_accuracy: 0.3007
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 410.0114 - sparse_categorical_accuracy: 0.3007
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 408.8264 - sparse_categorical_accuracy: 0.3007
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 107s 1s/step - loss: 407.6649 - sparse_categorical_accuracy: 0.3007 - val_loss: 35970580884750336.0000 - val_sparse_categorical_accuracy: 0.3392
+
+
+<div class="k-default-codeblock">
+```
+Epoch 15/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:41 1s/step - loss: 67.1360 - sparse_categorical_accuracy: 0.1875
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:37 999ms/step - loss: 67.1150 - sparse_categorical_accuracy: 0.2500
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 72.1596 - sparse_categorical_accuracy: 0.2743   
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 73.8228 - sparse_categorical_accuracy: 0.2741
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 74.3511 - sparse_categorical_accuracy: 0.2730
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 75.8008 - sparse_categorical_accuracy: 0.2779
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 76.9862 - sparse_categorical_accuracy: 0.2841
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 77.6230 - sparse_categorical_accuracy: 0.2891
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 78.0145 - sparse_categorical_accuracy: 0.2932
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 78.4696 - sparse_categorical_accuracy: 0.2986
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 78.7647 - sparse_categorical_accuracy: 0.3035
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 78.8917 - sparse_categorical_accuracy: 0.3075
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 79.0025 - sparse_categorical_accuracy: 0.3108
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 79.0261 - sparse_categorical_accuracy: 0.3135
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 79.1682 - sparse_categorical_accuracy: 0.3158
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 79.2325 - sparse_categorical_accuracy: 0.3180
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 79.3086 - sparse_categorical_accuracy: 0.3197
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 79.3264 - sparse_categorical_accuracy: 0.3212
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 79.3429 - sparse_categorical_accuracy: 0.3225
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 79.3826 - sparse_categorical_accuracy: 0.3232
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 79.3818 - sparse_categorical_accuracy: 0.3240
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 79.3914 - sparse_categorical_accuracy: 0.3247
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:17 1s/step - loss: 79.3727 - sparse_categorical_accuracy: 0.3256
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:16 1s/step - loss: 79.3307 - sparse_categorical_accuracy: 0.3264
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 79.2707 - sparse_categorical_accuracy: 0.3271
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 79.1959 - sparse_categorical_accuracy: 0.3279
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 79.1077 - sparse_categorical_accuracy: 0.3288
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 79.0754 - sparse_categorical_accuracy: 0.3295
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:12 1s/step - loss: 79.0420 - sparse_categorical_accuracy: 0.3301
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 78.9981 - sparse_categorical_accuracy: 0.3305
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 78.9976 - sparse_categorical_accuracy: 0.3310
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 78.9829 - sparse_categorical_accuracy: 0.3315
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 78.9716 - sparse_categorical_accuracy: 0.3319
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 78.9489 - sparse_categorical_accuracy: 0.3325
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 78.9179 - sparse_categorical_accuracy: 0.3330
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 78.8956 - sparse_categorical_accuracy: 0.3335
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 78.8663 - sparse_categorical_accuracy: 0.3339
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 78.8289 - sparse_categorical_accuracy: 0.3342
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:01 1s/step - loss: 78.7841 - sparse_categorical_accuracy: 0.3344
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 78.7402 - sparse_categorical_accuracy: 0.3346
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 78.6895 - sparse_categorical_accuracy: 0.3348 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 78.6423 - sparse_categorical_accuracy: 0.3351
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 78.6159 - sparse_categorical_accuracy: 0.3354
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  56s 1s/step - loss: 78.5880 - sparse_categorical_accuracy: 0.3356
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 78.5554 - sparse_categorical_accuracy: 0.3359
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 78.5176 - sparse_categorical_accuracy: 0.3362
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 78.5012 - sparse_categorical_accuracy: 0.3364
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 78.4792 - sparse_categorical_accuracy: 0.3367
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  51s 1s/step - loss: 78.4721 - sparse_categorical_accuracy: 0.3370
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 78.4589 - sparse_categorical_accuracy: 0.3373
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 78.4406 - sparse_categorical_accuracy: 0.3375
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 78.4466 - sparse_categorical_accuracy: 0.3378
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 78.4569 - sparse_categorical_accuracy: 0.3381
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  46s 1s/step - loss: 78.4790 - sparse_categorical_accuracy: 0.3384
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 78.4997 - sparse_categorical_accuracy: 0.3386
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 78.5142 - sparse_categorical_accuracy: 0.3388
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 78.5305 - sparse_categorical_accuracy: 0.3390
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 78.5410 - sparse_categorical_accuracy: 0.3391
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  41s 1s/step - loss: 78.5479 - sparse_categorical_accuracy: 0.3392
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 78.5502 - sparse_categorical_accuracy: 0.3392
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 78.5480 - sparse_categorical_accuracy: 0.3393
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 78.5418 - sparse_categorical_accuracy: 0.3392
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 78.5315 - sparse_categorical_accuracy: 0.3391
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 78.5173 - sparse_categorical_accuracy: 0.3390
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 78.5009 - sparse_categorical_accuracy: 0.3389
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 78.4822 - sparse_categorical_accuracy: 0.3389
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 78.4737 - sparse_categorical_accuracy: 0.3388
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 78.4618 - sparse_categorical_accuracy: 0.3388
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 78.4472 - sparse_categorical_accuracy: 0.3387
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 78.4297 - sparse_categorical_accuracy: 0.3387
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 78.4095 - sparse_categorical_accuracy: 0.3386
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 78.3903 - sparse_categorical_accuracy: 0.3386
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 78.3707 - sparse_categorical_accuracy: 0.3386
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 78.3488 - sparse_categorical_accuracy: 0.3385
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 78.3245 - sparse_categorical_accuracy: 0.3385
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 78.2985 - sparse_categorical_accuracy: 0.3384
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 78.2730 - sparse_categorical_accuracy: 0.3384
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 78.2458 - sparse_categorical_accuracy: 0.3384
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 78.2171 - sparse_categorical_accuracy: 0.3383
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 78.1887 - sparse_categorical_accuracy: 0.3382
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 78.1586 - sparse_categorical_accuracy: 0.3382
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 78.1290 - sparse_categorical_accuracy: 0.3382
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 78.0979 - sparse_categorical_accuracy: 0.3381
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 78.0656 - sparse_categorical_accuracy: 0.3381
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 78.0319 - sparse_categorical_accuracy: 0.3380
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 77.9983 - sparse_categorical_accuracy: 0.3380
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 77.9636 - sparse_categorical_accuracy: 0.3380
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 77.9280 - sparse_categorical_accuracy: 0.3380
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 77.8915 - sparse_categorical_accuracy: 0.3379
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 77.8541 - sparse_categorical_accuracy: 0.3379
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 77.8170 - sparse_categorical_accuracy: 0.3378 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 77.7791 - sparse_categorical_accuracy: 0.3378
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 77.7424 - sparse_categorical_accuracy: 0.3378
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 77.7098 - sparse_categorical_accuracy: 0.3377
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 77.6769 - sparse_categorical_accuracy: 0.3377
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 77.6433 - sparse_categorical_accuracy: 0.3377
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 77.6111 - sparse_categorical_accuracy: 0.3377
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 77.5781 - sparse_categorical_accuracy: 0.3377
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 77.5445 - sparse_categorical_accuracy: 0.3377
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 77.5074 - sparse_categorical_accuracy: 0.3377
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 106s 1s/step - loss: 77.4712 - sparse_categorical_accuracy: 0.3377 - val_loss: 2983669504.0000 - val_sparse_categorical_accuracy: 0.2966
+
+
+<div class="k-default-codeblock">
+```
+Epoch 16/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:38 992ms/step - loss: 59.8730 - sparse_categorical_accuracy: 0.2188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:44 1s/step - loss: 59.6142 - sparse_categorical_accuracy: 0.2734   
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:43 1s/step - loss: 59.5408 - sparse_categorical_accuracy: 0.2865
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:40 1s/step - loss: 60.5291 - sparse_categorical_accuracy: 0.2930
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 60.9421 - sparse_categorical_accuracy: 0.3006
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 61.1234 - sparse_categorical_accuracy: 0.3052
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 61.9223 - sparse_categorical_accuracy: 0.3094
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 62.3840 - sparse_categorical_accuracy: 0.3137
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 62.6786 - sparse_categorical_accuracy: 0.3155
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 62.8811 - sparse_categorical_accuracy: 0.3171
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 63.0504 - sparse_categorical_accuracy: 0.3175
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 63.1466 - sparse_categorical_accuracy: 0.3179
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 63.1934 - sparse_categorical_accuracy: 0.3182
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 63.2089 - sparse_categorical_accuracy: 0.3186
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 63.2054 - sparse_categorical_accuracy: 0.3189
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 63.3949 - sparse_categorical_accuracy: 0.3190
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 63.6763 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 63.9220 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 64.1147 - sparse_categorical_accuracy: 0.3192
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 64.2688 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 64.3975 - sparse_categorical_accuracy: 0.3190
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 64.5064 - sparse_categorical_accuracy: 0.3191
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 64.5882 - sparse_categorical_accuracy: 0.3188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:17 1s/step - loss: 64.6458 - sparse_categorical_accuracy: 0.3186
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 64.6847 - sparse_categorical_accuracy: 0.3183
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 64.7102 - sparse_categorical_accuracy: 0.3180
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 64.7238 - sparse_categorical_accuracy: 0.3176
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 64.7253 - sparse_categorical_accuracy: 0.3172
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:12 1s/step - loss: 64.7203 - sparse_categorical_accuracy: 0.3167
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 64.7130 - sparse_categorical_accuracy: 0.3163
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 64.8311 - sparse_categorical_accuracy: 0.3157
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 64.9315 - sparse_categorical_accuracy: 0.3152
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 65.0175 - sparse_categorical_accuracy: 0.3150
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 65.1062 - sparse_categorical_accuracy: 0.3148
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 65.2656 - sparse_categorical_accuracy: 0.3147
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 65.4292 - sparse_categorical_accuracy: 0.3146
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 65.5736 - sparse_categorical_accuracy: 0.3146
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 65.7009 - sparse_categorical_accuracy: 0.3146
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 65.8135 - sparse_categorical_accuracy: 0.3146
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 65.9128 - sparse_categorical_accuracy: 0.3145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 66.0006 - sparse_categorical_accuracy: 0.3145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 66.0767 - sparse_categorical_accuracy: 0.3144 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 66.1421 - sparse_categorical_accuracy: 0.3143
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 66.1978 - sparse_categorical_accuracy: 0.3143
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 66.2447 - sparse_categorical_accuracy: 0.3142
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 66.2840 - sparse_categorical_accuracy: 0.3142
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 66.3271 - sparse_categorical_accuracy: 0.3142
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 66.3801 - sparse_categorical_accuracy: 0.3143
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 66.4257 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 66.4652 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 66.4984 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 66.5277 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 66.5540 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 66.5844 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 66.6358 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 66.6834 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 66.7256 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 66.7642 - sparse_categorical_accuracy: 0.3144
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 66.7980 - sparse_categorical_accuracy: 0.3145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  41s 1s/step - loss: 66.8283 - sparse_categorical_accuracy: 0.3145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 66.8676 - sparse_categorical_accuracy: 0.3145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 66.9055 - sparse_categorical_accuracy: 0.3145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 66.9389 - sparse_categorical_accuracy: 0.3145
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 66.9682 - sparse_categorical_accuracy: 0.3146
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 67.0068 - sparse_categorical_accuracy: 0.3147
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 67.0413 - sparse_categorical_accuracy: 0.3147
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 67.0722 - sparse_categorical_accuracy: 0.3148
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 67.0993 - sparse_categorical_accuracy: 0.3149
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 67.1250 - sparse_categorical_accuracy: 0.3150
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 67.1480 - sparse_categorical_accuracy: 0.3150
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 67.1680 - sparse_categorical_accuracy: 0.3151
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 67.1852 - sparse_categorical_accuracy: 0.3152
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 67.2117 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 67.2353 - sparse_categorical_accuracy: 0.3155
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 67.2570 - sparse_categorical_accuracy: 0.3156
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 67.2819 - sparse_categorical_accuracy: 0.3157
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 67.3040 - sparse_categorical_accuracy: 0.3158
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 67.3234 - sparse_categorical_accuracy: 0.3159
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 67.3401 - sparse_categorical_accuracy: 0.3160
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 67.3545 - sparse_categorical_accuracy: 0.3161
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 67.3668 - sparse_categorical_accuracy: 0.3162
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 67.3805 - sparse_categorical_accuracy: 0.3164
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 67.3918 - sparse_categorical_accuracy: 0.3165
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 67.4010 - sparse_categorical_accuracy: 0.3166
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 67.4103 - sparse_categorical_accuracy: 0.3168
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 67.4179 - sparse_categorical_accuracy: 0.3169
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 67.4237 - sparse_categorical_accuracy: 0.3171
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 67.4318 - sparse_categorical_accuracy: 0.3172
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 67.4379 - sparse_categorical_accuracy: 0.3174
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 67.4424 - sparse_categorical_accuracy: 0.3175
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 67.4458 - sparse_categorical_accuracy: 0.3176 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 67.4481 - sparse_categorical_accuracy: 0.3178
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 67.4508 - sparse_categorical_accuracy: 0.3179
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 67.4519 - sparse_categorical_accuracy: 0.3180
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 67.4519 - sparse_categorical_accuracy: 0.3181
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 67.4504 - sparse_categorical_accuracy: 0.3182
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 67.4478 - sparse_categorical_accuracy: 0.3184
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 67.4438 - sparse_categorical_accuracy: 0.3185
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 67.4389 - sparse_categorical_accuracy: 0.3186
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 67.4304 - sparse_categorical_accuracy: 0.3187
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 107s 1s/step - loss: 67.4222 - sparse_categorical_accuracy: 0.3189 - val_loss: 37.0687 - val_sparse_categorical_accuracy: 0.1477
+
+
+<div class="k-default-codeblock">
+```
+Epoch 17/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  58:50 36s/step - loss: 54.1712 - sparse_categorical_accuracy: 0.5312
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:37 996ms/step - loss: 54.1433 - sparse_categorical_accuracy: 0.4844
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:39 1s/step - loss: 54.2923 - sparse_categorical_accuracy: 0.4583   
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 54.3945 - sparse_categorical_accuracy: 0.4395
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 54.4431 - sparse_categorical_accuracy: 0.4228
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 54.4496 - sparse_categorical_accuracy: 0.4122
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 54.4618 - sparse_categorical_accuracy: 0.4031
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 54.4794 - sparse_categorical_accuracy: 0.3937
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 54.5192 - sparse_categorical_accuracy: 0.3851
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 54.5401 - sparse_categorical_accuracy: 0.3766
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 54.5954 - sparse_categorical_accuracy: 0.3710
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 54.6501 - sparse_categorical_accuracy: 0.3659
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 54.7149 - sparse_categorical_accuracy: 0.3622
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 54.7656 - sparse_categorical_accuracy: 0.3591
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 54.8022 - sparse_categorical_accuracy: 0.3567
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 54.8257 - sparse_categorical_accuracy: 0.3542
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 54.8423 - sparse_categorical_accuracy: 0.3525
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 54.9699 - sparse_categorical_accuracy: 0.3509
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 55.0764 - sparse_categorical_accuracy: 0.3496
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 55.1662 - sparse_categorical_accuracy: 0.3486
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 55.2427 - sparse_categorical_accuracy: 0.3476
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 55.3652 - sparse_categorical_accuracy: 0.3469
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 55.4674 - sparse_categorical_accuracy: 0.3462
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:17 1s/step - loss: 55.5522 - sparse_categorical_accuracy: 0.3454
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 55.6296 - sparse_categorical_accuracy: 0.3448
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 55.6969 - sparse_categorical_accuracy: 0.3443
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 55.7546 - sparse_categorical_accuracy: 0.3437
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 55.8086 - sparse_categorical_accuracy: 0.3432
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:12 1s/step - loss: 55.8801 - sparse_categorical_accuracy: 0.3426
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 55.9433 - sparse_categorical_accuracy: 0.3422
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 55.9972 - sparse_categorical_accuracy: 0.3418
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 56.0430 - sparse_categorical_accuracy: 0.3416
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 56.1322 - sparse_categorical_accuracy: 0.3413
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 56.2106 - sparse_categorical_accuracy: 0.3411
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 56.2797 - sparse_categorical_accuracy: 0.3408
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 56.3416 - sparse_categorical_accuracy: 0.3404
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 56.4020 - sparse_categorical_accuracy: 0.3399
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 56.5119 - sparse_categorical_accuracy: 0.3394
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 56.6107 - sparse_categorical_accuracy: 0.3390
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 56.7063 - sparse_categorical_accuracy: 0.3387
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 56.7925 - sparse_categorical_accuracy: 0.3384 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 56.8706 - sparse_categorical_accuracy: 0.3381
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 56.9405 - sparse_categorical_accuracy: 0.3377
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  56s 1s/step - loss: 57.0081 - sparse_categorical_accuracy: 0.3373
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 57.0696 - sparse_categorical_accuracy: 0.3369
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 57.1252 - sparse_categorical_accuracy: 0.3366
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 57.1747 - sparse_categorical_accuracy: 0.3363
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 57.2194 - sparse_categorical_accuracy: 0.3360
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  51s 1s/step - loss: 57.2593 - sparse_categorical_accuracy: 0.3357
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 57.2964 - sparse_categorical_accuracy: 0.3355
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 57.3293 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 57.3585 - sparse_categorical_accuracy: 0.3351
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 57.3855 - sparse_categorical_accuracy: 0.3348
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  46s 1s/step - loss: 57.4333 - sparse_categorical_accuracy: 0.3346
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 57.4782 - sparse_categorical_accuracy: 0.3343
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 57.5188 - sparse_categorical_accuracy: 0.3341
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 57.5586 - sparse_categorical_accuracy: 0.3338
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 57.5993 - sparse_categorical_accuracy: 0.3335
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  41s 1s/step - loss: 57.6384 - sparse_categorical_accuracy: 0.3333
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 57.6740 - sparse_categorical_accuracy: 0.3331
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 57.7064 - sparse_categorical_accuracy: 0.3329
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 57.7355 - sparse_categorical_accuracy: 0.3327
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 57.7617 - sparse_categorical_accuracy: 0.3325
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 57.7892 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 57.8148 - sparse_categorical_accuracy: 0.3321
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 57.8380 - sparse_categorical_accuracy: 0.3320
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 57.8589 - sparse_categorical_accuracy: 0.3318
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 57.8776 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 57.8941 - sparse_categorical_accuracy: 0.3315
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 57.9087 - sparse_categorical_accuracy: 0.3314
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 57.9215 - sparse_categorical_accuracy: 0.3312
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 57.9324 - sparse_categorical_accuracy: 0.3310
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 57.9434 - sparse_categorical_accuracy: 0.3309
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 57.9529 - sparse_categorical_accuracy: 0.3307
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 57.9608 - sparse_categorical_accuracy: 0.3305
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 57.9671 - sparse_categorical_accuracy: 0.3304
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 57.9843 - sparse_categorical_accuracy: 0.3302
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 57.9998 - sparse_categorical_accuracy: 0.3300
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 58.0135 - sparse_categorical_accuracy: 0.3299
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 58.0259 - sparse_categorical_accuracy: 0.3298
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 58.0429 - sparse_categorical_accuracy: 0.3296
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 58.0585 - sparse_categorical_accuracy: 0.3295
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 58.0728 - sparse_categorical_accuracy: 0.3293
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 58.0856 - sparse_categorical_accuracy: 0.3292
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 58.1039 - sparse_categorical_accuracy: 0.3291
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 58.1206 - sparse_categorical_accuracy: 0.3290
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 58.1372 - sparse_categorical_accuracy: 0.3289
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 58.1528 - sparse_categorical_accuracy: 0.3288
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 58.1669 - sparse_categorical_accuracy: 0.3288
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 58.1796 - sparse_categorical_accuracy: 0.3287
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 58.1911 - sparse_categorical_accuracy: 0.3286 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 58.2014 - sparse_categorical_accuracy: 0.3285
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 58.2118 - sparse_categorical_accuracy: 0.3285
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 58.2212 - sparse_categorical_accuracy: 0.3284
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 58.2345 - sparse_categorical_accuracy: 0.3284
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 58.2465 - sparse_categorical_accuracy: 0.3283
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 58.2574 - sparse_categorical_accuracy: 0.3283
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 58.2673 - sparse_categorical_accuracy: 0.3283
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 58.2759 - sparse_categorical_accuracy: 0.3282
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 58.2815 - sparse_categorical_accuracy: 0.3282
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 141s 1s/step - loss: 58.2869 - sparse_categorical_accuracy: 0.3282 - val_loss: 4191578574815232.0000 - val_sparse_categorical_accuracy: 0.3129
+
+
+<div class="k-default-codeblock">
+```
+Epoch 18/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:39 1s/step - loss: 51.9365 - sparse_categorical_accuracy: 0.4375
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:44 1s/step - loss: 57.0536 - sparse_categorical_accuracy: 0.3984
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:40 1s/step - loss: 57.4789 - sparse_categorical_accuracy: 0.3767
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 57.1816 - sparse_categorical_accuracy: 0.3529
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 57.1706 - sparse_categorical_accuracy: 0.3435
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 57.8198 - sparse_categorical_accuracy: 0.3349
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 58.1971 - sparse_categorical_accuracy: 0.3285
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 58.3237 - sparse_categorical_accuracy: 0.3236
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 58.3409 - sparse_categorical_accuracy: 0.3200
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 58.5552 - sparse_categorical_accuracy: 0.3165
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 58.6516 - sparse_categorical_accuracy: 0.3143
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 58.6702 - sparse_categorical_accuracy: 0.3131
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 58.6391 - sparse_categorical_accuracy: 0.3126
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 58.6047 - sparse_categorical_accuracy: 0.3125
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 58.5388 - sparse_categorical_accuracy: 0.3126
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 58.4930 - sparse_categorical_accuracy: 0.3130
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 58.5077 - sparse_categorical_accuracy: 0.3135
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 58.5053 - sparse_categorical_accuracy: 0.3142
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 58.4806 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 58.4394 - sparse_categorical_accuracy: 0.3170
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 58.4049 - sparse_categorical_accuracy: 0.3185
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 58.3601 - sparse_categorical_accuracy: 0.3198
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 58.3112 - sparse_categorical_accuracy: 0.3208
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:17 1s/step - loss: 58.2546 - sparse_categorical_accuracy: 0.3219
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 58.1921 - sparse_categorical_accuracy: 0.3226
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 58.1254 - sparse_categorical_accuracy: 0.3234
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 58.0712 - sparse_categorical_accuracy: 0.3242
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:12 1s/step - loss: 58.0117 - sparse_categorical_accuracy: 0.3251
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:11 1s/step - loss: 57.9476 - sparse_categorical_accuracy: 0.3258
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 57.8802 - sparse_categorical_accuracy: 0.3267
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 57.8106 - sparse_categorical_accuracy: 0.3275
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 57.7397 - sparse_categorical_accuracy: 0.3282
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 57.6674 - sparse_categorical_accuracy: 0.3289
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:06 1s/step - loss: 57.5958 - sparse_categorical_accuracy: 0.3295
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 57.5233 - sparse_categorical_accuracy: 0.3300
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 57.4506 - sparse_categorical_accuracy: 0.3304
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 57.3774 - sparse_categorical_accuracy: 0.3307
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 57.3046 - sparse_categorical_accuracy: 0.3310
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 57.2337 - sparse_categorical_accuracy: 0.3311
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 57.1629 - sparse_categorical_accuracy: 0.3312
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 57.0945 - sparse_categorical_accuracy: 0.3312
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 57.0267 - sparse_categorical_accuracy: 0.3313 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 56.9828 - sparse_categorical_accuracy: 0.3314
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 56.9401 - sparse_categorical_accuracy: 0.3315
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 56.8960 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 56.8507 - sparse_categorical_accuracy: 0.3319
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 56.8044 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 56.7577 - sparse_categorical_accuracy: 0.3325
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  51s 1s/step - loss: 56.7108 - sparse_categorical_accuracy: 0.3327
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 56.6634 - sparse_categorical_accuracy: 0.3329
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 56.6159 - sparse_categorical_accuracy: 0.3331
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 56.5681 - sparse_categorical_accuracy: 0.3332
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 56.5206 - sparse_categorical_accuracy: 0.3333
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  46s 1s/step - loss: 56.4731 - sparse_categorical_accuracy: 0.3333
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 56.4286 - sparse_categorical_accuracy: 0.3334
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 56.3840 - sparse_categorical_accuracy: 0.3334
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 56.3394 - sparse_categorical_accuracy: 0.3334
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 56.3065 - sparse_categorical_accuracy: 0.3335
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  41s 1s/step - loss: 56.2731 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 56.2395 - sparse_categorical_accuracy: 0.3336
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 56.2054 - sparse_categorical_accuracy: 0.3337
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 56.1711 - sparse_categorical_accuracy: 0.3338
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 56.1365 - sparse_categorical_accuracy: 0.3339
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 56.1018 - sparse_categorical_accuracy: 0.3339
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 56.0668 - sparse_categorical_accuracy: 0.3339
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 56.0318 - sparse_categorical_accuracy: 0.3339
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 55.9968 - sparse_categorical_accuracy: 0.3339
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 55.9643 - sparse_categorical_accuracy: 0.3339
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 55.9317 - sparse_categorical_accuracy: 0.3340
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 55.8996 - sparse_categorical_accuracy: 0.3340
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 55.8673 - sparse_categorical_accuracy: 0.3341
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 55.8357 - sparse_categorical_accuracy: 0.3342
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 55.8041 - sparse_categorical_accuracy: 0.3343
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 55.7725 - sparse_categorical_accuracy: 0.3343
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 55.7424 - sparse_categorical_accuracy: 0.3344
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 55.7129 - sparse_categorical_accuracy: 0.3345
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 55.6835 - sparse_categorical_accuracy: 0.3346
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 55.6543 - sparse_categorical_accuracy: 0.3346
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 55.6249 - sparse_categorical_accuracy: 0.3347
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 55.5968 - sparse_categorical_accuracy: 0.3348
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 55.5756 - sparse_categorical_accuracy: 0.3348
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 55.5541 - sparse_categorical_accuracy: 0.3349
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 55.5328 - sparse_categorical_accuracy: 0.3349
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 55.5113 - sparse_categorical_accuracy: 0.3350
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 55.4897 - sparse_categorical_accuracy: 0.3351
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 55.4680 - sparse_categorical_accuracy: 0.3351
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 55.4463 - sparse_categorical_accuracy: 0.3351
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 55.4254 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 55.4044 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 55.3833 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 55.3620 - sparse_categorical_accuracy: 0.3352 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 55.3407 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 55.3192 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 55.2975 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 55.2758 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 55.2539 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 55.2319 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 55.2103 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 55.1890 - sparse_categorical_accuracy: 0.3352
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 55.1664 - sparse_categorical_accuracy: 0.3351
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 106s 1s/step - loss: 55.1443 - sparse_categorical_accuracy: 0.3351 - val_loss: 50221851662203486208.0000 - val_sparse_categorical_accuracy: 0.3242
+
+
+<div class="k-default-codeblock">
+```
+Epoch 19/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:41 1s/step - loss: 48.0290 - sparse_categorical_accuracy: 0.2188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:44 1s/step - loss: 48.0152 - sparse_categorical_accuracy: 0.2422
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:41 1s/step - loss: 48.0897 - sparse_categorical_accuracy: 0.2622
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:38 1s/step - loss: 48.2575 - sparse_categorical_accuracy: 0.2786
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 48.2910 - sparse_categorical_accuracy: 0.2917
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 48.2856 - sparse_categorical_accuracy: 0.3012
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 48.2775 - sparse_categorical_accuracy: 0.3067
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 48.2703 - sparse_categorical_accuracy: 0.3098
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 48.2452 - sparse_categorical_accuracy: 0.3132
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:32 1s/step - loss: 48.2307 - sparse_categorical_accuracy: 0.3147
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 48.2224 - sparse_categorical_accuracy: 0.3148
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 48.2436 - sparse_categorical_accuracy: 0.3154
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:29 1s/step - loss: 48.4003 - sparse_categorical_accuracy: 0.3165
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 48.5188 - sparse_categorical_accuracy: 0.3173
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 48.6114 - sparse_categorical_accuracy: 0.3177
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 48.6889 - sparse_categorical_accuracy: 0.3188
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 48.8238 - sparse_categorical_accuracy: 0.3200
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 48.9324 - sparse_categorical_accuracy: 0.3209
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 49.0280 - sparse_categorical_accuracy: 0.3215
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 49.1080 - sparse_categorical_accuracy: 0.3221
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 49.1839 - sparse_categorical_accuracy: 0.3223
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 49.2456 - sparse_categorical_accuracy: 0.3229
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 49.3109 - sparse_categorical_accuracy: 0.3234
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 49.3649 - sparse_categorical_accuracy: 0.3238
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:17 1s/step - loss: 49.4094 - sparse_categorical_accuracy: 0.3242
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 49.4442 - sparse_categorical_accuracy: 0.3245
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 49.4733 - sparse_categorical_accuracy: 0.3249
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 49.4992 - sparse_categorical_accuracy: 0.3254
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 49.5312 - sparse_categorical_accuracy: 0.3259
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:12 1s/step - loss: 49.5580 - sparse_categorical_accuracy: 0.3263
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 49.5893 - sparse_categorical_accuracy: 0.3266
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 49.6143 - sparse_categorical_accuracy: 0.3269
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 49.6356 - sparse_categorical_accuracy: 0.3271
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 49.6533 - sparse_categorical_accuracy: 0.3274
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:07 1s/step - loss: 49.6677 - sparse_categorical_accuracy: 0.3276
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 49.6871 - sparse_categorical_accuracy: 0.3280
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 49.7037 - sparse_categorical_accuracy: 0.3283
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 49.7168 - sparse_categorical_accuracy: 0.3287
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 49.7293 - sparse_categorical_accuracy: 0.3290
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:02 1s/step - loss: 49.7390 - sparse_categorical_accuracy: 0.3293
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 49.7459 - sparse_categorical_accuracy: 0.3296
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 49.7542 - sparse_categorical_accuracy: 0.3298
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 49.7604 - sparse_categorical_accuracy: 0.3300 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 49.7769 - sparse_categorical_accuracy: 0.3302
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  57s 1s/step - loss: 49.7948 - sparse_categorical_accuracy: 0.3304
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 49.8099 - sparse_categorical_accuracy: 0.3306
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 49.8228 - sparse_categorical_accuracy: 0.3307
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 49.8335 - sparse_categorical_accuracy: 0.3307
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  52s 1s/step - loss: 49.8428 - sparse_categorical_accuracy: 0.3308
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  51s 1s/step - loss: 49.8501 - sparse_categorical_accuracy: 0.3308
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 49.8558 - sparse_categorical_accuracy: 0.3308
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 49.8601 - sparse_categorical_accuracy: 0.3308
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 49.8642 - sparse_categorical_accuracy: 0.3308
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 49.8671 - sparse_categorical_accuracy: 0.3309
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  46s 1s/step - loss: 49.8689 - sparse_categorical_accuracy: 0.3310
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 49.8703 - sparse_categorical_accuracy: 0.3311
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 49.8753 - sparse_categorical_accuracy: 0.3312
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 49.8791 - sparse_categorical_accuracy: 0.3313
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 49.8816 - sparse_categorical_accuracy: 0.3315
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  41s 1s/step - loss: 49.8859 - sparse_categorical_accuracy: 0.3316
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 49.8905 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 49.8946 - sparse_categorical_accuracy: 0.3318
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 49.8977 - sparse_categorical_accuracy: 0.3319
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 49.9000 - sparse_categorical_accuracy: 0.3320
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  36s 1s/step - loss: 49.9015 - sparse_categorical_accuracy: 0.3321
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 49.9024 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 49.9043 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 49.9063 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 49.9077 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 49.9082 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 49.9081 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 49.9074 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 49.9060 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 49.9042 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 49.9035 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 49.9023 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 49.9021 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 49.9030 - sparse_categorical_accuracy: 0.3323
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 49.9032 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 49.9029 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 49.9061 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 49.9088 - sparse_categorical_accuracy: 0.3322
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 49.9109 - sparse_categorical_accuracy: 0.3321
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 49.9124 - sparse_categorical_accuracy: 0.3321
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 49.9136 - sparse_categorical_accuracy: 0.3321
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 49.9143 - sparse_categorical_accuracy: 0.3321
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 49.9144 - sparse_categorical_accuracy: 0.3320
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 49.9143 - sparse_categorical_accuracy: 0.3320
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 49.9138 - sparse_categorical_accuracy: 0.3320
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 49.9136 - sparse_categorical_accuracy: 0.3319
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 49.9129 - sparse_categorical_accuracy: 0.3319 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 49.9119 - sparse_categorical_accuracy: 0.3318
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 49.9104 - sparse_categorical_accuracy: 0.3318
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 49.9085 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 49.9062 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 49.9041 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 49.9024 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 49.9033 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 49.9038 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 49.9019 - sparse_categorical_accuracy: 0.3317
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 108s 1s/step - loss: 49.9001 - sparse_categorical_accuracy: 0.3317 - val_loss: 69256328.0000 - val_sparse_categorical_accuracy: 0.3579
+
+
+<div class="k-default-codeblock">
+```
+Epoch 20/20
+
+```
+</div>
+    
+   1/100 [37m━━━━━━━━━━━━━━━━━━━━  1:42 1s/step - loss: 45.8100 - sparse_categorical_accuracy: 0.4062
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   2/100 [37m━━━━━━━━━━━━━━━━━━━━  1:37 990ms/step - loss: 45.8442 - sparse_categorical_accuracy: 0.4062
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   3/100 [37m━━━━━━━━━━━━━━━━━━━━  1:37 1s/step - loss: 45.8131 - sparse_categorical_accuracy: 0.3993   
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   4/100 [37m━━━━━━━━━━━━━━━━━━━━  1:36 1s/step - loss: 45.8064 - sparse_categorical_accuracy: 0.3913
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   5/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 45.8227 - sparse_categorical_accuracy: 0.3868
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   6/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:35 1s/step - loss: 45.8191 - sparse_categorical_accuracy: 0.3831
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   7/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:34 1s/step - loss: 45.8214 - sparse_categorical_accuracy: 0.3762
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   8/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:33 1s/step - loss: 45.8634 - sparse_categorical_accuracy: 0.3702
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+   9/100 ━[37m━━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 45.8982 - sparse_categorical_accuracy: 0.3634
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  10/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:31 1s/step - loss: 45.9172 - sparse_categorical_accuracy: 0.3589
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  11/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:30 1s/step - loss: 45.9713 - sparse_categorical_accuracy: 0.3560
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  12/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 46.0114 - sparse_categorical_accuracy: 0.3548
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  13/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:28 1s/step - loss: 46.0793 - sparse_categorical_accuracy: 0.3535
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  14/100 ━━[37m━━━━━━━━━━━━━━━━━━  1:27 1s/step - loss: 46.1364 - sparse_categorical_accuracy: 0.3520
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  15/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:26 1s/step - loss: 46.1765 - sparse_categorical_accuracy: 0.3509
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  16/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:25 1s/step - loss: 46.2080 - sparse_categorical_accuracy: 0.3504
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  17/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:24 1s/step - loss: 46.2316 - sparse_categorical_accuracy: 0.3498
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  18/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:23 1s/step - loss: 46.2481 - sparse_categorical_accuracy: 0.3491
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  19/100 ━━━[37m━━━━━━━━━━━━━━━━━  1:22 1s/step - loss: 46.2610 - sparse_categorical_accuracy: 0.3484
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  20/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:21 1s/step - loss: 46.2706 - sparse_categorical_accuracy: 0.3473
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  21/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:20 1s/step - loss: 46.2769 - sparse_categorical_accuracy: 0.3465
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  22/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:19 1s/step - loss: 46.2793 - sparse_categorical_accuracy: 0.3458
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  23/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:18 1s/step - loss: 46.2795 - sparse_categorical_accuracy: 0.3452
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  24/100 ━━━━[37m━━━━━━━━━━━━━━━━  1:17 1s/step - loss: 46.2889 - sparse_categorical_accuracy: 0.3452
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  25/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:16 1s/step - loss: 46.2960 - sparse_categorical_accuracy: 0.3454
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  26/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:15 1s/step - loss: 46.3007 - sparse_categorical_accuracy: 0.3455
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  27/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:14 1s/step - loss: 46.3038 - sparse_categorical_accuracy: 0.3455
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  28/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:13 1s/step - loss: 46.3053 - sparse_categorical_accuracy: 0.3455
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  29/100 ━━━━━[37m━━━━━━━━━━━━━━━  1:12 1s/step - loss: 46.3057 - sparse_categorical_accuracy: 0.3454
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  30/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:11 1s/step - loss: 46.3050 - sparse_categorical_accuracy: 0.3453
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  31/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:10 1s/step - loss: 46.3095 - sparse_categorical_accuracy: 0.3451
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  32/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:09 1s/step - loss: 46.3201 - sparse_categorical_accuracy: 0.3449
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  33/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:08 1s/step - loss: 46.3293 - sparse_categorical_accuracy: 0.3446
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  34/100 ━━━━━━[37m━━━━━━━━━━━━━━  1:07 1s/step - loss: 46.3368 - sparse_categorical_accuracy: 0.3444
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  35/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:06 1s/step - loss: 46.3819 - sparse_categorical_accuracy: 0.3445
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  36/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:05 1s/step - loss: 46.4228 - sparse_categorical_accuracy: 0.3445
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  37/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:04 1s/step - loss: 46.4597 - sparse_categorical_accuracy: 0.3446
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  38/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:03 1s/step - loss: 46.4928 - sparse_categorical_accuracy: 0.3446
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  39/100 ━━━━━━━[37m━━━━━━━━━━━━━  1:02 1s/step - loss: 46.5227 - sparse_categorical_accuracy: 0.3448
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  40/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:01 1s/step - loss: 46.5496 - sparse_categorical_accuracy: 0.3448
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  41/100 ━━━━━━━━[37m━━━━━━━━━━━━  1:00 1s/step - loss: 46.5741 - sparse_categorical_accuracy: 0.3447
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  42/100 ━━━━━━━━[37m━━━━━━━━━━━━  59s 1s/step - loss: 46.5961 - sparse_categorical_accuracy: 0.3447 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  43/100 ━━━━━━━━[37m━━━━━━━━━━━━  58s 1s/step - loss: 46.6158 - sparse_categorical_accuracy: 0.3446
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  44/100 ━━━━━━━━[37m━━━━━━━━━━━━  57s 1s/step - loss: 46.6335 - sparse_categorical_accuracy: 0.3445
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  45/100 ━━━━━━━━━[37m━━━━━━━━━━━  56s 1s/step - loss: 46.6635 - sparse_categorical_accuracy: 0.3444
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  46/100 ━━━━━━━━━[37m━━━━━━━━━━━  55s 1s/step - loss: 46.6909 - sparse_categorical_accuracy: 0.3442
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  47/100 ━━━━━━━━━[37m━━━━━━━━━━━  54s 1s/step - loss: 46.7195 - sparse_categorical_accuracy: 0.3439
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  48/100 ━━━━━━━━━[37m━━━━━━━━━━━  53s 1s/step - loss: 46.7477 - sparse_categorical_accuracy: 0.3437
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  49/100 ━━━━━━━━━[37m━━━━━━━━━━━  51s 1s/step - loss: 46.7799 - sparse_categorical_accuracy: 0.3435
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  50/100 ━━━━━━━━━━[37m━━━━━━━━━━  50s 1s/step - loss: 46.8102 - sparse_categorical_accuracy: 0.3434
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  51/100 ━━━━━━━━━━[37m━━━━━━━━━━  49s 1s/step - loss: 46.8381 - sparse_categorical_accuracy: 0.3432
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  52/100 ━━━━━━━━━━[37m━━━━━━━━━━  48s 1s/step - loss: 46.8639 - sparse_categorical_accuracy: 0.3430
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  53/100 ━━━━━━━━━━[37m━━━━━━━━━━  47s 1s/step - loss: 46.8877 - sparse_categorical_accuracy: 0.3429
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  54/100 ━━━━━━━━━━[37m━━━━━━━━━━  46s 1s/step - loss: 46.9095 - sparse_categorical_accuracy: 0.3428
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  55/100 ━━━━━━━━━━━[37m━━━━━━━━━  45s 1s/step - loss: 46.9390 - sparse_categorical_accuracy: 0.3427
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  56/100 ━━━━━━━━━━━[37m━━━━━━━━━  44s 1s/step - loss: 46.9676 - sparse_categorical_accuracy: 0.3425
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  57/100 ━━━━━━━━━━━[37m━━━━━━━━━  43s 1s/step - loss: 46.9940 - sparse_categorical_accuracy: 0.3423
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  58/100 ━━━━━━━━━━━[37m━━━━━━━━━  42s 1s/step - loss: 47.0190 - sparse_categorical_accuracy: 0.3422
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  59/100 ━━━━━━━━━━━[37m━━━━━━━━━  41s 1s/step - loss: 47.0420 - sparse_categorical_accuracy: 0.3421
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  60/100 ━━━━━━━━━━━━[37m━━━━━━━━  40s 1s/step - loss: 47.0631 - sparse_categorical_accuracy: 0.3421
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  61/100 ━━━━━━━━━━━━[37m━━━━━━━━  39s 1s/step - loss: 47.0824 - sparse_categorical_accuracy: 0.3420
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  62/100 ━━━━━━━━━━━━[37m━━━━━━━━  38s 1s/step - loss: 47.1005 - sparse_categorical_accuracy: 0.3419
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  63/100 ━━━━━━━━━━━━[37m━━━━━━━━  37s 1s/step - loss: 47.1221 - sparse_categorical_accuracy: 0.3419
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  64/100 ━━━━━━━━━━━━[37m━━━━━━━━  36s 1s/step - loss: 47.1436 - sparse_categorical_accuracy: 0.3418
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  65/100 ━━━━━━━━━━━━━[37m━━━━━━━  35s 1s/step - loss: 47.1636 - sparse_categorical_accuracy: 0.3417
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  66/100 ━━━━━━━━━━━━━[37m━━━━━━━  34s 1s/step - loss: 47.1827 - sparse_categorical_accuracy: 0.3417
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  67/100 ━━━━━━━━━━━━━[37m━━━━━━━  33s 1s/step - loss: 47.2009 - sparse_categorical_accuracy: 0.3417
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  68/100 ━━━━━━━━━━━━━[37m━━━━━━━  32s 1s/step - loss: 47.2186 - sparse_categorical_accuracy: 0.3417
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  69/100 ━━━━━━━━━━━━━[37m━━━━━━━  31s 1s/step - loss: 47.2351 - sparse_categorical_accuracy: 0.3418
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  70/100 ━━━━━━━━━━━━━━[37m━━━━━━  30s 1s/step - loss: 47.2515 - sparse_categorical_accuracy: 0.3418
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  71/100 ━━━━━━━━━━━━━━[37m━━━━━━  29s 1s/step - loss: 47.2666 - sparse_categorical_accuracy: 0.3418
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  72/100 ━━━━━━━━━━━━━━[37m━━━━━━  28s 1s/step - loss: 47.2820 - sparse_categorical_accuracy: 0.3418
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  73/100 ━━━━━━━━━━━━━━[37m━━━━━━  27s 1s/step - loss: 47.2965 - sparse_categorical_accuracy: 0.3419
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  74/100 ━━━━━━━━━━━━━━[37m━━━━━━  26s 1s/step - loss: 47.3101 - sparse_categorical_accuracy: 0.3419
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  75/100 ━━━━━━━━━━━━━━━[37m━━━━━  25s 1s/step - loss: 47.3227 - sparse_categorical_accuracy: 0.3419
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  76/100 ━━━━━━━━━━━━━━━[37m━━━━━  24s 1s/step - loss: 47.3343 - sparse_categorical_accuracy: 0.3419
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  77/100 ━━━━━━━━━━━━━━━[37m━━━━━  23s 1s/step - loss: 47.3463 - sparse_categorical_accuracy: 0.3418
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  78/100 ━━━━━━━━━━━━━━━[37m━━━━━  22s 1s/step - loss: 47.3574 - sparse_categorical_accuracy: 0.3418
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  79/100 ━━━━━━━━━━━━━━━[37m━━━━━  21s 1s/step - loss: 47.3678 - sparse_categorical_accuracy: 0.3418
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  80/100 ━━━━━━━━━━━━━━━━[37m━━━━  20s 1s/step - loss: 47.3773 - sparse_categorical_accuracy: 0.3417
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  81/100 ━━━━━━━━━━━━━━━━[37m━━━━  19s 1s/step - loss: 47.3878 - sparse_categorical_accuracy: 0.3417
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  82/100 ━━━━━━━━━━━━━━━━[37m━━━━  18s 1s/step - loss: 47.3974 - sparse_categorical_accuracy: 0.3417
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  83/100 ━━━━━━━━━━━━━━━━[37m━━━━  17s 1s/step - loss: 47.4062 - sparse_categorical_accuracy: 0.3416
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  84/100 ━━━━━━━━━━━━━━━━[37m━━━━  16s 1s/step - loss: 47.4142 - sparse_categorical_accuracy: 0.3416
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  85/100 ━━━━━━━━━━━━━━━━━[37m━━━  15s 1s/step - loss: 47.4216 - sparse_categorical_accuracy: 0.3415
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  86/100 ━━━━━━━━━━━━━━━━━[37m━━━  14s 1s/step - loss: 47.4285 - sparse_categorical_accuracy: 0.3414
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  87/100 ━━━━━━━━━━━━━━━━━[37m━━━  13s 1s/step - loss: 47.4351 - sparse_categorical_accuracy: 0.3414
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  88/100 ━━━━━━━━━━━━━━━━━[37m━━━  12s 1s/step - loss: 47.4411 - sparse_categorical_accuracy: 0.3413
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  89/100 ━━━━━━━━━━━━━━━━━[37m━━━  11s 1s/step - loss: 47.4466 - sparse_categorical_accuracy: 0.3412
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  90/100 ━━━━━━━━━━━━━━━━━━[37m━━  10s 1s/step - loss: 47.4517 - sparse_categorical_accuracy: 0.3411
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  91/100 ━━━━━━━━━━━━━━━━━━[37m━━  9s 1s/step - loss: 47.4563 - sparse_categorical_accuracy: 0.3410 
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  92/100 ━━━━━━━━━━━━━━━━━━[37m━━  8s 1s/step - loss: 47.4604 - sparse_categorical_accuracy: 0.3410
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  93/100 ━━━━━━━━━━━━━━━━━━[37m━━  7s 1s/step - loss: 47.4641 - sparse_categorical_accuracy: 0.3409
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  94/100 ━━━━━━━━━━━━━━━━━━[37m━━  6s 1s/step - loss: 47.4688 - sparse_categorical_accuracy: 0.3409
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  95/100 ━━━━━━━━━━━━━━━━━━━[37m━  5s 1s/step - loss: 47.4731 - sparse_categorical_accuracy: 0.3408
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  96/100 ━━━━━━━━━━━━━━━━━━━[37m━  4s 1s/step - loss: 47.4771 - sparse_categorical_accuracy: 0.3407
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  97/100 ━━━━━━━━━━━━━━━━━━━[37m━  3s 1s/step - loss: 47.4814 - sparse_categorical_accuracy: 0.3406
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  98/100 ━━━━━━━━━━━━━━━━━━━[37m━  2s 1s/step - loss: 47.4854 - sparse_categorical_accuracy: 0.3406
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+  99/100 ━━━━━━━━━━━━━━━━━━━[37m━  1s 1s/step - loss: 47.4889 - sparse_categorical_accuracy: 0.3405
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 0s 1s/step - loss: 47.4901 - sparse_categorical_accuracy: 0.3404
+
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 100/100 ━━━━━━━━━━━━━━━━━━━━ 106s 1s/step - loss: 47.4913 - sparse_categorical_accuracy: 0.3404 - val_loss: 1814011445248.0000 - val_sparse_categorical_accuracy: 0.3592
+
+
+
+
+
+<div class="k-default-codeblock">
+```
+<keras.src.callbacks.history.History at 0x7f596cb7b8e0>
 
 ```
 </div>
@@ -1777,7 +17269,6 @@ Epoch 20/20
 ## Visualize predictions
 
 We can use matplotlib to visualize our trained model performance.
-
 
 
 ```python
@@ -1789,7 +17280,7 @@ labels = labels[:8, ...]
 
 # run test data through model
 preds = model.predict(points)
-preds = tf.math.argmax(preds, -1)
+preds = ops.argmax(preds, -1)
 
 points = points.numpy()
 
@@ -1805,9 +17296,21 @@ for i in range(8):
     )
     ax.set_axis_off()
 plt.show()
-
 ```
 
+    
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 404ms/step
 
-![png](/img/examples/vision/pointnet/pointnet_28_0.png)
+<div class="k-default-codeblock">
+```
+
+```
+</div>
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 405ms/step
+
+
+
+    
+![png](/img/examples/vision/pointnet/pointnet_28_2.png)
+    
 

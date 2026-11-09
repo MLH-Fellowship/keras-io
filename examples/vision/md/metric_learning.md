@@ -24,13 +24,17 @@ For a more detailed overview of metric learning see:
 * [What is metric learning?](http://contrib.scikit-learn.org/metric-learn/introduction.html)
 * ["Using crossentropy for metric learning" tutorial](https://www.youtube.com/watch?v=Jb4Ewl5RzkI)
 
-
 ---
 ## Setup
 
+Set Keras backend to tensorflow.
 
 
 ```python
+import os
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
 import random
 import matplotlib.pyplot as plt
 import numpy as np
@@ -38,9 +42,8 @@ import tensorflow as tf
 from collections import defaultdict
 from PIL import Image
 from sklearn.metrics import ConfusionMatrixDisplay
-from tensorflow import keras
-from tensorflow.keras import layers
-
+import keras
+from keras import layers
 ```
 
 ---
@@ -50,9 +53,9 @@ For this example we will be using the
 [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset.
 
 
-
 ```python
-from tensorflow.keras.datasets import cifar10
+from keras.datasets import cifar10
+
 
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
@@ -60,11 +63,9 @@ x_train = x_train.astype("float32") / 255.0
 y_train = np.squeeze(y_train)
 x_test = x_test.astype("float32") / 255.0
 y_test = np.squeeze(y_test)
-
 ```
 
 To get a sense of the dataset we can visualise a grid of 25 random examples.
-
 
 
 
@@ -97,13 +98,14 @@ def show_collage(examples):
 sample_idxs = np.random.randint(0, 50000, size=(5, 5))
 examples = x_train[sample_idxs]
 show_collage(examples)
-
 ```
 
 
 
 
+    
 ![png](/img/examples/vision/metric_learning/metric_learning_7_0.png)
+    
 
 
 
@@ -120,7 +122,6 @@ instances of that class. When generating data for training we will sample from t
 lookup.
 
 
-
 ```python
 class_idx_to_train_idxs = defaultdict(list)
 for y_train_idx, y in enumerate(y_train):
@@ -129,7 +130,6 @@ for y_train_idx, y in enumerate(y_train):
 class_idx_to_test_idxs = defaultdict(list)
 for y_test_idx, y in enumerate(y_test):
     class_idx_to_test_idxs[y].append(y_test_idx)
-
 ```
 
 For this example we are using the simplest approach to training; a batch will consist of
@@ -139,17 +139,17 @@ in the batch. In this case the batch size will be dictated by the number of clas
 CIFAR-10 this is 10.
 
 
-
 ```python
 num_classes = 10
 
 
 class AnchorPositivePairs(keras.utils.Sequence):
-    def __init__(self, num_batchs):
-        self.num_batchs = num_batchs
+    def __init__(self, num_batches):
+        super().__init__()
+        self.num_batches = num_batches
 
     def __len__(self):
-        return self.num_batchs
+        return self.num_batches
 
     def __getitem__(self, _idx):
         x = np.empty((2, num_classes, height_width, height_width, 3), dtype=np.float32)
@@ -163,25 +163,24 @@ class AnchorPositivePairs(keras.utils.Sequence):
             x[1, class_idx] = x_train[positive_idx]
         return x
 
-
 ```
 
 We can visualise a batch in another collage. The top row shows randomly chosen anchors
 from the 10 classes, the bottom row shows the corresponding 10 positives.
 
 
-
 ```python
-examples = next(iter(AnchorPositivePairs(num_batchs=1)))
+examples = next(iter(AnchorPositivePairs(num_batches=1)))
 
 show_collage(examples)
-
 ```
 
 
 
 
+    
 ![png](/img/examples/vision/metric_learning/metric_learning_13_0.png)
+    
 
 
 
@@ -190,7 +189,6 @@ show_collage(examples)
 
 We define a custom model with a `train_step` that first embeds both anchors and positives
 and then uses their pairwise dot products as logits for a softmax.
-
 
 
 ```python
@@ -209,7 +207,7 @@ class EmbeddingModel(keras.Model):
 
             # Calculate cosine similarity between anchors and positives. As they have
             # been normalised this is just the pair wise dot products.
-            similarities = tf.einsum(
+            similarities = keras.ops.einsum(
                 "ae,pe->ap", anchor_embeddings, positive_embeddings
             )
 
@@ -223,17 +221,22 @@ class EmbeddingModel(keras.Model):
             # want the main diagonal values, which correspond to the anchor/positive
             # pairs, to be high. This loss will move embeddings for the
             # anchor/positive pairs together and move all other pairs apart.
-            sparse_labels = tf.range(num_classes)
-            loss = self.compiled_loss(sparse_labels, similarities)
+            sparse_labels = keras.ops.arange(num_classes)
+            loss = self.compute_loss(y=sparse_labels, y_pred=similarities)
 
         # Calculate gradients and apply via optimizer.
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
         # Update and return metrics (specifically the one for the loss value).
-        self.compiled_metrics.update_state(sparse_labels, similarities)
-        return {m.name: m.result() for m in self.metrics}
+        for metric in self.metrics:
+            # Calling `self.compile` will by default add a `keras.metrics.Mean` loss
+            if metric.name == "loss":
+                metric.update_state(loss)
+            else:
+                metric.update_state(sparse_labels, similarities)
 
+        return {m.name: m.result() for m in self.metrics}
 
 ```
 
@@ -244,7 +247,6 @@ embeddings so that we can use simple dot products to measure similarity. For sim
 this model is intentionally small.
 
 
-
 ```python
 inputs = layers.Input(shape=(height_width, height_width, 3))
 x = layers.Conv2D(filters=32, kernel_size=3, strides=2, activation="relu")(inputs)
@@ -252,14 +254,12 @@ x = layers.Conv2D(filters=64, kernel_size=3, strides=2, activation="relu")(x)
 x = layers.Conv2D(filters=128, kernel_size=3, strides=2, activation="relu")(x)
 x = layers.GlobalAveragePooling2D()(x)
 embeddings = layers.Dense(units=8, activation=None)(x)
-embeddings = tf.nn.l2_normalize(embeddings, axis=-1)
+embeddings = layers.UnitNormalization()(embeddings)
 
 model = EmbeddingModel(inputs, embeddings)
-
 ```
 
 Finally we run the training. On a Google Colab GPU instance this takes about a minute.
-
 
 
 ```python
@@ -268,48 +268,67 @@ model.compile(
     loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
 )
 
-history = model.fit(AnchorPositivePairs(num_batchs=1000), epochs=20)
+history = model.fit(AnchorPositivePairs(num_batches=1000), epochs=20)
 
 plt.plot(history.history["loss"])
 plt.show()
-
 ```
 
 <div class="k-default-codeblock">
 ```
 Epoch 1/20
-1000/1000 [==============================] - 4s 4ms/step - loss: 2.2475
+   77/1000 ━[37m━━━━━━━━━━━━━━━━━━━  1s 2ms/step - loss: 2.2962
+
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1700589927.295343 3724442 device_compiler.h:187] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 6s 2ms/step - loss: 2.2504
 Epoch 2/20
-1000/1000 [==============================] - 5s 5ms/step - loss: 2.1246
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 2.1068
 Epoch 3/20
-1000/1000 [==============================] - 7s 7ms/step - loss: 2.0519
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 2.0646
 Epoch 4/20
-1000/1000 [==============================] - 8s 8ms/step - loss: 2.0011
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 2.0210
 Epoch 5/20
-1000/1000 [==============================] - 9s 9ms/step - loss: 1.9601
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.9857
 Epoch 6/20
-1000/1000 [==============================] - 9s 9ms/step - loss: 1.9214
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.9543
 Epoch 7/20
-1000/1000 [==============================] - 9s 9ms/step - loss: 1.9094
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.9175
 Epoch 8/20
-1000/1000 [==============================] - 10s 10ms/step - loss: 1.8669
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.8740
 Epoch 9/20
-1000/1000 [==============================] - 10s 10ms/step - loss: 1.8462
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.8474
 Epoch 10/20
-1000/1000 [==============================] - 10s 10ms/step - loss: 1.8095
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.8380
 Epoch 11/20
-1000/1000 [==============================] - 10s 10ms/step - loss: 1.7854
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.8146
 Epoch 12/20
-1000/1000 [==============================] - 11s 11ms/step - loss: 1.7595
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.7658
 Epoch 13/20
-1000/1000 [==============================] - 11s 11ms/step - loss: 1.7538
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.7512
 Epoch 14/20
-1000/1000 [==============================] - 11s 11ms/step - loss: 1.7198
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.7671
 Epoch 15/20
- 906/1000 [==========================>...] - ETA: 1s - loss: 1.7017
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.7245
+Epoch 16/20
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.7001
+Epoch 17/20
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.7099
+Epoch 18/20
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.6775
+Epoch 19/20
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.6547
+Epoch 20/20
+ 1000/1000 ━━━━━━━━━━━━━━━━━━━━ 2s 2ms/step - loss: 1.6356
 
 ```
 </div>
+    
+![png](/img/examples/vision/metric_learning/metric_learning_19_3.png)
+    
+
+
 ---
 ## Testing
 
@@ -320,20 +339,23 @@ First we embed the test set and calculate all near neighbours. Recall that since
 embeddings are unit length we can calculate cosine similarity via dot products.
 
 
-
 ```python
 near_neighbours_per_example = 10
 
 embeddings = model.predict(x_test)
 gram_matrix = np.einsum("ae,be->ab", embeddings, embeddings)
 near_neighbours = np.argsort(gram_matrix.T)[:, -(near_neighbours_per_example + 1) :]
-
 ```
 
+<div class="k-default-codeblock">
+```
+ 313/313 ━━━━━━━━━━━━━━━━━━━━ 1s 3ms/step
+
+```
+</div>
 As a visual check of these embeddings we can build a collage of the near neighbours for 5
 random examples. The first column of the image below is a randomly selected image, the
 following 10 columns show the nearest neighbours in order of similarity.
-
 
 
 ```python
@@ -356,13 +378,14 @@ for row_idx in range(num_collage_examples):
         examples[row_idx, col_idx + 1] = x_test[nn_idx]
 
 show_collage(examples)
-
 ```
 
 
 
 
+    
 ![png](/img/examples/vision/metric_learning/metric_learning_23_0.png)
+    
 
 
 
@@ -375,7 +398,6 @@ class?
 
 We observe that each animal class does generally well, and is confused the most with the
 other animal classes. The vehicle classes follow the same pattern.
-
 
 
 ```python
@@ -407,9 +429,10 @@ labels = [
 disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix, display_labels=labels)
 disp.plot(include_values=True, cmap="viridis", ax=None, xticks_rotation="vertical")
 plt.show()
-
 ```
 
 
+    
 ![png](/img/examples/vision/metric_learning/metric_learning_25_0.png)
+    
 

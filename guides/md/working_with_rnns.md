@@ -2,11 +2,11 @@
 
 **Authors:** Scott Zhu, Francois Chollet<br>
 **Date created:** 2019/07/08<br>
-**Last modified:** 2020/04/14<br>
+**Last modified:** 2023/07/10<br>
 **Description:** Complete guide to using & customizing RNN layers.
 
 
-<img class="k-inline-icon" src="https://colab.research.google.com/img/colab_favicon.ico"/> [**View in Colab**](https://colab.research.google.com/github/keras-team/keras-io/blob/master/guides/ipynb/working_with_rnns.ipynb)  <span class="k-dot">•</span><img class="k-inline-icon" src="https://github.com/favicon.ico"/> [**GitHub source**](https://github.com/keras-team/keras-io/blob/master/guides/working_with_rnns.py)
+<img class="k-inline-icon" src="https://colab.research.google.com/img/colab_favicon.ico"/> [**View in Colab**](https://colab.research.google.com/github/keras-team/keras-io/blob/master/guides/ipynb/working_with_rnns.ipynb)  <span class="k-dot">•</span><img class="k-inline-icon" src="https://github.com/favicon.ico"/> [**GitHub source**](https://github.com/keras-team/keras-io/blob/master/guides/_working_with_rnns.py)
 
 
 
@@ -31,23 +31,19 @@ part of the `for` loop) with custom behavior, and use it with the generic
 `keras.layers.RNN` layer (the `for` loop itself). This allows you to quickly
 prototype different research ideas in a flexible way with minimal code.
 
-
 ---
 ## Setup
-
 
 
 ```python
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-
+import keras
+from keras import layers
 ```
 
 ---
 ## Built-in RNN layers: a simple example
-
 
 There are three built-in RNN layers in Keras:
 
@@ -68,7 +64,6 @@ embeds each integer into a 64-dimensional vector, then processes the sequence of
 vectors using a `LSTM` layer.
 
 
-
 ```python
 model = keras.Sequential()
 # Add an Embedding layer expecting input vocab of size 1000, and
@@ -82,24 +77,24 @@ model.add(layers.LSTM(128))
 model.add(layers.Dense(10))
 
 model.summary()
-
 ```
 
 <div class="k-default-codeblock">
 ```
 Model: "sequential"
 _________________________________________________________________
-Layer (type)                 Output Shape              Param #   
+ Layer (type)                Output Shape              Param #   
 =================================================================
-embedding (Embedding)        (None, None, 64)          64000     
-_________________________________________________________________
-lstm (LSTM)                  (None, 128)               98816     
-_________________________________________________________________
-dense (Dense)                (None, 10)                1290      
+ embedding (Embedding)       (None, None, 64)          64000     
+                                                                 
+ lstm (LSTM)                 (None, 128)               98816     
+                                                                 
+ dense (Dense)               (None, 10)                1290      
+                                                                 
 =================================================================
-Total params: 164,106
-Trainable params: 164,106
-Non-trainable params: 0
+Total params: 164106 (641.04 KB)
+Trainable params: 164106 (641.04 KB)
+Non-trainable params: 0 (0.00 Byte)
 _________________________________________________________________
 
 ```
@@ -115,11 +110,10 @@ CPU), via the `unroll` argument
 For more information, see the
 [RNN API documentation](https://keras.io/api/layers/recurrent_layers/).
 
-
 ---
 ## Outputs and states
 
-By default, the output of a RNN layer contain a single vector per sample. This vector
+By default, the output of a RNN layer contains a single vector per sample. This vector
 is the RNN cell output corresponding to the last timestep, containing information
 about the entire input sequence. The shape of this output is `(batch_size, units)`
 where `units` corresponds to the `units` argument passed to the layer's constructor.
@@ -127,7 +121,6 @@ where `units` corresponds to the `units` argument passed to the layer's construc
 A RNN layer can also return the entire sequence of outputs for each sample (one vector
 per timestep per sample), if you set `return_sequences=True`. The shape of this output
 is `(batch_size, timesteps, units)`.
-
 
 
 ```python
@@ -143,26 +136,26 @@ model.add(layers.SimpleRNN(128))
 model.add(layers.Dense(10))
 
 model.summary()
-
 ```
 
 <div class="k-default-codeblock">
 ```
 Model: "sequential_1"
 _________________________________________________________________
-Layer (type)                 Output Shape              Param #   
+ Layer (type)                Output Shape              Param #   
 =================================================================
-embedding_1 (Embedding)      (None, None, 64)          64000     
-_________________________________________________________________
-gru (GRU)                    (None, None, 256)         247296    
-_________________________________________________________________
-simple_rnn (SimpleRNN)       (None, 128)               49280     
-_________________________________________________________________
-dense_1 (Dense)              (None, 10)                1290      
+ embedding_1 (Embedding)     (None, None, 64)          64000     
+                                                                 
+ gru (GRU)                   (None, None, 256)         247296    
+                                                                 
+ simple_rnn (SimpleRNN)      (None, 128)               49280     
+                                                                 
+ dense_1 (Dense)             (None, 10)                1290      
+                                                                 
 =================================================================
-Total params: 361,866
-Trainable params: 361,866
-Non-trainable params: 0
+Total params: 361866 (1.38 MB)
+Trainable params: 361866 (1.38 MB)
+Non-trainable params: 0 (0.00 Byte)
 _________________________________________________________________
 
 ```
@@ -182,7 +175,6 @@ To configure the initial state of the layer, just call the layer with additional
 keyword argument `initial_state`.
 Note that the shape of the state needs to match the unit size of the layer, like in the
 example below.
-
 
 
 ```python
@@ -213,34 +205,36 @@ output = layers.Dense(10)(decoder_output)
 
 model = keras.Model([encoder_input, decoder_input], output)
 model.summary()
-
 ```
 
 <div class="k-default-codeblock">
 ```
-Model: "functional_1"
+Model: "model"
 __________________________________________________________________________________________________
-Layer (type)                    Output Shape         Param #     Connected to                     
+ Layer (type)                Output Shape                 Param #   Connected to                  
 ==================================================================================================
-input_1 (InputLayer)            [(None, None)]       0                                            
-__________________________________________________________________________________________________
-input_2 (InputLayer)            [(None, None)]       0                                            
-__________________________________________________________________________________________________
-embedding_2 (Embedding)         (None, None, 64)     64000       input_1[0][0]                    
-__________________________________________________________________________________________________
-embedding_3 (Embedding)         (None, None, 64)     128000      input_2[0][0]                    
-__________________________________________________________________________________________________
-encoder (LSTM)                  [(None, 64), (None,  33024       embedding_2[0][0]                
-__________________________________________________________________________________________________
-decoder (LSTM)                  (None, 64)           33024       embedding_3[0][0]                
-                                                                 encoder[0][1]                    
-                                                                 encoder[0][2]                    
-__________________________________________________________________________________________________
-dense_2 (Dense)                 (None, 10)           650         decoder[0][0]                    
+ input_1 (InputLayer)        [(None, None)]               0         []                            
+                                                                                                  
+ input_2 (InputLayer)        [(None, None)]               0         []                            
+                                                                                                  
+ embedding_2 (Embedding)     (None, None, 64)             64000     ['input_1[0][0]']             
+                                                                                                  
+ embedding_3 (Embedding)     (None, None, 64)             128000    ['input_2[0][0]']             
+                                                                                                  
+ encoder (LSTM)              [(None, 64),                 33024     ['embedding_2[0][0]']         
+                              (None, 64),                                                         
+                              (None, 64)]                                                         
+                                                                                                  
+ decoder (LSTM)              (None, 64)                   33024     ['embedding_3[0][0]',         
+                                                                     'encoder[0][1]',             
+                                                                     'encoder[0][2]']             
+                                                                                                  
+ dense_2 (Dense)             (None, 10)                   650       ['decoder[0][0]']             
+                                                                                                  
 ==================================================================================================
-Total params: 258,698
-Trainable params: 258,698
-Non-trainable params: 0
+Total params: 258698 (1010.54 KB)
+Trainable params: 258698 (1010.54 KB)
+Non-trainable params: 0 (0.00 Byte)
 __________________________________________________________________________________________________
 
 ```
@@ -259,7 +253,7 @@ sequences, e.g. `RNN(LSTMCell(10))`.
 Mathematically, `RNN(LSTMCell(10))` produces the same result as `LSTM(10)`. In fact,
 the implementation of this layer in TF v1.x was just creating the corresponding RNN
 cell and wrapping it in a RNN layer.  However using the built-in `GRU` and `LSTM`
-layers enables the use of CuDNN and you may see better performance.
+layers enable the use of CuDNN and you may see better performance.
 
 There are three built-in RNN cells, each of them corresponding to the matching RNN
 layer.
@@ -273,7 +267,6 @@ layer.
 The cell abstraction, together with the generic `keras.layers.RNN` class, make it
 very easy to implement custom RNN architectures for your research.
 
-
 ---
 ## Cross-batch statefulness
 
@@ -281,7 +274,7 @@ When processing very long sequences (possibly infinite), you may want to use the
 pattern of **cross-batch statefulness**.
 
 Normally, the internal state of a RNN layer is reset every time it sees a new batch
-(i.e. every sample seen by the layer is assume to be independent from the past). The
+(i.e. every sample seen by the layer is assumed to be independent of the past). The
 layer will only maintain a state while processing a given sample.
 
 If you have very long sequences though, it is useful to break them into shorter
@@ -323,7 +316,6 @@ number of samples (batch size). E.g. if a batch contains `[sequence_A_from_t0_to
 Here is a complete example:
 
 
-
 ```python
 paragraph1 = np.random.random((20, 10, 50)).astype(np.float32)
 paragraph2 = np.random.random((20, 10, 50)).astype(np.float32)
@@ -338,12 +330,10 @@ output = lstm_layer(paragraph3)
 # If no initial_state was provided, zero-states will be used by default.
 lstm_layer.reset_states()
 
-
 ```
 
 ### RNN State Reuse
 <a id="rnn_state_reuse"></a>
-
 
 The recorded states of the RNN layer are not included in the `layer.weights()`. If you
 would like to reuse the state from a RNN layer, you can retrieve the states value by
@@ -354,7 +344,6 @@ initial_state=layer.states)`, or model subclassing.
 Please also note that sequential model might not be used in this case since it only
 supports layers with single input and output, the extra input of initial state makes
 it impossible to use here.
-
 
 
 ```python
@@ -371,7 +360,6 @@ existing_state = lstm_layer.states
 new_lstm_layer = layers.LSTM(64)
 new_output = new_lstm_layer(paragraph3, initial_state=existing_state)
 
-
 ```
 
 ---
@@ -386,7 +374,6 @@ Keras provides an easy API for you to build such bidirectional RNNs: the
 `keras.layers.Bidirectional` wrapper.
 
 
-
 ```python
 model = keras.Sequential()
 
@@ -397,24 +384,26 @@ model.add(layers.Bidirectional(layers.LSTM(32)))
 model.add(layers.Dense(10))
 
 model.summary()
-
 ```
 
 <div class="k-default-codeblock">
 ```
 Model: "sequential_2"
 _________________________________________________________________
-Layer (type)                 Output Shape              Param #   
+ Layer (type)                Output Shape              Param #   
 =================================================================
-bidirectional (Bidirectional (None, 5, 128)            38400     
-_________________________________________________________________
-bidirectional_1 (Bidirection (None, 64)                41216     
-_________________________________________________________________
-dense_3 (Dense)              (None, 10)                650       
+ bidirectional (Bidirection  (None, 5, 128)            38400     
+ al)                                                             
+                                                                 
+ bidirectional_1 (Bidirecti  (None, 64)                41216     
+ onal)                                                           
+                                                                 
+ dense_3 (Dense)             (None, 10)                650       
+                                                                 
 =================================================================
-Total params: 80,266
-Trainable params: 80,266
-Non-trainable params: 0
+Total params: 80266 (313.54 KB)
+Trainable params: 80266 (313.54 KB)
+Non-trainable params: 0 (0.00 Byte)
 _________________________________________________________________
 
 ```
@@ -423,12 +412,11 @@ Under the hood, `Bidirectional` will copy the RNN layer passed in, and flip the
 `go_backwards` field of the newly copied layer, so that it will process the inputs in
 reverse order.
 
-The output of the `Bidirectional` RNN will be, by default, the sum of the forward layer
+The output of the `Bidirectional` RNN will be, by default, the concatenation of the forward layer
 output and the backward layer output. If you need a different merging behavior, e.g.
 concatenation, change the `merge_mode` parameter in the `Bidirectional` wrapper
 constructor. For more details about `Bidirectional`, please check
 [the API docs](https://keras.io/api/layers/recurrent_layers/bidirectional/).
-
 
 ---
 ## Performance optimization and CuDNN kernels
@@ -456,14 +444,12 @@ For the detailed list of constraints, please see the documentation for the
 [LSTM](https://keras.io/api/layers/recurrent_layers/lstm/) and
 [GRU](https://keras.io/api/layers/recurrent_layers/gru/) layers.
 
-
 ### Using CuDNN kernels when available
 
 Let's build a simple LSTM model to demonstrate the performance difference.
 
 We'll use as input sequences the sequence of rows of MNIST digits (treating each row of
 pixels as a timestep), and we'll predict the digit's label.
-
 
 
 ```python
@@ -474,6 +460,7 @@ input_dim = 28
 
 units = 64
 output_size = 10  # labels are from 0 to 9
+
 
 # Build the RNN model
 def build_model(allow_cudnn_kernel=True):
@@ -497,11 +484,9 @@ def build_model(allow_cudnn_kernel=True):
     )
     return model
 
-
 ```
 
 Let's load the MNIST dataset:
-
 
 
 ```python
@@ -510,15 +495,13 @@ mnist = keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 x_train, x_test = x_train / 255.0, x_test / 255.0
 sample, sample_label = x_train[0], y_train[0]
-
 ```
 
 Let's create a model instance and train it.
 
 We choose `sparse_categorical_crossentropy` as the loss function for the model. The
-output of the model has shape of `[batch_size, 10]`. The target for the model is a
+output of the model has shape of `[batch_size, 10]`. The target for the model is an
 integer vector, each of the integer is in the range of 0 to 9.
-
 
 
 ```python
@@ -534,19 +517,17 @@ model.compile(
 model.fit(
     x_train, y_train, validation_data=(x_test, y_test), batch_size=batch_size, epochs=1
 )
-
 ```
 
 <div class="k-default-codeblock">
 ```
-938/938 [==============================] - 10s 10ms/step - loss: 0.9154 - accuracy: 0.7059 - val_loss: 0.5218 - val_accuracy: 0.8350
+938/938 [==============================] - 15s 14ms/step - loss: 0.8905 - accuracy: 0.7191 - val_loss: 0.5095 - val_accuracy: 0.8328
 
-<tensorflow.python.keras.callbacks.History at 0x16f7ffad0>
+<keras.src.callbacks.History at 0x7f6fc45ddf10>
 
 ```
 </div>
 Now, let's compare to a model that does not use the CuDNN kernel:
-
 
 
 ```python
@@ -560,28 +541,26 @@ noncudnn_model.compile(
 noncudnn_model.fit(
     x_train, y_train, validation_data=(x_test, y_test), batch_size=batch_size, epochs=1
 )
-
 ```
 
 <div class="k-default-codeblock">
 ```
-938/938 [==============================] - 10s 11ms/step - loss: 0.4161 - accuracy: 0.8717 - val_loss: 0.4139 - val_accuracy: 0.8614
+938/938 [==============================] - 14s 14ms/step - loss: 0.3765 - accuracy: 0.8885 - val_loss: 0.3607 - val_accuracy: 0.8815
 
-<tensorflow.python.keras.callbacks.History at 0x16fd6c110>
+<keras.src.callbacks.History at 0x7f6fc44df650>
 
 ```
 </div>
 When running on a machine with a NVIDIA GPU and CuDNN installed,
 the model built with CuDNN is much faster to train compared to the
-model that use the regular TensorFlow kernel.
+model that uses the regular TensorFlow kernel.
 
-The same CuDNN-enabled model can also be use to run inference in a CPU-only
+The same CuDNN-enabled model can also be used to run inference in a CPU-only
 environment. The `tf.device` annotation below is just forcing the device placement.
 The model will run on CPU by default if no GPU is available.
 
 You simply don't have to worry about the hardware you're running on anymore. Isn't that
 pretty cool?
-
 
 
 ```python
@@ -595,7 +574,6 @@ with tf.device("CPU:0"):
         "Predicted result is: %s, target result is: %s" % (result.numpy(), sample_label)
     )
     plt.imshow(sample, cmap=plt.get_cmap("gray"))
-
 ```
 
 <div class="k-default-codeblock">
@@ -604,7 +582,9 @@ Predicted result is: [3], target result is: 5
 
 ```
 </div>
+    
 ![png](/img/guides/working_with_rnns/working_with_rnns_31_1.png)
+    
 
 
 ---
@@ -625,17 +605,15 @@ representation could be:
 The following code provides an example of how to build a custom RNN cell that accepts
 such structured inputs.
 
-
-### Define a custom cell that support nested input/output
-
+### Define a custom cell that supports nested input/output
 
 See [Making new Layers & Models via subclassing](/guides/making_new_layers_and_models_via_subclassing/)
 for details on writing your own layers.
 
 
-
 ```python
 
+@keras.saving.register_keras_serializable()
 class NestedCell(keras.layers.Layer):
     def __init__(self, unit_1, unit_2, unit_3, **kwargs):
         self.unit_1 = unit_1
@@ -643,7 +621,7 @@ class NestedCell(keras.layers.Layer):
         self.unit_3 = unit_3
         self.state_size = [tf.TensorShape([unit_1]), tf.TensorShape([unit_2, unit_3])]
         self.output_size = [tf.TensorShape([unit_1]), tf.TensorShape([unit_2, unit_3])]
-        super(NestedCell, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def build(self, input_shapes):
         # expect input_shape to contain 2 items, [(batch, i1), (batch, i2, i3)]
@@ -677,8 +655,7 @@ class NestedCell(keras.layers.Layer):
         return output, new_states
 
     def get_config(self):
-        return {"unit_1": self.unit_1, "unit_2": unit_2, "unit_3": self.unit_3}
-
+        return {"unit_1": self.unit_1, "unit_2": self.unit_2, "unit_3": self.unit_3}
 
 ```
 
@@ -686,7 +663,6 @@ class NestedCell(keras.layers.Layer):
 
 Let's build a Keras model that uses a `keras.layers.RNN` layer and the custom cell
 we just defined.
-
 
 
 ```python
@@ -712,14 +688,12 @@ outputs = rnn((input_1, input_2))
 model = keras.models.Model([input_1, input_2], outputs)
 
 model.compile(optimizer="adam", loss="mse", metrics=["accuracy"])
-
 ```
 
 ### Train the model with randomly generated data
 
 Since there isn't a good candidate dataset for this model, we use random Numpy data for
 demonstration.
-
 
 
 ```python
@@ -731,14 +705,13 @@ input_data = [input_1_data, input_2_data]
 target_data = [target_1_data, target_2_data]
 
 model.fit(input_data, target_data, batch_size=batch_size)
-
 ```
 
 <div class="k-default-codeblock">
 ```
-10/10 [==============================] - 2s 212ms/step - loss: 0.7551 - rnn_1_loss: 0.2712 - rnn_1_1_loss: 0.4839 - rnn_1_accuracy: 0.0922 - rnn_1_1_accuracy: 0.0319
+10/10 [==============================] - 2s 63ms/step - loss: 0.7662 - rnn_1_loss: 0.2732 - rnn_1_1_loss: 0.4930 - rnn_1_accuracy: 0.0719 - rnn_1_1_accuracy: 0.0361
 
-<tensorflow.python.keras.callbacks.History at 0x17e0f9310>
+<keras.src.callbacks.History at 0x7f6f505b8ed0>
 
 ```
 </div>
@@ -747,5 +720,4 @@ logic for individual step within the sequence, and the `keras.layers.RNN` layer
 will handle the sequence iteration for you. It's an incredibly powerful way to quickly
 prototype new kinds of RNNs (e.g. a LSTM variant).
 
-For more details, please visit the [API docs](https://keras.io/api/layers/recurrent_layers/RNN/).
-
+For more details, please visit the [API docs](https://keras.io/api/layers/recurrent_layers/rnn/).

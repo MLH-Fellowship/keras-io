@@ -4,6 +4,7 @@ Author: [fchollet](https://twitter.com/fchollet)
 Date created: 2015/06/19
 Last modified: 2020/04/21
 Description: A simple convnet that achieves ~99% test accuracy on MNIST.
+Accelerator: GPU
 """
 
 """
@@ -11,8 +12,8 @@ Description: A simple convnet that achieves ~99% test accuracy on MNIST.
 """
 
 import numpy as np
-from tensorflow import keras
-from tensorflow.keras import layers
+import keras
+from keras import layers
 
 """
 ## Prepare the data
@@ -22,7 +23,7 @@ from tensorflow.keras import layers
 num_classes = 10
 input_shape = (28, 28, 1)
 
-# the data, split between train and test sets
+# Load the data and split it between train and test sets
 (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
 
 # Scale images to the [0, 1] range
@@ -77,3 +78,8 @@ model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_spl
 score = model.evaluate(x_test, y_test, verbose=0)
 print("Test loss:", score[0])
 print("Test accuracy:", score[1])
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 8: Image classification](https://deeplearningwithpython.io/chapters/chapter08_image-classification)
+"""

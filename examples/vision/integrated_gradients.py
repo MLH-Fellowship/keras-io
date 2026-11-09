@@ -4,6 +4,7 @@ Author: [A_K_Nain](https://twitter.com/A_K_Nain)
 Date created: 2020/06/02
 Last modified: 2020/06/02
 Description: How to obtain integrated gradients for a classification model.
+Accelerator: None
 """
 
 """
@@ -54,12 +55,12 @@ consider reading this excellent
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage
-from IPython.display import Image
+from IPython.display import Image, display
 
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.applications import xception
+import keras
+from keras import layers
+from keras.applications import xception
 
 # Size of the input image
 img_size = (299, 299, 3)
@@ -78,9 +79,9 @@ display(Image(img_path))
 
 def get_img_array(img_path, size=(299, 299)):
     # `img` is a PIL image of size 299x299
-    img = keras.preprocessing.image.load_img(img_path, target_size=size)
+    img = keras.utils.load_img(img_path, target_size=size)
     # `array` is a float32 Numpy array of shape (299, 299, 3)
-    array = keras.preprocessing.image.img_to_array(img)
+    array = keras.utils.img_to_array(img)
     # We add a dimension to transform our array into a "batch"
     # of size (1, 299, 299, 3)
     array = np.expand_dims(array, axis=0)
@@ -283,7 +284,10 @@ class GradVisualizer:
         return opened
 
     def draw_outlines(
-        self, attributions, percentage=90, connected_component_structure=np.ones((3, 3))
+        self,
+        attributions,
+        percentage=90,
+        connected_component_structure=np.ones((3, 3)),
     ):
         # 1. Binarize the attributions.
         attributions = self.binarize(attributions)
@@ -292,7 +296,7 @@ class GradVisualizer:
         attributions = ndimage.binary_fill_holes(attributions)
 
         # 3. Compute connected components
-        connected_components, num_comp = ndimage.measurements.label(
+        connected_components, num_comp = ndimage.label(
             attributions, structure=connected_component_structure
         )
 
@@ -339,10 +343,8 @@ class GradVisualizer:
         overlay=True,
     ):
         if polarity not in ["positive", "negative"]:
-            raise ValueError(
-                f""" Allowed polarity values: 'positive' or 'negative'
-                                    but provided {polarity}"""
-            )
+            raise ValueError(f""" Allowed polarity values: 'positive' or 'negative'
+                                    but provided {polarity}""")
         if clip_above_percentile < 0 or clip_above_percentile > 100:
             raise ValueError("clip_above_percentile must be in [0, 100]")
 
@@ -491,3 +493,8 @@ vis.visualize(
     morphological_cleanup=True,
     outlines=True,
 )
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 10: Interpreting what ConvNets learn](https://deeplearningwithpython.io/chapters/chapter10_interpreting-what-convnets-learn)
+"""

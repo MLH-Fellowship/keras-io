@@ -2,7 +2,7 @@
 
 **Authors:** Scott Zhu, Francois Chollet<br>
 **Date created:** 2019/07/16<br>
-**Last modified:** 2020/04/14<br>
+**Last modified:** 2023/07/10<br>
 **Description:** Complete guide to using mask-aware sequence layers in Keras.
 
 
@@ -17,9 +17,8 @@
 ```python
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-
+import keras
+from keras import layers
 ```
 
 ---
@@ -28,8 +27,8 @@ from tensorflow.keras import layers
 **Masking** is a way to tell sequence-processing layers that certain timesteps
 in an input are missing, and thus should be skipped when processing the data.
 
-**Padding** is a special form of masking were the masked steps are at the start or at
-the beginning of a sequence. Padding comes from the need to encode sequence data into
+**Padding** is a special form of masking where the masked steps are at the start or
+the end of a sequence. Padding comes from the need to encode sequence data into
 contiguous batches: in order to make all sequences in a batch fit a given standard
 length, it is necessary to pad or truncate some sequences.
 
@@ -66,7 +65,7 @@ than the longest item need to be padded with some placeholder value (alternative
 one might also truncate long samples before padding short samples).
 
 Keras provides a utility function to truncate and pad Python lists to a common length:
-`tf.keras.preprocessing.sequence.pad_sequences`.
+`tf.keras.utils.pad_sequences`.
 
 
 ```python
@@ -78,16 +77,13 @@ raw_inputs = [
 
 # By default, this will pad using 0s; it is configurable via the
 # "value" parameter.
-# Note that you could "pre" padding (at the beginning) or
+# Note that you could use "pre" padding (at the beginning) or
 # "post" padding (at the end).
 # We recommend using "post" padding when working with RNN layers
 # (in order to be able to use the
 # CuDNN implementation of the layers).
-padded_inputs = tf.keras.preprocessing.sequence.pad_sequences(
-    raw_inputs, padding="post"
-)
+padded_inputs = tf.keras.utils.pad_sequences(raw_inputs, padding="post")
 print(padded_inputs)
-
 
 ```
 
@@ -135,7 +131,6 @@ unmasked_embedding = tf.cast(
 
 masked_embedding = masking_layer(unmasked_embedding)
 print(masked_embedding._keras_mask)
-
 ```
 
 <div class="k-default-codeblock">
@@ -169,9 +164,11 @@ receive a mask, which means it will ignore padded values:
 
 ```python
 model = keras.Sequential(
-    [layers.Embedding(input_dim=5000, output_dim=16, mask_zero=True), layers.LSTM(32),]
+    [
+        layers.Embedding(input_dim=5000, output_dim=16, mask_zero=True),
+        layers.LSTM(32),
+    ]
 )
-
 ```
 
 This is also the case for the following Functional API model:
@@ -183,7 +180,6 @@ x = layers.Embedding(input_dim=5000, output_dim=16, mask_zero=True)(inputs)
 outputs = layers.LSTM(32)(x)
 
 model = keras.Model(inputs, outputs)
-
 ```
 
 ---
@@ -199,12 +195,11 @@ Thus, you can pass the output of the `compute_mask()` method of a mask-producing
 to the `__call__` method of a mask-consuming layer, like this:
 
 
-
 ```python
 
 class MyLayer(layers.Layer):
     def __init__(self, **kwargs):
-        super(MyLayer, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.embedding = layers.Embedding(input_dim=5000, output_dim=16, mask_zero=True)
         self.lstm = layers.LSTM(32)
 
@@ -222,7 +217,6 @@ layer = MyLayer()
 x = np.random.random((32, 10)) * 100
 x = x.astype("int32")
 layer(x)
-
 ```
 
 
@@ -231,19 +225,19 @@ layer(x)
 <div class="k-default-codeblock">
 ```
 <tf.Tensor: shape=(32, 32), dtype=float32, numpy=
-array([[ 2.9689050e-03,  7.6725935e-03,  3.7014071e-04, ...,
-         2.0531523e-03, -3.4815564e-03,  6.9852998e-03],
-       [-4.0819575e-03, -6.3828002e-03, -3.6276649e-03, ...,
-        -6.8314276e-03,  7.4037584e-03,  9.5842748e-05],
-       [ 6.2505202e-03, -6.0553146e-03, -3.7398988e-03, ...,
-        -9.0137630e-04, -4.6996078e-03,  3.9660726e-03],
+array([[ 9.7771059e-04, -3.1520566e-04, -1.3653996e-03, ...,
+         6.5285452e-03,  1.9427658e-03, -2.5479761e-03],
+       [-4.3904074e-03, -4.5490772e-03,  3.8578152e-04, ...,
+        -1.0272469e-02, -1.0101046e-02,  2.7427098e-03],
+       [ 4.7074426e-03,  8.2715852e-03, -6.1138147e-05, ...,
+        -3.1140861e-03,  5.4810117e-03,  1.5133659e-03],
        ...,
-       [-7.8628846e-03, -1.1485812e-02,  7.4715482e-04, ...,
-         1.1998281e-03,  7.5307540e-03, -8.6027188e-03],
-       [ 1.4327462e-04,  6.0678725e-03, -5.3206878e-04, ...,
-        -4.9874024e-03, -6.6318538e-04, -1.1999717e-02],
-       [-1.2285335e-03, -2.2397542e-03, -2.4725969e-03, ...,
-         3.6184441e-03, -6.7308000e-03, -5.8892500e-03]], dtype=float32)>
+       [-1.6761322e-03, -6.4350553e-03, -2.0772957e-03, ...,
+        -6.4317961e-03, -1.2476714e-02, -4.9613118e-03],
+       [ 4.6702973e-03,  2.0292797e-03,  1.3188898e-04, ...,
+        -4.3562236e-03, -7.7877212e-03, -1.4023182e-03],
+       [-2.1285783e-03,  3.0295136e-03, -9.2550175e-04, ...,
+        -8.2980031e-03, -2.0799299e-03,  6.9086310e-03]], dtype=float32)>
 
 ```
 </div>
@@ -284,7 +278,6 @@ class TemporalSplit(keras.layers.Layer):
 first_half, second_half = TemporalSplit()(masked_embedding)
 print(first_half._keras_mask)
 print(second_half._keras_mask)
-
 ```
 
 <div class="k-default-codeblock">
@@ -308,7 +301,7 @@ mask from input values:
 
 class CustomEmbedding(keras.layers.Layer):
     def __init__(self, input_dim, output_dim, mask_zero=False, **kwargs):
-        super(CustomEmbedding, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.mask_zero = mask_zero
@@ -337,18 +330,20 @@ y = layer(x)
 mask = layer.compute_mask(x)
 
 print(mask)
-
 ```
 
 <div class="k-default-codeblock">
 ```
 tf.Tensor(
-[[ True  True  True  True  True  True  True False  True  True]
- [ True  True  True  True  True  True  True  True  True  True]
- [ True  True  True False  True False  True  True False  True]], shape=(3, 10), dtype=bool)
+[[ True False  True  True  True  True  True  True  True  True]
+ [ True  True False  True  True  True  True  True  True  True]
+ [ True False  True False  True  True  True  True  True  True]], shape=(3, 10), dtype=bool)
 
 ```
 </div>
+Note: For more details about format limitations related to masking, see the
+[serialization guide](/guides/serialization_and_saving).
+
 ---
 ## Opting-in to mask propagation on compatible layers
 
@@ -361,29 +356,28 @@ the mask is safe to do).
 If you have a custom layer that does not modify the time dimension, and if you want it
 to be able to propagate the current input mask, you should set `self.supports_masking
 = True` in the layer constructor. In this case, the default behavior of
-`compute_mask()` is just pass the current mask through.
+`compute_mask()` is to just pass the current mask through.
 
 Here's an example of a layer that is whitelisted for mask propagation:
 
 
-
 ```python
 
+@keras.saving.register_keras_serializable()
 class MyActivation(keras.layers.Layer):
     def __init__(self, **kwargs):
-        super(MyActivation, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         # Signal that the layer is safe for mask propagation
         self.supports_masking = True
 
     def call(self, inputs):
         return tf.nn.relu(inputs)
 
-
 ```
 
 You can now use this custom layer in-between a mask-generating layer (like `Embedding`)
 and a mask-consuming layer (like `LSTM`), and it will pass the mask along so that it
-reachs the mask-consuming layer.
+reaches the mask-consuming layer.
 
 
 ```python
@@ -394,12 +388,11 @@ print("Mask found:", x._keras_mask)
 outputs = layers.LSTM(32)(x)  # Will receive the mask
 
 model = keras.Model(inputs, outputs)
-
 ```
 
 <div class="k-default-codeblock">
 ```
-Mask found: Tensor("embedding_4/NotEqual:0", shape=(None, None), dtype=bool)
+Mask found: KerasTensor(type_spec=TensorSpec(shape=(None, None), dtype=tf.bool, name=None), name='Placeholder_1:0')
 
 ```
 </div>
@@ -419,11 +412,14 @@ Here's a simple example below: a layer that computes a softmax over the time dim
 
 ```python
 
+@keras.saving.register_keras_serializable()
 class TemporalSoftmax(keras.layers.Layer):
     def call(self, inputs, mask=None):
         broadcast_float_mask = tf.expand_dims(tf.cast(mask, "float32"), -1)
         inputs_exp = tf.exp(inputs) * broadcast_float_mask
-        inputs_sum = tf.reduce_sum(inputs * broadcast_float_mask, axis=1, keepdims=True)
+        inputs_sum = tf.reduce_sum(
+            inputs_exp * broadcast_float_mask, axis=-1, keepdims=True
+        )
         return inputs_exp / inputs_sum
 
 
@@ -434,7 +430,6 @@ outputs = TemporalSoftmax()(x)
 
 model = keras.Model(inputs, outputs)
 y = model(np.random.randint(0, 10, size=(32, 100)), np.random.random((32, 100, 1)))
-
 ```
 
 ---
@@ -454,4 +449,3 @@ automatically.
 manually.
 - You can easily write layers that modify the current mask, that generate a new mask,
 or that consume the mask associated with the inputs.
-

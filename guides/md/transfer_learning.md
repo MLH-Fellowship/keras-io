@@ -2,7 +2,7 @@
 
 **Author:** [fchollet](https://twitter.com/fchollet)<br>
 **Date created:** 2020/04/15<br>
-**Last modified:** 2020/05/12<br>
+**Last modified:** 2023/06/25<br>
 **Description:** Complete guide to transfer learning & fine-tuning in Keras.
 
 
@@ -14,12 +14,12 @@
 ## Setup
 
 
-
 ```python
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
-
+import keras
+from keras import layers
+import tensorflow_datasets as tfds
+import matplotlib.pyplot as plt
 ```
 
 ---
@@ -34,7 +34,7 @@ Transfer learning is usually done for tasks where your dataset has too little da
  train a full-scale model from scratch.
 
 The most common incarnation of transfer learning in the context of deep learning is the
- following worfklow:
+ following workflow:
 
 1. Take layers from a previously trained model.
 2. Freeze them, so as to avoid destroying any of the information they contain during
@@ -56,11 +56,9 @@ ImageNet dataset, and retraining it on the Kaggle "cats vs dogs" classification
  dataset.
 
 This is adapted from
-[Deep Learning with Python](https://www.manning.com/books/deep-learning-with-python)
- and the 2016 blog post
-["building powerful image classification models using very little
- data"](https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html).
-
+[Deep Learning with Python](https://deeplearningwithpython.io/)
+and the 2016 blog post
+["building powerful image classification models using very little data"](https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html).
 
 ---
 ## Freezing layers: understanding the `trainable` attribute
@@ -76,7 +74,6 @@ Layers & models have three weight attributes:
 **Example: the `Dense` layer has 2 trainable weights (kernel & bias)**
 
 
-
 ```python
 layer = keras.layers.Dense(3)
 layer.build((None, 4))  # Create the weights
@@ -84,7 +81,6 @@ layer.build((None, 4))  # Create the weights
 print("weights:", len(layer.weights))
 print("trainable_weights:", len(layer.trainable_weights))
 print("non_trainable_weights:", len(layer.non_trainable_weights))
-
 ```
 
 <div class="k-default-codeblock">
@@ -99,11 +95,10 @@ In general, all weights are trainable weights. The only built-in layer that has
 non-trainable weights is the `BatchNormalization` layer. It uses non-trainable weights
  to keep track of the mean and variance of its inputs during training.
 To learn how to use non-trainable weights in your own custom layers, see the
-[guide to writing new layers from scratch](making_new_layers_and_models_via_subclassing).
+[guide to writing new layers from scratch](/guides/making_new_layers_and_models_via_subclassing/).
 
 **Example: the `BatchNormalization` layer has 2 trainable weights and 2 non-trainable
  weights**
-
 
 
 ```python
@@ -113,7 +108,6 @@ layer.build((None, 4))  # Create the weights
 print("weights:", len(layer.weights))
 print("trainable_weights:", len(layer.trainable_weights))
 print("non_trainable_weights:", len(layer.non_trainable_weights))
-
 ```
 
 <div class="k-default-codeblock">
@@ -133,7 +127,6 @@ be updated during training (either when training with `fit()` or when training w
 **Example: setting `trainable` to `False`**
 
 
-
 ```python
 layer = keras.layers.Dense(3)
 layer.build((None, 4))  # Create the weights
@@ -142,7 +135,6 @@ layer.trainable = False  # Freeze the layer
 print("weights:", len(layer.weights))
 print("trainable_weights:", len(layer.trainable_weights))
 print("non_trainable_weights:", len(layer.non_trainable_weights))
-
 ```
 
 <div class="k-default-codeblock">
@@ -155,7 +147,6 @@ non_trainable_weights: 2
 </div>
 When a trainable weight becomes non-trainable, its value is no longer updated during
  training.
-
 
 
 ```python
@@ -182,12 +173,11 @@ np.testing.assert_allclose(
 np.testing.assert_allclose(
     initial_layer1_weights_values[1], final_layer1_weights_values[1]
 )
-
 ```
 
 <div class="k-default-codeblock">
 ```
-1/1 [==============================] - 0s 1ms/step - loss: 0.0846
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 1s 766ms/step - loss: 0.0615
 
 ```
 </div>
@@ -197,7 +187,6 @@ Do not confuse the `layer.trainable` attribute with the argument `training` in
 [Keras FAQ](
   https://keras.io/getting_started/faq/#whats-the-difference-between-the-training-argument-in-call-and-the-trainable-attribute).
 
-
 ---
 ## Recursive setting of the `trainable` attribute
 
@@ -205,7 +194,6 @@ If you set `trainable = False` on a model or on any layer that has sublayers,
 all children layers become non-trainable as well.
 
 **Example:**
-
 
 
 ```python
@@ -218,14 +206,17 @@ inner_model = keras.Sequential(
 )
 
 model = keras.Sequential(
-    [keras.Input(shape=(3,)), inner_model, keras.layers.Dense(3, activation="sigmoid"),]
+    [
+        keras.Input(shape=(3,)),
+        inner_model,
+        keras.layers.Dense(3, activation="sigmoid"),
+    ]
 )
 
 model.trainable = False  # Freeze the outer model
 
 assert inner_model.trainable == False  # All layers in `model` are now frozen
 assert inner_model.layers[0].trainable == False  # `trainable` is propagated recursively
-
 ```
 
 ---
@@ -246,7 +237,7 @@ Note that an alternative, more lightweight workflow could also be:
  from the base model. This is called **feature extraction**.
 3. Use that output as input data for a new, smaller model.
 
-A key advantage of that second workflow is that you only run the base model once one
+A key advantage of that second workflow is that you only run the base model once on
  your data, rather than once per epoch of training. So it's a lot faster & cheaper.
 
 An issue with that second workflow, though, is that it doesn't allow you to dynamically
@@ -258,7 +249,7 @@ such scenarios data augmentation is very important. So in what follows, we will 
 
 Here's what the first workflow looks like in Keras:
 
-First, instantiate a base model with pre-trained weigts.
+First, instantiate a base model with pre-trained weights.
 
 ```python
 base_model = keras.applications.Xception(
@@ -296,7 +287,6 @@ model.compile(optimizer=keras.optimizers.Adam(),
               metrics=[keras.metrics.BinaryAccuracy()])
 model.fit(new_dataset, epochs=20, callbacks=..., validation_data=...)
 ```
-
 
 ---
 ## Fine-tuning
@@ -363,82 +353,30 @@ But the two are tied in the case of the `BatchNormalization` layer.
 fine-tuning, you should keep the `BatchNormalization` layers in inference mode by
  passing `training=False` when calling the base model.
 Otherwise the updates applied to the non-trainable weights will suddenly destroy
-what the model the model has learned.
+what the model has learned.
 
 You'll see this pattern in action in the end-to-end example at the end of this guide.
 
-
-
 ---
-## Transfer learning & fine-tuning with a custom training loop
-
-If instead of `fit()`, you are using your own low-level training loop, the workflow
-stays essentially the same. You should be careful to only take into account the list
- `model.trainable_weights` when applying gradient updates:
-
-```python
-# Create base model
-base_model = keras.applications.Xception(
-    weights='imagenet',
-    input_shape=(150, 150, 3),
-    include_top=False)
-# Freeze base model
-base_model.trainable = False
-
-# Create new model on top.
-inputs = keras.Input(shape=(150, 150, 3))
-x = base_model(inputs, training=False)
-x = keras.layers.GlobalAveragePooling2D()(x)
-outputs = keras.layers.Dense(1)(x)
-model = keras.Model(inputs, outputs)
-
-loss_fn = keras.losses.BinaryCrossentropy(from_logits=True)
-optimizer = keras.optimizers.Adam()
-
-# Iterate over the batches of a dataset.
-for inputs, targets in new_dataset:
-    # Open a GradientTape.
-    with tf.GradientTape() as tape:
-        # Forward pass.
-        predictions = model(inputs)
-        # Compute the loss value for this batch.
-        loss_value = loss_fn(targets, predictions)
-
-    # Get gradients of loss wrt the *trainable* weights.
-    gradients = tape.gradient(loss_value, model.trainable_weights)
-    # Update the weights of the model.
-    optimizer.apply_gradients(zip(gradients, model.trainable_weights))
-```
-
-
-Likewise for fine-tuning.
-
-
----
-## An end-to-end example: fine-tuning an image classification model on a cats vs. dogs
- dataset
+## An end-to-end example: fine-tuning an image classification model on a cats vs. dogs dataset
 
 To solidify these concepts, let's walk you through a concrete end-to-end transfer
 learning & fine-tuning example. We will load the Xception model, pre-trained on
  ImageNet, and use it on the Kaggle "cats vs. dogs" classification dataset.
 
-
 ### Getting the data
 
 First, let's fetch the cats vs. dogs dataset using TFDS. If you have your own dataset,
 you'll probably want to use the utility
-`tf.keras.preprocessing.image_dataset_from_directory` to generate similar labeled
+`keras.utils.image_dataset_from_directory` to generate similar labeled
  dataset objects from a set of images on disk filed into class-specific folders.
 
-Tansfer learning is most useful when working with very small datases. To keep our
+Transfer learning is most useful when working with very small datasets. To keep our
 dataset small, we will use 40% of the original training data (25,000 images) for
  training, 10% for validation, and 10% for testing.
 
 
-
 ```python
-import tensorflow_datasets as tfds
-
 tfds.disable_progress_bar()
 
 train_ds, validation_ds, test_ds = tfds.load(
@@ -448,16 +386,18 @@ train_ds, validation_ds, test_ds = tfds.load(
     as_supervised=True,  # Include labels
 )
 
-print("Number of training samples: %d" % tf.data.experimental.cardinality(train_ds))
-print(
-    "Number of validation samples: %d" % tf.data.experimental.cardinality(validation_ds)
-)
-print("Number of test samples: %d" % tf.data.experimental.cardinality(test_ds))
-
+print(f"Number of training samples: {train_ds.cardinality()}")
+print(f"Number of validation samples: {validation_ds.cardinality()}")
+print(f"Number of test samples: {test_ds.cardinality()}")
 ```
 
 <div class="k-default-codeblock">
 ```
+ Downloading and preparing dataset 786.68 MiB (download: 786.68 MiB, generated: Unknown size, total: 786.68 MiB) to /home/mattdangerw/tensorflow_datasets/cats_vs_dogs/4.0.0...
+
+WARNING:absl:1738 images were corrupted and were skipped
+
+ Dataset cats_vs_dogs downloaded and prepared to /home/mattdangerw/tensorflow_datasets/cats_vs_dogs/4.0.0. Subsequent calls will reuse this data.
 Number of training samples: 9305
 Number of validation samples: 2326
 Number of test samples: 2326
@@ -465,123 +405,116 @@ Number of test samples: 2326
 ```
 </div>
 These are the first 9 images in the training dataset -- as you can see, they're all
- different sizes.
-
+different sizes.
 
 
 ```python
-import matplotlib.pyplot as plt
-
 plt.figure(figsize=(10, 10))
 for i, (image, label) in enumerate(train_ds.take(9)):
     ax = plt.subplot(3, 3, i + 1)
     plt.imshow(image)
     plt.title(int(label))
     plt.axis("off")
-
 ```
 
 
-![png](/img/guides/transfer_learning/transfer_learning_23_0.png)
+    
+![png](/img/guides/transfer_learning/transfer_learning_21_0.png)
+    
 
 
 We can also see that label 1 is "dog" and label 0 is "cat".
-
 
 ### Standardizing the data
 
 Our raw images have a variety of sizes. In addition, each pixel consists of 3 integer
 values between 0 and 255 (RGB level values). This isn't a great fit for feeding a
- neural network. We need to do 2 things:
+neural network. We need to do 2 things:
 
 - Standardize to a fixed image size. We pick 150x150.
 - Normalize pixel values between -1 and 1. We'll do this using a `Normalization` layer as
- part of the model itself.
+part of the model itself.
 
 In general, it's a good practice to develop models that take raw data as input, as
 opposed to models that take already-preprocessed data. The reason being that, if your
 model expects preprocessed data, any time you export your model to use it elsewhere
 (in a web browser, in a mobile app), you'll need to reimplement the exact same
-preprocessing pipeline. This get very tricky very quickly. So we should do the least
+preprocessing pipeline. This gets very tricky very quickly. So we should do the least
  possible amount of preprocessing before hitting the model.
 
 Here, we'll do image resizing in the data pipeline (because a deep neural network can
 only process contiguous batches of data), and we'll do the input value scaling as part
- of the model, when we create it.
+of the model, when we create it.
 
 Let's resize images to 150x150:
 
 
-
 ```python
-size = (150, 150)
+resize_fn = keras.layers.Resizing(150, 150)
 
-train_ds = train_ds.map(lambda x, y: (tf.image.resize(x, size), y))
-validation_ds = validation_ds.map(lambda x, y: (tf.image.resize(x, size), y))
-test_ds = test_ds.map(lambda x, y: (tf.image.resize(x, size), y))
-
-```
-
-Besides, let's batch the data and use caching & prefetching to optimize loading speed.
-
-
-
-```python
-batch_size = 32
-
-train_ds = train_ds.cache().batch(batch_size).prefetch(buffer_size=10)
-validation_ds = validation_ds.cache().batch(batch_size).prefetch(buffer_size=10)
-test_ds = test_ds.cache().batch(batch_size).prefetch(buffer_size=10)
-
+train_ds = train_ds.map(lambda x, y: (resize_fn(x), y))
+validation_ds = validation_ds.map(lambda x, y: (resize_fn(x), y))
+test_ds = test_ds.map(lambda x, y: (resize_fn(x), y))
 ```
 
 ### Using random data augmentation
 
 When you don't have a large image dataset, it's a good practice to artificially
- introduce sample diversity by applying random yet realistic transformations to
+introduce sample diversity by applying random yet realistic transformations to
 the training images, such as random horizontal flipping or small random rotations. This
 helps expose the model to different aspects of the training data while slowing down
- overfitting.
-
+overfitting.
 
 
 ```python
-from tensorflow import keras
-from tensorflow.keras import layers
+augmentation_layers = [
+    layers.RandomFlip("horizontal"),
+    layers.RandomRotation(0.1),
+]
 
-data_augmentation = keras.Sequential(
-    [
-        layers.experimental.preprocessing.RandomFlip("horizontal"),
-        layers.experimental.preprocessing.RandomRotation(0.1),
-    ]
-)
 
+def data_augmentation(x):
+    for layer in augmentation_layers:
+        x = layer(x)
+    return x
+
+
+train_ds = train_ds.map(lambda x, y: (data_augmentation(x), y))
+```
+
+Let's batch the data and use prefetching to optimize loading speed.
+
+
+```python
+from tensorflow import data as tf_data
+
+batch_size = 64
+
+train_ds = train_ds.batch(batch_size).prefetch(tf_data.AUTOTUNE).cache()
+validation_ds = validation_ds.batch(batch_size).prefetch(tf_data.AUTOTUNE).cache()
+test_ds = test_ds.batch(batch_size).prefetch(tf_data.AUTOTUNE).cache()
 ```
 
 Let's visualize what the first image of the first batch looks like after various random
  transformations:
 
 
-
 ```python
-import numpy as np
-
 for images, labels in train_ds.take(1):
     plt.figure(figsize=(10, 10))
     first_image = images[0]
     for i in range(9):
         ax = plt.subplot(3, 3, i + 1)
-        augmented_image = data_augmentation(
-            tf.expand_dims(first_image, 0), training=True
-        )
-        plt.imshow(augmented_image[0].numpy().astype("int32"))
-        plt.title(int(labels[i]))
+        augmented_image = data_augmentation(np.expand_dims(first_image, 0))
+        plt.imshow(np.array(augmented_image[0]).astype("int32"))
+        plt.title(int(labels[0]))
         plt.axis("off")
-
 ```
 
 
-![png](/img/guides/transfer_learning/transfer_learning_32_0.png)
+    
+![png](/img/guides/transfer_learning/transfer_learning_30_0.png)
+    
 
 
 ---
@@ -591,13 +524,12 @@ Now let's built a model that follows the blueprint we've explained earlier.
 
 Note that:
 
-- We add a `Normalization` layer to scale input values (initially in the `[0, 255]`
+- We add a `Rescaling` layer to scale input values (initially in the `[0, 255]`
  range) to the `[-1, 1]` range.
 - We add a `Dropout` layer before the classification layer, for regularization.
 - We make sure to pass `training=False` when calling the base model, so that
 it runs in inference mode, so that batchnorm statistics don't get updated
 even after we unfreeze the base model for fine-tuning.
-
 
 
 ```python
@@ -612,17 +544,12 @@ base_model.trainable = False
 
 # Create new model on top
 inputs = keras.Input(shape=(150, 150, 3))
-x = data_augmentation(inputs)  # Apply random data augmentation
 
-# Pre-trained Xception weights requires that input be normalized
-# from (0, 255) to a range (-1., +1.), the normalization layer
-# does the following, outputs = (inputs - mean) / sqrt(var)
-norm_layer = keras.layers.experimental.preprocessing.Normalization()
-mean = np.array([127.5] * 3)
-var = mean ** 2
-# Scale inputs to [-1, +1]
-x = norm_layer(x)
-norm_layer.set_weights([mean, var])
+# Pre-trained Xception weights requires that input be scaled
+# from (0, 255) to a range of (-1., +1.), the rescaling layer
+# outputs: `(inputs * scale) + offset`
+scale_layer = keras.layers.Rescaling(scale=1 / 127.5, offset=-1)
+x = scale_layer(inputs)
 
 # The base model contains batchnorm layers. We want to keep them in inference mode
 # when we unfreeze the base model for fine-tuning, so we make sure that the
@@ -633,40 +560,62 @@ x = keras.layers.Dropout(0.2)(x)  # Regularize with dropout
 outputs = keras.layers.Dense(1)(x)
 model = keras.Model(inputs, outputs)
 
-model.summary()
-
+model.summary(show_trainable=True)
 ```
 
 <div class="k-default-codeblock">
 ```
-Model: "model"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-input_5 (InputLayer)         [(None, 150, 150, 3)]     0         
-_________________________________________________________________
-sequential_3 (Sequential)    (None, 150, 150, 3)       0         
-_________________________________________________________________
-normalization (Normalization (None, 150, 150, 3)       7         
-_________________________________________________________________
-xception (Model)             (None, 5, 5, 2048)        20861480  
-_________________________________________________________________
-global_average_pooling2d (Gl (None, 2048)              0         
-_________________________________________________________________
-dropout (Dropout)            (None, 2048)              0         
-_________________________________________________________________
-dense_7 (Dense)              (None, 1)                 2049      
-=================================================================
-Total params: 20,863,536
-Trainable params: 2,049
-Non-trainable params: 20,861,487
-_________________________________________________________________
+Downloading data from https://storage.googleapis.com/tensorflow/keras-applications/xception/xception_weights_tf_dim_ordering_tf_kernels_notop.h5
+ 83683744/83683744 ━━━━━━━━━━━━━━━━━━━━ 0s 0us/step
 
 ```
 </div>
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "functional_4"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)                </span>┃<span style="font-weight: bold"> Output Shape             </span>┃<span style="font-weight: bold"> Param # </span>┃<span style="font-weight: bold"> Trai… </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━┩
+│ input_layer_4 (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">150</span>, <span style="color: #00af00; text-decoration-color: #00af00">150</span>, <span style="color: #00af00; text-decoration-color: #00af00">3</span>)      │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │   <span style="font-weight: bold">-</span>   │
+├─────────────────────────────┼──────────────────────────┼─────────┼───────┤
+│ rescaling (<span style="color: #0087ff; text-decoration-color: #0087ff">Rescaling</span>)       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">150</span>, <span style="color: #00af00; text-decoration-color: #00af00">150</span>, <span style="color: #00af00; text-decoration-color: #00af00">3</span>)      │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │   <span style="font-weight: bold">-</span>   │
+├─────────────────────────────┼──────────────────────────┼─────────┼───────┤
+│ xception (<span style="color: #0087ff; text-decoration-color: #0087ff">Functional</span>)       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">5</span>, <span style="color: #00af00; text-decoration-color: #00af00">5</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>)       │ <span style="color: #00af00; text-decoration-color: #00af00">20,861…</span> │   <span style="color: #ff0000; text-decoration-color: #ff0000; font-weight: bold">N</span>   │
+├─────────────────────────────┼──────────────────────────┼─────────┼───────┤
+│ global_average_pooling2d    │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>)             │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │   <span style="font-weight: bold">-</span>   │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">GlobalAveragePooling2D</span>)    │                          │         │       │
+├─────────────────────────────┼──────────────────────────┼─────────┼───────┤
+│ dropout (<span style="color: #0087ff; text-decoration-color: #0087ff">Dropout</span>)           │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>)             │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │   <span style="font-weight: bold">-</span>   │
+├─────────────────────────────┼──────────────────────────┼─────────┼───────┤
+│ dense_7 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)             │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)                │   <span style="color: #00af00; text-decoration-color: #00af00">2,049</span> │   <span style="color: #00af00; text-decoration-color: #00af00; font-weight: bold">Y</span>   │
+└─────────────────────────────┴──────────────────────────┴─────────┴───────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">20,863,529</span> (79.59 MB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">2,049</span> (8.00 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">20,861,480</span> (79.58 MB)
+</pre>
+
+
+
 ---
 ## Train the top layer
-
 
 
 ```python
@@ -676,55 +625,40 @@ model.compile(
     metrics=[keras.metrics.BinaryAccuracy()],
 )
 
-epochs = 20
+epochs = 2
+print("Fitting the top layer of the model")
 model.fit(train_ds, epochs=epochs, validation_data=validation_ds)
-
 ```
 
 <div class="k-default-codeblock">
 ```
-Epoch 1/20
-291/291 [==============================] - 24s 83ms/step - loss: 0.1639 - binary_accuracy: 0.9276 - val_loss: 0.0883 - val_binary_accuracy: 0.9652
-Epoch 2/20
-291/291 [==============================] - 22s 76ms/step - loss: 0.1202 - binary_accuracy: 0.9491 - val_loss: 0.0855 - val_binary_accuracy: 0.9686
-Epoch 3/20
-291/291 [==============================] - 23s 80ms/step - loss: 0.1076 - binary_accuracy: 0.9546 - val_loss: 0.0802 - val_binary_accuracy: 0.9682
-Epoch 4/20
-291/291 [==============================] - 23s 80ms/step - loss: 0.1127 - binary_accuracy: 0.9539 - val_loss: 0.0798 - val_binary_accuracy: 0.9682
-Epoch 5/20
-291/291 [==============================] - 23s 78ms/step - loss: 0.1072 - binary_accuracy: 0.9558 - val_loss: 0.0807 - val_binary_accuracy: 0.9695
-Epoch 6/20
-291/291 [==============================] - 23s 79ms/step - loss: 0.1073 - binary_accuracy: 0.9565 - val_loss: 0.0746 - val_binary_accuracy: 0.9733
-Epoch 7/20
-291/291 [==============================] - 23s 79ms/step - loss: 0.1037 - binary_accuracy: 0.9562 - val_loss: 0.0738 - val_binary_accuracy: 0.9712
-Epoch 8/20
-291/291 [==============================] - 23s 79ms/step - loss: 0.1061 - binary_accuracy: 0.9580 - val_loss: 0.0764 - val_binary_accuracy: 0.9738
-Epoch 9/20
-291/291 [==============================] - 23s 78ms/step - loss: 0.0959 - binary_accuracy: 0.9612 - val_loss: 0.0823 - val_binary_accuracy: 0.9673
-Epoch 10/20
-291/291 [==============================] - 23s 79ms/step - loss: 0.0956 - binary_accuracy: 0.9600 - val_loss: 0.0736 - val_binary_accuracy: 0.9725
-Epoch 11/20
-291/291 [==============================] - 23s 79ms/step - loss: 0.0944 - binary_accuracy: 0.9603 - val_loss: 0.0781 - val_binary_accuracy: 0.9716
-Epoch 12/20
-291/291 [==============================] - 23s 79ms/step - loss: 0.0960 - binary_accuracy: 0.9615 - val_loss: 0.0720 - val_binary_accuracy: 0.9725
-Epoch 13/20
-291/291 [==============================] - 23s 79ms/step - loss: 0.0987 - binary_accuracy: 0.9614 - val_loss: 0.0791 - val_binary_accuracy: 0.9708
-Epoch 14/20
-291/291 [==============================] - 23s 79ms/step - loss: 0.0930 - binary_accuracy: 0.9636 - val_loss: 0.0780 - val_binary_accuracy: 0.9690
-Epoch 15/20
-291/291 [==============================] - 23s 78ms/step - loss: 0.0954 - binary_accuracy: 0.9624 - val_loss: 0.0772 - val_binary_accuracy: 0.9678
-Epoch 16/20
-291/291 [==============================] - 23s 78ms/step - loss: 0.0963 - binary_accuracy: 0.9598 - val_loss: 0.0781 - val_binary_accuracy: 0.9695
-Epoch 17/20
-291/291 [==============================] - 23s 78ms/step - loss: 0.1006 - binary_accuracy: 0.9585 - val_loss: 0.0832 - val_binary_accuracy: 0.9699
-Epoch 18/20
-291/291 [==============================] - 23s 78ms/step - loss: 0.0942 - binary_accuracy: 0.9615 - val_loss: 0.0761 - val_binary_accuracy: 0.9703
-Epoch 19/20
-291/291 [==============================] - 23s 79ms/step - loss: 0.0950 - binary_accuracy: 0.9613 - val_loss: 0.0817 - val_binary_accuracy: 0.9690
-Epoch 20/20
-291/291 [==============================] - 23s 79ms/step - loss: 0.0906 - binary_accuracy: 0.9624 - val_loss: 0.0755 - val_binary_accuracy: 0.9712
+Fitting the top layer of the model
+Epoch 1/2
+  78/146 ━━━━━━━━━━[37m━━━━━━━━━━  15s 226ms/step - binary_accuracy: 0.7995 - loss: 0.4088
 
-<tensorflow.python.keras.callbacks.History at 0x7f3fa4cdab00>
+Corrupt JPEG data: 65 extraneous bytes before marker 0xd9
+
+ 136/146 ━━━━━━━━━━━━━━━━━━[37m━━  2s 231ms/step - binary_accuracy: 0.8430 - loss: 0.3298
+
+Corrupt JPEG data: 239 extraneous bytes before marker 0xd9
+
+ 143/146 ━━━━━━━━━━━━━━━━━━━[37m━  0s 231ms/step - binary_accuracy: 0.8464 - loss: 0.3235
+
+Corrupt JPEG data: 1153 extraneous bytes before marker 0xd9
+
+ 144/146 ━━━━━━━━━━━━━━━━━━━[37m━  0s 231ms/step - binary_accuracy: 0.8468 - loss: 0.3226
+
+Corrupt JPEG data: 228 extraneous bytes before marker 0xd9
+
+ 146/146 ━━━━━━━━━━━━━━━━━━━━ 0s 260ms/step - binary_accuracy: 0.8478 - loss: 0.3209
+
+Corrupt JPEG data: 2226 extraneous bytes before marker 0xd9
+
+ 146/146 ━━━━━━━━━━━━━━━━━━━━ 54s 317ms/step - binary_accuracy: 0.8482 - loss: 0.3200 - val_binary_accuracy: 0.9667 - val_loss: 0.0877
+Epoch 2/2
+ 146/146 ━━━━━━━━━━━━━━━━━━━━ 7s 51ms/step - binary_accuracy: 0.9483 - loss: 0.1232 - val_binary_accuracy: 0.9705 - val_loss: 0.0786
+
+<keras.src.callbacks.history.History at 0x7fc8b7f1db70>
 
 ```
 </div>
@@ -741,7 +675,6 @@ statistics. If they did, they would wreck havoc on the representations learned b
  model so far.
 
 
-
 ```python
 # Unfreeze the base_model. Note that it keeps running in inference mode
 # since we passed `training=False` when calling it. This means that
@@ -749,7 +682,7 @@ statistics. If they did, they would wreck havoc on the representations learned b
 # This prevents the batchnorm layers from undoing all the training
 # we've done so far.
 base_model.trainable = True
-model.summary()
+model.summary(show_trainable=True)
 
 model.compile(
     optimizer=keras.optimizers.Adam(1e-5),  # Low learning rate
@@ -757,59 +690,90 @@ model.compile(
     metrics=[keras.metrics.BinaryAccuracy()],
 )
 
-epochs = 10
+epochs = 1
+print("Fitting the end-to-end model")
 model.fit(train_ds, epochs=epochs, validation_data=validation_ds)
-
 ```
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "functional_4"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)                </span>┃<span style="font-weight: bold"> Output Shape             </span>┃<span style="font-weight: bold"> Param # </span>┃<span style="font-weight: bold"> Trai… </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━┩
+│ input_layer_4 (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">150</span>, <span style="color: #00af00; text-decoration-color: #00af00">150</span>, <span style="color: #00af00; text-decoration-color: #00af00">3</span>)      │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │   <span style="font-weight: bold">-</span>   │
+├─────────────────────────────┼──────────────────────────┼─────────┼───────┤
+│ rescaling (<span style="color: #0087ff; text-decoration-color: #0087ff">Rescaling</span>)       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">150</span>, <span style="color: #00af00; text-decoration-color: #00af00">150</span>, <span style="color: #00af00; text-decoration-color: #00af00">3</span>)      │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │   <span style="font-weight: bold">-</span>   │
+├─────────────────────────────┼──────────────────────────┼─────────┼───────┤
+│ xception (<span style="color: #0087ff; text-decoration-color: #0087ff">Functional</span>)       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">5</span>, <span style="color: #00af00; text-decoration-color: #00af00">5</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>)       │ <span style="color: #00af00; text-decoration-color: #00af00">20,861…</span> │   <span style="color: #00af00; text-decoration-color: #00af00; font-weight: bold">Y</span>   │
+├─────────────────────────────┼──────────────────────────┼─────────┼───────┤
+│ global_average_pooling2d    │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>)             │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │   <span style="font-weight: bold">-</span>   │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">GlobalAveragePooling2D</span>)    │                          │         │       │
+├─────────────────────────────┼──────────────────────────┼─────────┼───────┤
+│ dropout (<span style="color: #0087ff; text-decoration-color: #0087ff">Dropout</span>)           │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">2048</span>)             │       <span style="color: #00af00; text-decoration-color: #00af00">0</span> │   <span style="font-weight: bold">-</span>   │
+├─────────────────────────────┼──────────────────────────┼─────────┼───────┤
+│ dense_7 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)             │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)                │   <span style="color: #00af00; text-decoration-color: #00af00">2,049</span> │   <span style="color: #00af00; text-decoration-color: #00af00; font-weight: bold">Y</span>   │
+└─────────────────────────────┴──────────────────────────┴─────────┴───────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">20,867,629</span> (79.60 MB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">20,809,001</span> (79.38 MB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">54,528</span> (213.00 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Optimizer params: </span><span style="color: #00af00; text-decoration-color: #00af00">4,100</span> (16.02 KB)
+</pre>
+
+
 
 <div class="k-default-codeblock">
 ```
-Model: "model"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-input_5 (InputLayer)         [(None, 150, 150, 3)]     0         
-_________________________________________________________________
-sequential_3 (Sequential)    (None, 150, 150, 3)       0         
-_________________________________________________________________
-normalization (Normalization (None, 150, 150, 3)       7         
-_________________________________________________________________
-xception (Model)             (None, 5, 5, 2048)        20861480  
-_________________________________________________________________
-global_average_pooling2d (Gl (None, 2048)              0         
-_________________________________________________________________
-dropout (Dropout)            (None, 2048)              0         
-_________________________________________________________________
-dense_7 (Dense)              (None, 1)                 2049      
-=================================================================
-Total params: 20,863,536
-Trainable params: 20,809,001
-Non-trainable params: 54,535
-_________________________________________________________________
-Epoch 1/10
-291/291 [==============================] - 92s 318ms/step - loss: 0.0766 - binary_accuracy: 0.9710 - val_loss: 0.0571 - val_binary_accuracy: 0.9772
-Epoch 2/10
-291/291 [==============================] - 90s 308ms/step - loss: 0.0534 - binary_accuracy: 0.9800 - val_loss: 0.0471 - val_binary_accuracy: 0.9807
-Epoch 3/10
-291/291 [==============================] - 90s 308ms/step - loss: 0.0491 - binary_accuracy: 0.9799 - val_loss: 0.0411 - val_binary_accuracy: 0.9815
-Epoch 4/10
-291/291 [==============================] - 90s 308ms/step - loss: 0.0349 - binary_accuracy: 0.9868 - val_loss: 0.0438 - val_binary_accuracy: 0.9832
-Epoch 5/10
-291/291 [==============================] - 89s 307ms/step - loss: 0.0302 - binary_accuracy: 0.9881 - val_loss: 0.0440 - val_binary_accuracy: 0.9837
-Epoch 6/10
-291/291 [==============================] - 90s 308ms/step - loss: 0.0290 - binary_accuracy: 0.9890 - val_loss: 0.0445 - val_binary_accuracy: 0.9832
-Epoch 7/10
-291/291 [==============================] - 90s 310ms/step - loss: 0.0209 - binary_accuracy: 0.9920 - val_loss: 0.0527 - val_binary_accuracy: 0.9811
-Epoch 8/10
-291/291 [==============================] - 91s 311ms/step - loss: 0.0162 - binary_accuracy: 0.9940 - val_loss: 0.0510 - val_binary_accuracy: 0.9828
-Epoch 9/10
-291/291 [==============================] - 91s 311ms/step - loss: 0.0199 - binary_accuracy: 0.9933 - val_loss: 0.0470 - val_binary_accuracy: 0.9867
-Epoch 10/10
-291/291 [==============================] - 90s 308ms/step - loss: 0.0128 - binary_accuracy: 0.9953 - val_loss: 0.0471 - val_binary_accuracy: 0.9845
+Fitting the end-to-end model
+ 146/146 ━━━━━━━━━━━━━━━━━━━━ 75s 327ms/step - binary_accuracy: 0.8487 - loss: 0.3760 - val_binary_accuracy: 0.9494 - val_loss: 0.1160
 
-<tensorflow.python.keras.callbacks.History at 0x7f3c0ca6d0f0>
+<keras.src.callbacks.history.History at 0x7fcd1c755090>
 
 ```
 </div>
 After 10 epochs, fine-tuning gains us a nice improvement here.
+Let's evaluate the model on the test dataset:
 
+
+```python
+print("Test dataset evaluation")
+model.evaluate(test_ds)
+```
+
+<div class="k-default-codeblock">
+```
+Test dataset evaluation
+ 11/37 ━━━━━[37m━━━━━━━━━━━━━━━  1s 52ms/step - binary_accuracy: 0.9407 - loss: 0.1155
+
+Corrupt JPEG data: 99 extraneous bytes before marker 0xd9
+
+ 37/37 ━━━━━━━━━━━━━━━━━━━━ 2s 47ms/step - binary_accuracy: 0.9427 - loss: 0.1259
+
+[0.13755160570144653, 0.941300630569458]
+
+```
+</div>

@@ -4,7 +4,9 @@ Author: [fchollet](https://twitter.com/fchollet)
 Date created: 2019/05/28
 Last modified: 2020/04/17
 Description: Demonstration of how to handle highly imbalanced classification problems.
+Accelerator: GPU
 """
+
 """
 ## Introduction
 
@@ -84,13 +86,12 @@ val_features /= std
 ## Build a binary classification model
 """
 
-from tensorflow import keras
+import keras
 
 model = keras.Sequential(
     [
-        keras.layers.Dense(
-            256, activation="relu", input_shape=(train_features.shape[-1],)
-        ),
+        keras.Input(shape=train_features.shape[1:]),
+        keras.layers.Dense(256, activation="relu"),
         keras.layers.Dense(256, activation="relu"),
         keras.layers.Dropout(0.3),
         keras.layers.Dense(256, activation="relu"),
@@ -117,7 +118,7 @@ model.compile(
     optimizer=keras.optimizers.Adam(1e-2), loss="binary_crossentropy", metrics=metrics
 )
 
-callbacks = [keras.callbacks.ModelCheckpoint("fraud_model_at_epoch_{epoch}.h5")]
+callbacks = [keras.callbacks.ModelCheckpoint("fraud_model_at_epoch_{epoch}.keras")]
 class_weight = {0: weight_for_0, 1: weight_for_1}
 
 model.fit(
@@ -144,4 +145,5 @@ In the real world, one would put an even higher weight on class 1,
 so as to reflect that False Negatives are more costly than False Positives.
 
 Next time your credit card gets  declined in an online purchase -- this is why.
+
 """

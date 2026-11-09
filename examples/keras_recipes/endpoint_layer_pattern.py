@@ -2,24 +2,30 @@
 Title: Endpoint layer pattern
 Author: [fchollet](https://twitter.com/fchollet)
 Date created: 2019/05/10
-Last modified: 2019/05/10
+Last modified: 2023/11/22
 Description: Demonstration of the "endpoint layer" pattern (layer that handles loss management).
+Accelerator: GPU
 """
 
 """
 ## Setup
 """
 
+import os
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
 import tensorflow as tf
-from tensorflow import keras
+import keras
 import numpy as np
 
 """
 ## Usage of endpoint layers in the Functional API
 
-An "endpoint layer" has access to the model's targets, and creates arbitrary losses and
-metrics using `add_loss` and `add_metric`. This enables you to define losses and
- metrics that don't match the usual signature `fn(y_true, y_pred, sample_weight=None)`.
+An "endpoint layer" has access to the model's targets, and creates arbitrary losses
+in `call()` using `self.add_loss()` and `Metric.update_state()`.
+This enables you to define losses and
+metrics that don't match the usual signature `fn(y_true, y_pred, sample_weight=None)`.
 
 Note that you could have separate metrics for training and eval with this pattern.
 """
@@ -27,9 +33,9 @@ Note that you could have separate metrics for training and eval with this patter
 
 class LogisticEndpoint(keras.layers.Layer):
     def __init__(self, name=None):
-        super(LogisticEndpoint, self).__init__(name=name)
+        super().__init__(name=name)
         self.loss_fn = keras.losses.BinaryCrossentropy(from_logits=True)
-        self.accuracy_fn = keras.metrics.BinaryAccuracy(name="accuracy")
+        self.accuracy_metric = keras.metrics.BinaryAccuracy(name="accuracy")
 
     def call(self, logits, targets=None, sample_weight=None):
         if targets is not None:
@@ -39,8 +45,8 @@ class LogisticEndpoint(keras.layers.Layer):
             self.add_loss(loss)
 
             # Log the accuracy as a metric (we could log arbitrary metrics,
-            # including different metrics for training and inference.
-            self.add_metric(self.accuracy_fn(targets, logits, sample_weight))
+            # including different metrics for training and inference.)
+            self.accuracy_metric.update_state(targets, logits, sample_weight)
 
         # Return the inference-time prediction tensor (for `.predict()`).
         return tf.nn.softmax(logits)
@@ -84,7 +90,7 @@ preds = inference_model.predict(np.random.random((1000, 764)))
 
 class LogReg(keras.Model):
     def __init__(self):
-        super(LogReg, self).__init__()
+        super().__init__()
         self.dense = keras.layers.Dense(1)
         self.logistic_endpoint = LogisticEndpoint()
 
@@ -109,3 +115,8 @@ data = {
 
 model.compile(keras.optimizers.Adam(1e-3))
 model.fit(data, epochs=2)
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 7: A deep dive on Keras](https://deeplearningwithpython.io/chapters/chapter07_deep-dive-keras)
+"""

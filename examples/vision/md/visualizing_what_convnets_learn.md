@@ -21,16 +21,18 @@ specific filters in a target layer (picked somewhere in the middle of the model:
 `conv3_block4_out`). Such images represent a visualization of the
 pattern that the filter responds to.
 
-
 ---
 ## Setup
 
 
-
 ```python
+import os
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import keras
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
 
 # The dimensions of our input image
 img_width = 180
@@ -38,12 +40,10 @@ img_height = 180
 # Our target layer: we will visualize the filters from this layer.
 # See `model.summary()` for list of layer names, if you want to change this.
 layer_name = "conv3_block4_out"
-
 ```
 
 ---
 ## Build a feature extraction model
-
 
 
 ```python
@@ -53,7 +53,6 @@ model = keras.applications.ResNet50V2(weights="imagenet", include_top=False)
 # Set up a model that returns the activation values for our target layer
 layer = model.get_layer(name=layer_name)
 feature_extractor = keras.Model(inputs=model.inputs, outputs=layer.output)
-
 ```
 
 ---
@@ -61,7 +60,6 @@ feature_extractor = keras.Model(inputs=model.inputs, outputs=layer.output)
 
 The "loss" we will maximize is simply the mean of the activation of a specific filter in
 our target layer. To avoid border effects, we exclude border pixels.
-
 
 
 ```python
@@ -72,13 +70,11 @@ def compute_loss(input_image, filter_index):
     filter_activation = activation[:, 2:-2, 2:-2, filter_index]
     return tf.reduce_mean(filter_activation)
 
-
 ```
 
 Our gradient ascent function simply computes the gradients of the loss above
 with regard to the input image, and update the update image so as to move it
 towards a state that will activate the target filter more strongly.
-
 
 
 ```python
@@ -95,7 +91,6 @@ def gradient_ascent_step(img, filter_index, learning_rate):
     img += learning_rate * grads
     return loss, img
 
-
 ```
 
 ---
@@ -109,12 +104,11 @@ Our process is as follow:
 center-cropping it, and restricting it to the [0, 255] range.
 
 
-
 ```python
 
 def initialize_image():
     # We start from a gray image with some random noise
-    img = tf.random.uniform((1, img_width, img_height, 3))
+    img = tf.random.uniform((1, img_height, img_width, 3))
     # ResNet50V2 expects inputs in the range [-1, +1].
     # Here we scale our random inputs to [-0.125, +0.125]
     return (img - 0.5) * 0.25
@@ -151,33 +145,30 @@ def deprocess_image(img):
     img = np.clip(img, 0, 255).astype("uint8")
     return img
 
-
 ```
 
 Let's try it out with filter 0 in the target layer:
-
 
 
 ```python
 from IPython.display import Image, display
 
 loss, img = visualize_filter(0)
-keras.preprocessing.image.save_img("0.png", img)
-
+keras.utils.save_img("0.png", img)
 ```
 
 This is what an input that maximizes the response of filter 0 in the target layer would
 look like:
 
 
-
 ```python
 display(Image("0.png"))
-
 ```
 
 
+    
 ![png](/img/examples/vision/visualizing_what_convnets_learn/visualizing_what_convnets_learn_15_0.png)
+    
 
 
 ---
@@ -186,7 +177,6 @@ display(Image("0.png"))
 Now, let's make a 8x8 grid of the first 64 filters
 in the target layer to get of feel for the range
 of different visual patterns that the model has learned.
-
 
 
 ```python
@@ -206,24 +196,23 @@ cropped_width = img_width - 25 * 2
 cropped_height = img_height - 25 * 2
 width = n * cropped_width + (n - 1) * margin
 height = n * cropped_height + (n - 1) * margin
-stitched_filters = np.zeros((width, height, 3))
+stitched_filters = np.zeros((height, width, 3))
 
 # Fill the picture with our saved filters
 for i in range(n):
     for j in range(n):
         img = all_imgs[i * n + j]
         stitched_filters[
-            (cropped_width + margin) * i : (cropped_width + margin) * i + cropped_width,
-            (cropped_height + margin) * j : (cropped_height + margin) * j
-            + cropped_height,
+            (cropped_height + margin) * i : (cropped_height + margin) * i + cropped_height,
+            (cropped_width + margin) * j : (cropped_width + margin) * j
+            + cropped_width,
             :,
         ] = img
-keras.preprocessing.image.save_img("stiched_filters.png", stitched_filters)
+keras.utils.save_img("stiched_filters.png", stitched_filters)
 
 from IPython.display import Image, display
 
 display(Image("stiched_filters.png"))
-
 ```
 
 <div class="k-default-codeblock">
@@ -295,7 +284,9 @@ Processing filter 63
 
 ```
 </div>
+    
 ![png](/img/examples/vision/visualizing_what_convnets_learn/visualizing_what_convnets_learn_17_1.png)
+    
 
 
 Image classification models see the world by decomposing their inputs over a "vector
@@ -305,3 +296,6 @@ See also
 [this old blog post](https://blog.keras.io/how-convolutional-neural-networks-see-the-world.html)
 for analysis and interpretation.
 
+---
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 10: Interpreting what ConvNets learn](https://deeplearningwithpython.io/chapters/chapter10_interpreting-what-convnets-learn)

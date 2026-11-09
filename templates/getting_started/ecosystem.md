@@ -5,12 +5,33 @@ It spans a wide range of related initiatives that cover every step of the machin
 
 ---
 
-## Keras Tuner
+## KerasHub
 
-[Keras Tuner Documentation](https://keras-team.github.io/keras-tuner/) - [Keras Tuner GitHub repository](https://github.com/keras-team/keras-tuner)
+[KerasHub Documentation](/keras_hub/) - [KerasHub GitHub repository](https://github.com/keras-team/keras-hub)
 
+KerasHub is a pretrained modeling library that aims to be simple, flexible, and
+fast. The library provides Keras implementations of popular model architectures,
+paired with a collection of pretrained checkpoints. Models can be used with
+text, image, and audio data for generation, classification, and many other
+built-in tasks.
 
-Keras Tuner is an easy-to-use, scalable hyperparameter optimization framework that solves the pain points of hyperparameter search. Easily configure your search space with a define-by-run syntax, then leverage one of the available search algorithms to find the best hyperparameter values for your models. Keras Tuner comes with Bayesian Optimization, Hyperband, and Random Search algorithms built-in, and is also designed to be easy for researchers to extend in order to experiment with new search algorithms.
+---
+
+## KerasRS
+
+[KerasRS Documentation](/keras_rs/) - [KerasRS GitHub repository](https://github.com/keras-team/keras-rs)
+
+Keras Recommenders is a library for building recommender systems on top of
+Keras. It provides a collection of building blocks which help with the full
+workflow of creating a recommender system.
+
+---
+
+## KerasTuner
+
+[KerasTuner Documentation](/keras_tuner/) - [KerasTuner GitHub repository](https://github.com/keras-team/keras-tuner)
+
+KerasTuner is an easy-to-use, scalable hyperparameter optimization framework that solves the pain points of hyperparameter search. Easily configure your search space with a define-by-run syntax, then leverage one of the available search algorithms to find the best hyperparameter values for your models. KerasTuner comes with Bayesian Optimization, Hyperband, and Random Search algorithms built-in, and is also designed to be easy for researchers to extend in order to experiment with new search algorithms.
 
 ---
 
@@ -24,49 +45,50 @@ such as [`ImageClassifier`](https://autokeras.com/tutorial/image_classification/
 [`TextClassifier`](https://autokeras.com/tutorial/text_classification/) to solve machine learning problems in a few lines,
 as well as [flexible building blocks](https://autokeras.com/tutorial/customized/) to perform architecture search.
 
----
+```python
+import autokeras as ak
 
-## TensorFlow Cloud
-
-Managed by the Keras team at Google, [TensorFlow Cloud](https://github.com/tensorflow/cloud) is a set of utilities to help you run large-scale
-Keras training jobs on GCP with very little configuration effort. Running your experiments on 8 or more GPUs in the cloud
-should be as easy as calling `model.fit()`.
-
-
----
-
-## TensorFlow.js
-
-[TensorFlow.js](https://www.tensorflow.org/js) is TensorFlow's JavaScript runtime, capable of running TensorFlow models in the browser or on a [Node.js](https://nodejs.org/en/) server,
-both for training and inference. It natively supports loading Keras models, including the ability to fine-tune or retrain your Keras models directly in the browser.
-
+clf = ak.ImageClassifier()
+clf.fit(x_train, y_train)
+results = clf.predict(x_test)
+```
 
 ---
 
-## TensorFlow Lite
+## BayesFlow
 
-[TensorFlow Lite](https://www.tensorflow.org/lite) is a runtime for efficient on-device inference that has native support for Keras models.
-Deploy your models on Android, iOS, or on embdeded devices.
+[BayesFlow documentation](https://bayesflow.org/) - [BayesFlow](https://github.com/bayesflow-org/bayesflow)
 
+A Python library for amortized Bayesian workflows using generative neural networks, built on Keras 3, featuring:
 
----
-
-## Model optimization toolkit
-
-The [TensorFlow Model Optimization Toolkit](https://www.tensorflow.org/model_optimization) is a set of utilities to make your inference models faster, more memory-efficient,
-and more power-efficient, by performing *post-training weight quantization* and *pruning-aware training*.
-It has native support for Keras models, and its pruning API is built directly on top on the Keras API.
-
+- A user-friendly API for rapid Bayesian workflows
+- A rich collection of neural network architectures
+- Multi-backend support via Keras 3: You can use PyTorch, TensorFlow, or JAX
 
 ---
 
-## TFX integration
+## NEAT
 
-TFX is an end-to-end platform for deploying and maintaining production machine learning pipelines.
-TFX has [native support for Keras models](https://www.tensorflow.org/tfx/guide/keras).
+[NEAT documentation](https://neat-cylu.vercel.app/) - [NEAT GitHub repository](https://github.com/ItCodinTime/NEAT)
 
+NEAT (Nash-Equilibrium Adaptive Training) is a Keras-first optimizer library for conflict-aware neural network training. 
+It provides a Keras 3 optimizer usable with `model.compile(...)`, plus a NumPy reference engine for validating the update rule.
 
----
+Features include:
 
+- Keras-compatible optimizer API
+- Nash-inspired conflict-aware gradient correction
+- Optional native CPU acceleration
+- Player-aware training utilities
+- Training diagnostics for conflict and update alignment
 
+```python
+import keras
+from neat_optim import NEAT
+
+model.compile(
+  optimizer=NEAT(learning_rate=1e-3),
+  loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+)
+```
 

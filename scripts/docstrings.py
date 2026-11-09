@@ -1,21 +1,33 @@
-"""Lightweight fork of Keras-Autodocs.
-"""
+"""Lightweight fork of Keras-Autodocs."""
+
 import warnings
-from sphinx.util.inspect import Signature
 import black
 import re
-import os
 import inspect
 import importlib
-import shutil
-import pathlib
-from typing import Dict, Union
 import itertools
+from collections import defaultdict
+from collections import namedtuple
 
 
-class TFKerasDocumentationGenerator:
+import render_presets
+
+
+# Maximum number of links to guides and examples
+MAX_EXAMPLE_LINKS = 8
+
+ExampleInfo = namedtuple("ExampleInfo", ["url", "title", "is_guide"])
+
+
+class KerasDocumentationGenerator:
     def __init__(self, project_url=None):
         self.project_url = project_url
+        self.api_to_example = defaultdict(list)
+
+    def add_example_apis(self, url, title, is_guide, apis):
+        example = ExampleInfo(url, title, is_guide)
+        for api in apis:
+            self.api_to_example[api].append(example)
 
     def process_docstring(self, docstring):
         docstring = docstring.replace("Args:", "# Arguments")
@@ -26,10 +38,12 @@ class TFKerasDocumentationGenerator:
         docstring = docstring.replace("Input shape:", "# Input shape")
         docstring = docstring.replace("Output shape:", "# Output shape")
         docstring = docstring.replace("Call arguments:", "# Call arguments")
+        docstring = docstring.replace("Returns:", "# Returns")
         docstring = docstring.replace("Example:", "# Example\n")
         docstring = docstring.replace("Examples:", "# Examples\n")
 
-        docstring = re.sub(r"\nReference:\n\s*-", "\n**Reference**\n\n-", docstring)
+        docstring = re.sub(r"\nReference:\n\s*", "\n**Reference**\n\n", docstring)
+        docstring = re.sub(r"\nReferences:\n\s*", "\n**References**\n\n", docstring)
 
         # Fix typo
         docstring = docstring.replace("\n >>> ", "\n>>> ")
@@ -39,9 +53,9 @@ class TFKerasDocumentationGenerator:
         usable_lines = []
 
         def flush_docstest(usable_lines, doctest_lines):
-            usable_lines.append("```shell")
+            usable_lines.append("```python")
             usable_lines += doctest_lines
-            usable_lines.append("```endshell")
+            usable_lines.append("```")
             usable_lines.append("")
 
         for line in lines:
@@ -59,6 +73,7 @@ class TFKerasDocumentationGenerator:
         if doctest_lines:
             flush_docstest(usable_lines, doctest_lines)
         docstring = "\n".join(usable_lines)
+
         return process_docstring(docstring)
 
     def process_signature(self, signature):
@@ -77,12 +92,13 @@ class TFKerasDocumentationGenerator:
         else:
             signature_override = None
             object_ = element
-        return self.render_from_object(object_, signature_override)
+        return self.render_from_object(object_, signature_override, element)
 
-    def render_from_object(self, object_, signature_override: str):
+    def render_from_object(self, object_, signature_override: str, element):
         subblocks = []
-        if self.project_url is not None:
-            subblocks.append(make_source_link(object_, self.project_url))
+        source_link = make_source_link(object_, self.project_url)
+        if source_link is not None:
+            subblocks.append(source_link)
         signature = get_signature(object_, signature_override)
         signature = self.process_signature(signature)
         subblocks.append(f"### `{get_name(object_)}` {get_type(object_)}\n")
@@ -92,6 +108,26 @@ class TFKerasDocumentationGenerator:
         if docstring:
             docstring = self.process_docstring(docstring)
             subblocks.append(docstring)
+        # Render preset table for KerasCV and KerasHub
+        if element.endswith("from_preset"):
+            table = render_presets.render_table(
+                import_object(element.rsplit(".", 1)[0])
+            )
+            if table is not None:
+                subblocks.append(table)
+
+        # Extract and render links to examples using the API
+        apis = getattr(object_, "_api_export_path", [element])
+
+        all_examples = []
+        for api in apis:
+            for api_example in self.api_to_example.get(api, []):
+                if api_example not in all_examples:
+                    all_examples.append(api_example)
+
+        if all_examples:
+            subblocks.append(get_examples_block(element, all_examples))
+
         return "\n\n".join(subblocks) + "\n\n----\n\n"
 
 
@@ -112,21 +148,32 @@ def import_object(string: str):
         try:
             last_object_got = importlib.import_module(".".join(seen_names))
         except ModuleNotFoundError:
+            assert last_object_got is not None, f"Failed to import path {string}"
             last_object_got = getattr(last_object_got, name)
     return last_object_got
 
 
 def make_source_link(cls, project_url):
-    if isinstance(project_url, dict):
-        base_module = cls.__module__.split(".")[0]
-        project_url = project_url[base_module]
+    if not hasattr(cls, "__module__"):
+        return None
+    if not project_url:
+        return None
+
+    base_module = cls.__module__.split(".")[0]
+    if base_module not in project_url:
+        return None
+    project_url = project_url[base_module]
+    assert project_url.endswith("/"), f"{base_module} not found"
     path = cls.__module__.replace(".", "/")
+    if base_module in ("tf_keras",):
+        path = path.replace("/src/", "/")
     line = inspect.getsourcelines(cls)[-1]
     return (
         f'<span style="float:right;">'
-        f"[[source]]({project_url}/{path}.py#L{line})"
+        f"[[source]]({project_url}{path}.py#L{line})"
         f"</span>"
     )
+
 
 
 def code_snippet(snippet):
@@ -155,6 +202,75 @@ def get_name(object_) -> str:
     return object_.__name__
 
 
+def get_function_name(function):
+    if hasattr(function, "__wrapped__"):
+        return get_function_name(function.__wrapped__)
+    return function.__name__
+
+
+def get_default_value_for_repr(value):
+    """Return a substitute for rendering the default value of a funciton arg.
+
+    Function and object instances are rendered as <Foo object at 0x00000000>
+    which can't be parsed by black. We substitute functions with the function
+    name and objects with a rendered version of the constructor like
+    `Foo(a=2, b="bar")`.
+
+    Args:
+        value: The value to find a better rendering of.
+
+    Returns:
+        Another value or `None` if no substitution is needed.
+    """
+
+    class ReprWrapper:
+        def __init__(self, representation):
+            self.representation = representation
+
+        def __repr__(self):
+            return self.representation
+
+    if value is inspect._empty:
+        return None
+
+    if inspect.isfunction(value):
+        # Render the function name instead
+        return ReprWrapper(value.__name__)
+
+    if inspect.isclass(value):
+        # Render classes as module.ClassName to produce a valid python
+        # dotted-name expression in the fake signature (black can parse it).
+        return ReprWrapper(value.__module__ + "." + value.__name__)
+
+    if (
+        repr(value).startswith("<")  # <Foo object at 0x00000000>
+        and hasattr(value, "__class__")  # it is an object
+        and hasattr(value, "get_config")  # it is a Keras object
+    ):
+        config = value.get_config()
+        init_args = []  # The __init__ arguments to render
+        for p in inspect.signature(value.__class__.__init__).parameters.values():
+            if p.name == "self":
+                continue
+            if p.kind == inspect.Parameter.POSITIONAL_ONLY:
+                # Required positional, render without a name
+                init_args.append(repr(config[p.name]))
+            elif p.default is inspect._empty or p.default != config[p.name]:
+                # Keyword arg with non-default value, render
+                init_args.append(p.name + "=" + repr(config[p.name]))
+            # else don't render that argument
+        return ReprWrapper(
+            value.__class__.__module__
+            + "."
+            + value.__class__.__name__
+            + "("
+            + ", ".join(init_args)
+            + ")"
+        )
+
+    return None
+
+
 def get_signature_start(function):
     """For the Dense layer, it should return the string 'keras.layers.Dense'"""
     if ismethod(function):
@@ -168,14 +284,31 @@ def get_signature_start(function):
                 f"It will not be included in the signature."
             )
             prefix = ""
-    return f"{prefix}{function.__name__}"
+    return f"{prefix}{get_function_name(function)}"
 
 
 def get_signature_end(function):
-    signature_end = Signature(function).format_args()
+    params = inspect.signature(function).parameters.values()
+
+    formatted_params = []
+    for x in params:
+        default = get_default_value_for_repr(x.default)
+        if default:
+            x = inspect.Parameter(
+                x.name, x.kind, default=default, annotation=x.annotation
+            )
+        str_x = str(x)
+        formatted_params.append(str_x)
+    signature_end = "(" + ", ".join(formatted_params) + ")"
+
     if ismethod(function):
         signature_end = signature_end.replace("(self, ", "(")
         signature_end = signature_end.replace("(self)", "()")
+        # work around case-specific bug
+        signature_end = signature_end.replace(
+            "synchronization=<VariableSynchronization.AUTO: 0>, aggregation=<VariableAggregationV2.NONE: 0>",
+            "synchronization=tf.VariableSynchronization.AUTO, aggregation=tf.VariableSynchronization.NONE",
+        )
     return signature_end
 
 
@@ -238,7 +371,8 @@ def get_code_blocks(docstring):
         index = tmp[3:].find("```") + 6
         snippet = tmp[:index]
         # Place marker in docstring for later reinjection.
-        token = f"$KERAS_AUTODOC_CODE_BLOCK_{len(code_blocks)}"
+        # Print the index with 4 digits so we know the symbol is unique.
+        token = f"$KERAS_AUTODOC_CODE_BLOCK_{len(code_blocks):04d}"
         docstring = docstring.replace(snippet, token)
         code_blocks[token] = snippet
         tmp = tmp[index:]
@@ -253,6 +387,27 @@ def get_section_end(docstring, section_start):
         return section_end
     else:
         return section_end - 2
+
+
+def get_examples_block(name, guides_and_examples):
+    # Prefer guides to examples, so put them first.
+    # But we otherwise keep the order, which is the order in the TOC.
+    guides = [e for e in guides_and_examples if e.is_guide]
+    examples = [e for e in guides_and_examples if not e.is_guide]
+    guides_and_examples = guides + examples
+
+    # Cap the number of links.
+    if len(guides_and_examples) > MAX_EXAMPLE_LINKS:
+        guides_and_examples = guides_and_examples[:MAX_EXAMPLE_LINKS]
+
+    # Remove module in name.
+    name = name.split(".")[-1]
+
+    return (
+        f"**Guides and examples using `{name}`**\n\n"
+        + "\n".join([f"- [{e.title}]({e.url})" for e in guides_and_examples])
+        + "\n"
+    )
 
 
 def get_google_style_sections_without_code(docstring):
@@ -278,6 +433,7 @@ def get_google_style_sections(docstring):
     google_style_sections, docstring = get_google_style_sections_without_code(docstring)
     docstring = reinject_strings(docstring, code_blocks)
     for section_token, section in google_style_sections.items():
+        section = reinject_strings(section, code_blocks)
         google_style_sections[section_token] = reinject_strings(section, code_blocks)
     return google_style_sections, docstring
 
@@ -287,7 +443,13 @@ def to_markdown(google_style_section: str) -> str:
     section_title = google_style_section[2:end_first_line]
     section_body = google_style_section[end_first_line:]
     section_body = remove_indentation(section_body)
-    if section_title in ("Arguments", "Attributes", "Raises", "Call arguments"):
+    if section_title in (
+        "Arguments",
+        "Attributes",
+        "Raises",
+        "Call arguments",
+        "Returns",
+    ):
         section_body = format_as_markdown_list(section_body)
     if section_body:
         return f"__{section_title}__\n\n{section_body}\n"
@@ -298,6 +460,8 @@ def to_markdown(google_style_section: str) -> str:
 def format_as_markdown_list(section_body):
     section_body = re.sub(r"\n([^ ].*?):", r"\n- __\1__:", section_body)
     section_body = re.sub(r"^([^ ].*?):", r"- __\1__:", section_body)
+    # Switch to 2-space indent so we can render nested lists.
+    section_body = section_body.replace("\n    ", "\n  ")
     return section_body
 
 
@@ -310,6 +474,7 @@ def reinject_strings(target, strings_to_inject):
 def process_docstring(docstring):
     if docstring[-1] != "\n":
         docstring += "\n"
+
     google_style_sections, docstring = get_google_style_sections(docstring)
     for token, google_style_section in google_style_sections.items():
         markdown_section = to_markdown(google_style_section)
@@ -324,10 +489,8 @@ def get_class_from_method(meth):
                 return cls
         meth = meth.__func__  # fallback to __qualname__ parsing
     if inspect.isfunction(meth):
-        cls = getattr(
-            inspect.getmodule(meth),
-            meth.__qualname__.split(".<locals>", 1)[0].rsplit(".", 1)[0],
-        )
+        cls_name = meth.__qualname__.split(".<locals>", 1)[0].rsplit(".", 1)[0]
+        cls = getattr(inspect.getmodule(meth), cls_name, None)
         if isinstance(cls, type):
             return cls
     return getattr(meth, "__objclass__", None)  # handle special descriptor objects

@@ -49,10 +49,8 @@ consider reading this excellent
 - Integrated Gradients original [paper](https://arxiv.org/abs/1703.01365)
 - [Original implementation](https://github.com/ankurtaly/Integrated-Gradients)
 
-
 ---
 ## Setup
-
 
 
 ```python
@@ -60,12 +58,13 @@ consider reading this excellent
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage
-from IPython.display import Image
+from IPython.display import Image, display
 
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.applications import xception
+import keras
+from keras import layers
+from keras.applications import xception
+
 
 # Size of the input image
 img_size = (299, 299, 3)
@@ -76,31 +75,25 @@ model = xception.Xception(weights="imagenet")
 # The local path to our target image
 img_path = keras.utils.get_file("elephant.jpg", "https://i.imgur.com/Bvro0YD.png")
 display(Image(img_path))
-
 ```
 
-<div class="k-default-codeblock">
-```
-Downloading data from https://i.imgur.com/Bvro0YD.png
-4218880/4217496 [==============================] - 0s 0us/step
 
-```
-</div>
-![jpeg](/img/examples/vision/integrated_gradients/integrated_gradients_3_1.jpeg)
+    
+![jpeg](/img/examples/vision/integrated_gradients/integrated_gradients_3_0.jpg)
+    
 
 
 ---
 ## Integrated Gradients algorithm
 
 
-
 ```python
 
 def get_img_array(img_path, size=(299, 299)):
     # `img` is a PIL image of size 299x299
-    img = keras.preprocessing.image.load_img(img_path, target_size=size)
+    img = keras.utils.load_img(img_path, target_size=size)
     # `array` is a float32 Numpy array of shape (299, 299, 3)
-    array = keras.preprocessing.image.img_to_array(img)
+    array = keras.utils.img_to_array(img)
     # We add a dimension to transform our array into a "batch"
     # of size (1, 299, 299, 3)
     array = np.expand_dims(array, axis=0)
@@ -213,12 +206,10 @@ def random_baseline_integrated_gradients(
     integrated_grads = tf.convert_to_tensor(integrated_grads)
     return tf.reduce_mean(integrated_grads, axis=0)
 
-
 ```
 
 ---
 ## Helper class for visualizing gradients and integrated gradients
-
 
 
 ```python
@@ -307,7 +298,10 @@ class GradVisualizer:
         return opened
 
     def draw_outlines(
-        self, attributions, percentage=90, connected_component_structure=np.ones((3, 3))
+        self,
+        attributions,
+        percentage=90,
+        connected_component_structure=np.ones((3, 3)),
     ):
         # 1. Binarize the attributions.
         attributions = self.binarize(attributions)
@@ -316,7 +310,7 @@ class GradVisualizer:
         attributions = ndimage.binary_fill_holes(attributions)
 
         # 3. Compute connected components
-        connected_components, num_comp = ndimage.measurements.label(
+        connected_components, num_comp = ndimage.label(
             attributions, structure=connected_component_structure
         )
 
@@ -469,12 +463,10 @@ class GradVisualizer:
         ax[2].set_title("Integrated gradients")
         plt.show()
 
-
 ```
 
 ---
 ## Let's test-drive it
-
 
 
 ```python
@@ -519,18 +511,30 @@ vis.visualize(
     morphological_cleanup=True,
     outlines=True,
 )
-
 ```
 
 <div class="k-default-codeblock">
 ```
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 5s 5s/step
+
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1699486705.534012   86541 device_compiler.h:187] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+
 Predicted: tf.Tensor(386, shape=(), dtype=int64) [('n02504458', 'African_elephant', 0.8871446)]
 
 ```
 </div>
-![png](/img/examples/vision/integrated_gradients/integrated_gradients_9_1.png)
+    
+![png](/img/examples/vision/integrated_gradients/integrated_gradients_9_3.png)
+    
 
 
 
-![png](/img/examples/vision/integrated_gradients/integrated_gradients_9_2.png)
+    
+![png](/img/examples/vision/integrated_gradients/integrated_gradients_9_4.png)
+    
 
+
+---
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 10: Interpreting what ConvNets learn](https://deeplearningwithpython.io/chapters/chapter10_interpreting-what-convnets-learn)

@@ -2,7 +2,7 @@
 
 **Author:** [fchollet](https://twitter.com/fchollet)<br>
 **Date created:** 2019/03/01<br>
-**Last modified:** 2020/04/12<br>
+**Last modified:** 2023/06/25<br>
 **Description:** Complete guide to the functional API.
 
 
@@ -16,21 +16,19 @@
 
 ```python
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-
+import keras
+from keras import layers
+from keras import ops
 ```
 
 ---
 ## Introduction
 
-The Keras *functional API* is a way to create models that is more flexible
-than the `tf.keras.Sequential` API. The functional API can handle models
-with non-linear topology, models with shared layers, and models
-with multiple inputs or outputs.
+The Keras *functional API* is a way to create models that are more flexible
+than the `keras.Sequential` API. The functional API can handle models
+with non-linear topology, shared layers, and even multiple inputs or outputs.
 
-The main idea that a deep learning model is usually
+The main idea is that a deep learning model is usually
 a directed acyclic graph (DAG) of layers.
 So the functional API is a way to build *graphs of layers*.
 
@@ -56,7 +54,6 @@ To build this model using the functional API, start by creating an input node:
 
 ```python
 inputs = keras.Input(shape=(784,))
-
 ```
 
 The shape of the data is set as a 784-dimensional vector.
@@ -69,7 +66,6 @@ you would use:
 ```python
 # Just for demonstration purposes.
 img_inputs = keras.Input(shape=(32, 32, 3))
-
 ```
 
 The `inputs` that is returned contains information about the shape and `dtype`
@@ -79,7 +75,6 @@ Here's the shape:
 
 ```python
 inputs.shape
-
 ```
 
 
@@ -87,7 +82,7 @@ inputs.shape
 
 <div class="k-default-codeblock">
 ```
-TensorShape([None, 784])
+(None, 784)
 
 ```
 </div>
@@ -96,7 +91,6 @@ Here's the dtype:
 
 ```python
 inputs.dtype
-
 ```
 
 
@@ -104,7 +98,7 @@ inputs.dtype
 
 <div class="k-default-codeblock">
 ```
-tf.float32
+'float32'
 
 ```
 </div>
@@ -115,12 +109,11 @@ object:
 ```python
 dense = layers.Dense(64, activation="relu")
 x = dense(inputs)
-
 ```
 
 The "layer call" action is like drawing an arrow from "inputs" to this layer
 you created.
-You're "passing" the inputs to the `dense` layer, and out you get `x`.
+You're "passing" the inputs to the `dense` layer, and you get `x` as the output.
 
 Let's add a few more layers to the graph of layers:
 
@@ -128,7 +121,6 @@ Let's add a few more layers to the graph of layers:
 ```python
 x = layers.Dense(64, activation="relu")(x)
 outputs = layers.Dense(10)(x)
-
 ```
 
 At this point, you can create a `Model` by specifying its inputs and outputs
@@ -137,7 +129,6 @@ in the graph of layers:
 
 ```python
 model = keras.Model(inputs=inputs, outputs=outputs, name="mnist_model")
-
 ```
 
 Let's check out what the model summary looks like:
@@ -145,42 +136,61 @@ Let's check out what the model summary looks like:
 
 ```python
 model.summary()
-
 ```
 
-<div class="k-default-codeblock">
-```
-Model: "mnist_model"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-input_1 (InputLayer)         [(None, 784)]             0         
-_________________________________________________________________
-dense (Dense)                (None, 64)                50240     
-_________________________________________________________________
-dense_1 (Dense)              (None, 64)                4160      
-_________________________________________________________________
-dense_2 (Dense)              (None, 10)                650       
-=================================================================
-Total params: 55,050
-Trainable params: 55,050
-Non-trainable params: 0
-_________________________________________________________________
 
-```
-</div>
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "mnist_model"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)                    </span>┃<span style="font-weight: bold"> Output Shape           </span>┃<span style="font-weight: bold">       Param # </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ input_layer (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">784</span>)            │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ dense (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)                   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)             │        <span style="color: #00af00; text-decoration-color: #00af00">50,240</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ dense_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)                 │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)             │         <span style="color: #00af00; text-decoration-color: #00af00">4,160</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ dense_2 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)                 │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">10</span>)             │           <span style="color: #00af00; text-decoration-color: #00af00">650</span> │
+└─────────────────────────────────┴────────────────────────┴───────────────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">55,050</span> (215.04 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">55,050</span> (215.04 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">0</span> (0.00 B)
+</pre>
+
+
+
 You can also plot the model as a graph:
 
 
 ```python
 keras.utils.plot_model(model, "my_first_model.png")
-
 ```
 
 
 
 
+    
 ![png](/img/guides/functional_api/functional_api_20_0.png)
+    
 
 
 
@@ -190,13 +200,14 @@ in the plotted graph:
 
 ```python
 keras.utils.plot_model(model, "my_first_model_with_shape_info.png", show_shapes=True)
-
 ```
 
 
 
 
+    
 ![png](/img/guides/functional_api/functional_api_22_0.png)
+    
 
 
 
@@ -204,13 +215,22 @@ This figure and the code are almost identical. In the code version,
 the connection arrows are replaced by the call operation.
 
 A "graph of layers" is an intuitive mental image for a deep learning model,
-and the functional API is a way to create models that closely mirror this.
+and the functional API is a way to create models that closely mirrors this.
 
 ---
 ## Training, evaluation, and inference
 
 Training, evaluation, and inference work exactly in the same way for models
 built using the functional API as for `Sequential` models.
+
+The `Model` class offers a built-in training loop (the `fit()` method)
+and a built-in evaluation loop (the `evaluate()` method). Note
+that you can easily customize these loops to implement your own training routines.
+See also the guides on customizing what happens in `fit()`:
+
+- [Writing a custom train step with TensorFlow](/guides/custom_train_step_in_tensorflow/)
+- [Writing a custom train step with JAX](/guides/custom_train_step_in_jax/)
+- [Writing a custom train step with PyTorch](/guides/custom_train_step_in_torch/)
 
 Here, load the MNIST image data, reshape it into vectors,
 fit the model on the data (while monitoring performance on a validation split),
@@ -234,28 +254,28 @@ history = model.fit(x_train, y_train, batch_size=64, epochs=2, validation_split=
 test_scores = model.evaluate(x_test, y_test, verbose=2)
 print("Test loss:", test_scores[0])
 print("Test accuracy:", test_scores[1])
-
 ```
 
 <div class="k-default-codeblock">
 ```
 Epoch 1/2
-750/750 [==============================] - 1s 1ms/step - loss: 0.3486 - accuracy: 0.9025 - val_loss: 0.2256 - val_accuracy: 0.9326
+ 750/750 ━━━━━━━━━━━━━━━━━━━━ 1s 863us/step - accuracy: 0.8425 - loss: 0.5733 - val_accuracy: 0.9496 - val_loss: 0.1711
 Epoch 2/2
-750/750 [==============================] - 1s 1ms/step - loss: 0.1718 - accuracy: 0.9496 - val_loss: 0.1468 - val_accuracy: 0.9576
-313/313 - 0s - loss: 0.1388 - accuracy: 0.9602
-Test loss: 0.13882307708263397
-Test accuracy: 0.9602000117301941
+ 750/750 ━━━━━━━━━━━━━━━━━━━━ 1s 859us/step - accuracy: 0.9509 - loss: 0.1641 - val_accuracy: 0.9578 - val_loss: 0.1396
+313/313 - 0s - 341us/step - accuracy: 0.9613 - loss: 0.1288
+Test loss: 0.12876172363758087
+Test accuracy: 0.9613000154495239
 
 ```
 </div>
-For further reading, see the [training and evaluation](/guides/training_with_built_in_methods/) guide.
+For further reading, see the
+[training and evaluation](/guides/training_with_built_in_methods/) guide.
 
 ---
 ## Save and serialize
 
 Saving the model and serialization work the same way for models built using
-the functional API as they do for `Sequential` models. To standard way
+the functional API as they do for `Sequential` models. The standard way
 to save a functional model is to call `model.save()`
 to save the entire model as a single file. You can later recreate the same model
 from this file, even if the code that built the model is no longer available.
@@ -263,20 +283,18 @@ from this file, even if the code that built the model is no longer available.
 This saved file includes the:
 - model architecture
 - model weight values (that were learned during training)
-- model training config, if any (as passed to `compile`)
+- model training config, if any (as passed to `compile()`)
 - optimizer and its state, if any (to restart training where you left off)
 
 
 ```python
-model.save("path_to_my_model")
+model.save("my_model.keras")
 del model
 # Recreate the exact same model purely from the file:
-model = keras.models.load_model("path_to_my_model")
-
+model = keras.models.load_model("my_model.keras")
 ```
 
-For details, read the model [serialization & saving](
-    /guides/serialization_and_saving/) guide.
+For details, read the model [serialization & saving](/guides/serialization_and_saving/) guide.
 
 ---
 ## Use the same graph of layers to define multiple models
@@ -311,70 +329,118 @@ decoder_output = layers.Conv2DTranspose(1, 3, activation="relu")(x)
 
 autoencoder = keras.Model(encoder_input, decoder_output, name="autoencoder")
 autoencoder.summary()
-
 ```
 
-<div class="k-default-codeblock">
-```
-Model: "encoder"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-img (InputLayer)             [(None, 28, 28, 1)]       0         
-_________________________________________________________________
-conv2d (Conv2D)              (None, 26, 26, 16)        160       
-_________________________________________________________________
-conv2d_1 (Conv2D)            (None, 24, 24, 32)        4640      
-_________________________________________________________________
-max_pooling2d (MaxPooling2D) (None, 8, 8, 32)          0         
-_________________________________________________________________
-conv2d_2 (Conv2D)            (None, 6, 6, 32)          9248      
-_________________________________________________________________
-conv2d_3 (Conv2D)            (None, 4, 4, 16)          4624      
-_________________________________________________________________
-global_max_pooling2d (Global (None, 16)                0         
-=================================================================
-Total params: 18,672
-Trainable params: 18,672
-Non-trainable params: 0
-_________________________________________________________________
-Model: "autoencoder"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-img (InputLayer)             [(None, 28, 28, 1)]       0         
-_________________________________________________________________
-conv2d (Conv2D)              (None, 26, 26, 16)        160       
-_________________________________________________________________
-conv2d_1 (Conv2D)            (None, 24, 24, 32)        4640      
-_________________________________________________________________
-max_pooling2d (MaxPooling2D) (None, 8, 8, 32)          0         
-_________________________________________________________________
-conv2d_2 (Conv2D)            (None, 6, 6, 32)          9248      
-_________________________________________________________________
-conv2d_3 (Conv2D)            (None, 4, 4, 16)          4624      
-_________________________________________________________________
-global_max_pooling2d (Global (None, 16)                0         
-_________________________________________________________________
-reshape (Reshape)            (None, 4, 4, 1)           0         
-_________________________________________________________________
-conv2d_transpose (Conv2DTran (None, 6, 6, 16)          160       
-_________________________________________________________________
-conv2d_transpose_1 (Conv2DTr (None, 8, 8, 32)          4640      
-_________________________________________________________________
-up_sampling2d (UpSampling2D) (None, 24, 24, 32)        0         
-_________________________________________________________________
-conv2d_transpose_2 (Conv2DTr (None, 26, 26, 16)        4624      
-_________________________________________________________________
-conv2d_transpose_3 (Conv2DTr (None, 28, 28, 1)         145       
-=================================================================
-Total params: 28,241
-Trainable params: 28,241
-Non-trainable params: 0
-_________________________________________________________________
 
-```
-</div>
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "encoder"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)                    </span>┃<span style="font-weight: bold"> Output Shape           </span>┃<span style="font-weight: bold">       Param # </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ img (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)                │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)      │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)                 │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">26</span>, <span style="color: #00af00; text-decoration-color: #00af00">26</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)     │           <span style="color: #00af00; text-decoration-color: #00af00">160</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">24</span>, <span style="color: #00af00; text-decoration-color: #00af00">24</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)     │         <span style="color: #00af00; text-decoration-color: #00af00">4,640</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ max_pooling2d (<span style="color: #0087ff; text-decoration-color: #0087ff">MaxPooling2D</span>)    │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">8</span>, <span style="color: #00af00; text-decoration-color: #00af00">8</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)       │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_2 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">6</span>, <span style="color: #00af00; text-decoration-color: #00af00">6</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)       │         <span style="color: #00af00; text-decoration-color: #00af00">9,248</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_3 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">4</span>, <span style="color: #00af00; text-decoration-color: #00af00">4</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)       │         <span style="color: #00af00; text-decoration-color: #00af00">4,624</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ global_max_pooling2d            │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)             │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">GlobalMaxPooling2D</span>)            │                        │               │
+└─────────────────────────────────┴────────────────────────┴───────────────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">18,672</span> (72.94 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">18,672</span> (72.94 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">0</span> (0.00 B)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "autoencoder"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)                    </span>┃<span style="font-weight: bold"> Output Shape           </span>┃<span style="font-weight: bold">       Param # </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ img (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)                │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)      │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)                 │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">26</span>, <span style="color: #00af00; text-decoration-color: #00af00">26</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)     │           <span style="color: #00af00; text-decoration-color: #00af00">160</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">24</span>, <span style="color: #00af00; text-decoration-color: #00af00">24</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)     │         <span style="color: #00af00; text-decoration-color: #00af00">4,640</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ max_pooling2d (<span style="color: #0087ff; text-decoration-color: #0087ff">MaxPooling2D</span>)    │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">8</span>, <span style="color: #00af00; text-decoration-color: #00af00">8</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)       │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_2 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">6</span>, <span style="color: #00af00; text-decoration-color: #00af00">6</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)       │         <span style="color: #00af00; text-decoration-color: #00af00">9,248</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_3 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">4</span>, <span style="color: #00af00; text-decoration-color: #00af00">4</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)       │         <span style="color: #00af00; text-decoration-color: #00af00">4,624</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ global_max_pooling2d            │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)             │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">GlobalMaxPooling2D</span>)            │                        │               │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ reshape (<span style="color: #0087ff; text-decoration-color: #0087ff">Reshape</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">4</span>, <span style="color: #00af00; text-decoration-color: #00af00">4</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)        │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_transpose                │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">6</span>, <span style="color: #00af00; text-decoration-color: #00af00">6</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)       │           <span style="color: #00af00; text-decoration-color: #00af00">160</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2DTranspose</span>)               │                        │               │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_transpose_1              │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">8</span>, <span style="color: #00af00; text-decoration-color: #00af00">8</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)       │         <span style="color: #00af00; text-decoration-color: #00af00">4,640</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2DTranspose</span>)               │                        │               │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ up_sampling2d (<span style="color: #0087ff; text-decoration-color: #0087ff">UpSampling2D</span>)    │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">24</span>, <span style="color: #00af00; text-decoration-color: #00af00">24</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)     │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_transpose_2              │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">26</span>, <span style="color: #00af00; text-decoration-color: #00af00">26</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)     │         <span style="color: #00af00; text-decoration-color: #00af00">4,624</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2DTranspose</span>)               │                        │               │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_transpose_3              │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)      │           <span style="color: #00af00; text-decoration-color: #00af00">145</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2DTranspose</span>)               │                        │               │
+└─────────────────────────────────┴────────────────────────┴───────────────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">28,241</span> (110.32 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">28,241</span> (110.32 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">0</span> (0.00 B)
+</pre>
+
+
+
 Here, the decoding architecture is strictly symmetrical
 to the encoding architecture, so the output shape is the same as
 the input shape `(28, 28, 1)`.
@@ -390,7 +456,7 @@ on the output of another layer. By calling a model you aren't just reusing
 the architecture of the model, you're also reusing its weights.
 
 To see this in action, here's a different take on the autoencoder example that
-creates an encoder model, a decoder model, and chain them in two calls
+creates an encoder model, a decoder model, and chains them in two calls
 to obtain the autoencoder model:
 
 
@@ -422,72 +488,143 @@ encoded_img = encoder(autoencoder_input)
 decoded_img = decoder(encoded_img)
 autoencoder = keras.Model(autoencoder_input, decoded_img, name="autoencoder")
 autoencoder.summary()
-
 ```
 
-<div class="k-default-codeblock">
-```
-Model: "encoder"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-original_img (InputLayer)    [(None, 28, 28, 1)]       0         
-_________________________________________________________________
-conv2d_4 (Conv2D)            (None, 26, 26, 16)        160       
-_________________________________________________________________
-conv2d_5 (Conv2D)            (None, 24, 24, 32)        4640      
-_________________________________________________________________
-max_pooling2d_1 (MaxPooling2 (None, 8, 8, 32)          0         
-_________________________________________________________________
-conv2d_6 (Conv2D)            (None, 6, 6, 32)          9248      
-_________________________________________________________________
-conv2d_7 (Conv2D)            (None, 4, 4, 16)          4624      
-_________________________________________________________________
-global_max_pooling2d_1 (Glob (None, 16)                0         
-=================================================================
-Total params: 18,672
-Trainable params: 18,672
-Non-trainable params: 0
-_________________________________________________________________
-Model: "decoder"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-encoded_img (InputLayer)     [(None, 16)]              0         
-_________________________________________________________________
-reshape_1 (Reshape)          (None, 4, 4, 1)           0         
-_________________________________________________________________
-conv2d_transpose_4 (Conv2DTr (None, 6, 6, 16)          160       
-_________________________________________________________________
-conv2d_transpose_5 (Conv2DTr (None, 8, 8, 32)          4640      
-_________________________________________________________________
-up_sampling2d_1 (UpSampling2 (None, 24, 24, 32)        0         
-_________________________________________________________________
-conv2d_transpose_6 (Conv2DTr (None, 26, 26, 16)        4624      
-_________________________________________________________________
-conv2d_transpose_7 (Conv2DTr (None, 28, 28, 1)         145       
-=================================================================
-Total params: 9,569
-Trainable params: 9,569
-Non-trainable params: 0
-_________________________________________________________________
-Model: "autoencoder"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-img (InputLayer)             [(None, 28, 28, 1)]       0         
-_________________________________________________________________
-encoder (Model)              (None, 16)                18672     
-_________________________________________________________________
-decoder (Model)              (None, 28, 28, 1)         9569      
-=================================================================
-Total params: 28,241
-Trainable params: 28,241
-Non-trainable params: 0
-_________________________________________________________________
 
-```
-</div>
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "encoder"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)                    </span>┃<span style="font-weight: bold"> Output Shape           </span>┃<span style="font-weight: bold">       Param # </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ original_img (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)       │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)      │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_4 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">26</span>, <span style="color: #00af00; text-decoration-color: #00af00">26</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)     │           <span style="color: #00af00; text-decoration-color: #00af00">160</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_5 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">24</span>, <span style="color: #00af00; text-decoration-color: #00af00">24</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)     │         <span style="color: #00af00; text-decoration-color: #00af00">4,640</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ max_pooling2d_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">MaxPooling2D</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">8</span>, <span style="color: #00af00; text-decoration-color: #00af00">8</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)       │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_6 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">6</span>, <span style="color: #00af00; text-decoration-color: #00af00">6</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)       │         <span style="color: #00af00; text-decoration-color: #00af00">9,248</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_7 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)               │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">4</span>, <span style="color: #00af00; text-decoration-color: #00af00">4</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)       │         <span style="color: #00af00; text-decoration-color: #00af00">4,624</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ global_max_pooling2d_1          │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)             │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">GlobalMaxPooling2D</span>)            │                        │               │
+└─────────────────────────────────┴────────────────────────┴───────────────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">18,672</span> (72.94 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">18,672</span> (72.94 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">0</span> (0.00 B)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "decoder"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)                    </span>┃<span style="font-weight: bold"> Output Shape           </span>┃<span style="font-weight: bold">       Param # </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ encoded_img (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)        │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)             │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ reshape_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Reshape</span>)             │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">4</span>, <span style="color: #00af00; text-decoration-color: #00af00">4</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)        │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_transpose_4              │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">6</span>, <span style="color: #00af00; text-decoration-color: #00af00">6</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)       │           <span style="color: #00af00; text-decoration-color: #00af00">160</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2DTranspose</span>)               │                        │               │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_transpose_5              │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">8</span>, <span style="color: #00af00; text-decoration-color: #00af00">8</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)       │         <span style="color: #00af00; text-decoration-color: #00af00">4,640</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2DTranspose</span>)               │                        │               │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ up_sampling2d_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">UpSampling2D</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">24</span>, <span style="color: #00af00; text-decoration-color: #00af00">24</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>)     │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_transpose_6              │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">26</span>, <span style="color: #00af00; text-decoration-color: #00af00">26</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)     │         <span style="color: #00af00; text-decoration-color: #00af00">4,624</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2DTranspose</span>)               │                        │               │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ conv2d_transpose_7              │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)      │           <span style="color: #00af00; text-decoration-color: #00af00">145</span> │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2DTranspose</span>)               │                        │               │
+└─────────────────────────────────┴────────────────────────┴───────────────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">9,569</span> (37.38 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">9,569</span> (37.38 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">0</span> (0.00 B)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "autoencoder"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)                    </span>┃<span style="font-weight: bold"> Output Shape           </span>┃<span style="font-weight: bold">       Param # </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ img (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)                │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)      │             <span style="color: #00af00; text-decoration-color: #00af00">0</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ encoder (<span style="color: #0087ff; text-decoration-color: #0087ff">Functional</span>)            │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">16</span>)             │        <span style="color: #00af00; text-decoration-color: #00af00">18,672</span> │
+├─────────────────────────────────┼────────────────────────┼───────────────┤
+│ decoder (<span style="color: #0087ff; text-decoration-color: #0087ff">Functional</span>)            │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">1</span>)      │         <span style="color: #00af00; text-decoration-color: #00af00">9,569</span> │
+└─────────────────────────────────┴────────────────────────┴───────────────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">28,241</span> (110.32 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">28,241</span> (110.32 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">0</span> (0.00 B)
+</pre>
+
+
+
 As you can see, the model can be nested: a model can contain sub-models
 (since a model is just like a layer).
 A common use case for model nesting is *ensembling*.
@@ -513,7 +650,6 @@ y2 = model2(inputs)
 y3 = model3(inputs)
 outputs = layers.average([y1, y2, y3])
 ensemble_model = keras.Model(inputs=inputs, outputs=outputs)
-
 ```
 
 ---
@@ -524,7 +660,7 @@ ensemble_model = keras.Model(inputs=inputs, outputs=outputs)
 The functional API makes it easy to manipulate multiple inputs and outputs.
 This cannot be handled with the `Sequential` API.
 
-For example, if you're building a system for ranking custom issue tickets by
+For example, if you're building a system for ranking customer issue tickets by
 priority and routing them to the correct department,
 then the model will have three inputs:
 
@@ -575,9 +711,8 @@ department_pred = layers.Dense(num_departments, name="department")(x)
 # Instantiate an end-to-end model predicting both priority and department
 model = keras.Model(
     inputs=[title_input, body_input, tags_input],
-    outputs=[priority_pred, department_pred],
+    outputs={"priority": priority_pred, "department": department_pred},
 )
-
 ```
 
 Now plot the model:
@@ -585,13 +720,14 @@ Now plot the model:
 
 ```python
 keras.utils.plot_model(model, "multi_input_and_output_model.png", show_shapes=True)
-
 ```
 
 
 
 
+    
 ![png](/img/guides/functional_api/functional_api_40_0.png)
+    
 
 
 
@@ -609,11 +745,10 @@ model.compile(
     ],
     loss_weights=[1.0, 0.2],
 )
-
 ```
 
 Since the output layers have different names, you could also specify
-the loss like this:
+the losses and loss weights with the corresponding layer names:
 
 
 ```python
@@ -623,9 +758,8 @@ model.compile(
         "priority": keras.losses.BinaryCrossentropy(from_logits=True),
         "department": keras.losses.CategoricalCrossentropy(from_logits=True),
     },
-    loss_weights=[1.0, 0.2],
+    loss_weights={"priority": 1.0, "department": 0.2},
 )
-
 ```
 
 Train the model by passing lists of NumPy arrays of inputs and targets:
@@ -633,7 +767,7 @@ Train the model by passing lists of NumPy arrays of inputs and targets:
 
 ```python
 # Dummy input data
-title_data = np.random.randint(num_words, size=(1280, 10))
+title_data = np.random.randint(num_words, size=(1280, 12))
 body_data = np.random.randint(num_words, size=(1280, 100))
 tags_data = np.random.randint(2, size=(1280, num_tags)).astype("float32")
 
@@ -647,17 +781,16 @@ model.fit(
     epochs=2,
     batch_size=32,
 )
-
 ```
 
 <div class="k-default-codeblock">
 ```
 Epoch 1/2
-40/40 [==============================] - 1s 26ms/step - loss: 1.2709 - priority_loss: 0.7003 - department_loss: 2.8529
+ 40/40 ━━━━━━━━━━━━━━━━━━━━ 3s 57ms/step - loss: 1108.3792
 Epoch 2/2
-40/40 [==============================] - 1s 27ms/step - loss: 1.2632 - priority_loss: 0.6977 - department_loss: 2.8274
+ 40/40 ━━━━━━━━━━━━━━━━━━━━ 2s 54ms/step - loss: 621.3049
 
-<tensorflow.python.keras.callbacks.History at 0x1622c0550>
+<keras.src.callbacks.history.History at 0x34afc3d90>
 
 ```
 </div>
@@ -666,14 +799,15 @@ tuple of lists like `([title_data, body_data, tags_data], [priority_targets, dep
 or a tuple of dictionaries like
 `({'title': title_data, 'body': body_data, 'tags': tags_data}, {'priority': priority_targets, 'department': dept_targets})`.
 
-For more detailed explanation, refer to the [training and evaluation](/guides/training_with_built_in_methods/) guide.
+For more detailed explanation, refer to the
+[training and evaluation](/guides/training_with_built_in_methods/) guide.
 
 ### A toy ResNet model
 
 In addition to models with multiple inputs and outputs,
 the functional API makes it easy to manipulate non-linear connectivity
-topologies -- these are models with layers that are not connected sequentially.
-Something the `Sequential` API can not handle.
+topologies -- these are models with layers that are not connected sequentially,
+which the `Sequential` API cannot handle.
 
 A common use case for this is residual connections.
 Let's build a toy ResNet model for CIFAR10 to demonstrate this:
@@ -701,66 +835,89 @@ outputs = layers.Dense(10)(x)
 
 model = keras.Model(inputs, outputs, name="toy_resnet")
 model.summary()
-
 ```
 
-<div class="k-default-codeblock">
-```
-Model: "toy_resnet"
-__________________________________________________________________________________________________
-Layer (type)                    Output Shape         Param #     Connected to                     
-==================================================================================================
-img (InputLayer)                [(None, 32, 32, 3)]  0                                            
-__________________________________________________________________________________________________
-conv2d_8 (Conv2D)               (None, 30, 30, 32)   896         img[0][0]                        
-__________________________________________________________________________________________________
-conv2d_9 (Conv2D)               (None, 28, 28, 64)   18496       conv2d_8[0][0]                   
-__________________________________________________________________________________________________
-max_pooling2d_2 (MaxPooling2D)  (None, 9, 9, 64)     0           conv2d_9[0][0]                   
-__________________________________________________________________________________________________
-conv2d_10 (Conv2D)              (None, 9, 9, 64)     36928       max_pooling2d_2[0][0]            
-__________________________________________________________________________________________________
-conv2d_11 (Conv2D)              (None, 9, 9, 64)     36928       conv2d_10[0][0]                  
-__________________________________________________________________________________________________
-add (Add)                       (None, 9, 9, 64)     0           conv2d_11[0][0]                  
-                                                                 max_pooling2d_2[0][0]            
-__________________________________________________________________________________________________
-conv2d_12 (Conv2D)              (None, 9, 9, 64)     36928       add[0][0]                        
-__________________________________________________________________________________________________
-conv2d_13 (Conv2D)              (None, 9, 9, 64)     36928       conv2d_12[0][0]                  
-__________________________________________________________________________________________________
-add_1 (Add)                     (None, 9, 9, 64)     0           conv2d_13[0][0]                  
-                                                                 add[0][0]                        
-__________________________________________________________________________________________________
-conv2d_14 (Conv2D)              (None, 7, 7, 64)     36928       add_1[0][0]                      
-__________________________________________________________________________________________________
-global_average_pooling2d (Globa (None, 64)           0           conv2d_14[0][0]                  
-__________________________________________________________________________________________________
-dense_6 (Dense)                 (None, 256)          16640       global_average_pooling2d[0][0]   
-__________________________________________________________________________________________________
-dropout (Dropout)               (None, 256)          0           dense_6[0][0]                    
-__________________________________________________________________________________________________
-dense_7 (Dense)                 (None, 10)           2570        dropout[0][0]                    
-==================================================================================================
-Total params: 223,242
-Trainable params: 223,242
-Non-trainable params: 0
-__________________________________________________________________________________________________
 
-```
-</div>
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "toy_resnet"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)        </span>┃<span style="font-weight: bold"> Output Shape      </span>┃<span style="font-weight: bold">    Param # </span>┃<span style="font-weight: bold"> Connected to      </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━┩
+│ img (<span style="color: #0087ff; text-decoration-color: #0087ff">InputLayer</span>)    │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>, <span style="color: #00af00; text-decoration-color: #00af00">32</span>, <span style="color: #00af00; text-decoration-color: #00af00">3</span>) │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ -                 │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv2d_8 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">30</span>, <span style="color: #00af00; text-decoration-color: #00af00">30</span>,    │        <span style="color: #00af00; text-decoration-color: #00af00">896</span> │ img[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]         │
+│                     │ <span style="color: #00af00; text-decoration-color: #00af00">32</span>)               │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv2d_9 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>, <span style="color: #00af00; text-decoration-color: #00af00">28</span>,    │     <span style="color: #00af00; text-decoration-color: #00af00">18,496</span> │ conv2d_8[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]    │
+│                     │ <span style="color: #00af00; text-decoration-color: #00af00">64</span>)               │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ max_pooling2d_2     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ conv2d_9[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]    │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">MaxPooling2D</span>)      │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv2d_10 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">36,928</span> │ max_pooling2d_2[<span style="color: #00af00; text-decoration-color: #00af00">…</span> │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv2d_11 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">36,928</span> │ conv2d_10[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add (<span style="color: #0087ff; text-decoration-color: #0087ff">Add</span>)           │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ conv2d_11[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>],  │
+│                     │                   │            │ max_pooling2d_2[<span style="color: #00af00; text-decoration-color: #00af00">…</span> │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv2d_12 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">36,928</span> │ add[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]         │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv2d_13 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">36,928</span> │ conv2d_12[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ add_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Add</span>)         │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">9</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ conv2d_13[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>],  │
+│                     │                   │            │ add[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]         │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ conv2d_14 (<span style="color: #0087ff; text-decoration-color: #0087ff">Conv2D</span>)  │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">7</span>, <span style="color: #00af00; text-decoration-color: #00af00">7</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)  │     <span style="color: #00af00; text-decoration-color: #00af00">36,928</span> │ add_1[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]       │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ global_average_poo… │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)        │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ conv2d_14[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]   │
+│ (<span style="color: #0087ff; text-decoration-color: #0087ff">GlobalAveragePool…</span> │                   │            │                   │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dense_6 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │     <span style="color: #00af00; text-decoration-color: #00af00">16,640</span> │ global_average_p… │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dropout (<span style="color: #0087ff; text-decoration-color: #0087ff">Dropout</span>)   │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">256</span>)       │          <span style="color: #00af00; text-decoration-color: #00af00">0</span> │ dense_6[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]     │
+├─────────────────────┼───────────────────┼────────────┼───────────────────┤
+│ dense_7 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)     │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">10</span>)        │      <span style="color: #00af00; text-decoration-color: #00af00">2,570</span> │ dropout[<span style="color: #00af00; text-decoration-color: #00af00">0</span>][<span style="color: #00af00; text-decoration-color: #00af00">0</span>]     │
+└─────────────────────┴───────────────────┴────────────┴───────────────────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">223,242</span> (872.04 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">223,242</span> (872.04 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">0</span> (0.00 B)
+</pre>
+
+
+
 Plot the model:
 
 
 ```python
 keras.utils.plot_model(model, "mini_resnet.png", show_shapes=True)
-
 ```
 
 
 
 
+    
 ![png](/img/guides/functional_api/functional_api_51_0.png)
+    
 
 
 
@@ -782,23 +939,28 @@ model.compile(
 )
 # We restrict the data to the first 1000 samples so as to limit execution time
 # on Colab. Try to train on the entire dataset until convergence!
-model.fit(x_train[:1000], y_train[:1000], batch_size=64, epochs=1, validation_split=0.2)
-
+model.fit(
+    x_train[:1000],
+    y_train[:1000],
+    batch_size=64,
+    epochs=1,
+    validation_split=0.2,
+)
 ```
 
 <div class="k-default-codeblock">
 ```
-13/13 [==============================] - 1s 79ms/step - loss: 2.4461 - acc: 0.0962 - val_loss: 2.2925 - val_acc: 0.1450
+ 13/13 ━━━━━━━━━━━━━━━━━━━━ 1s 60ms/step - acc: 0.1096 - loss: 2.3053 - val_acc: 0.1150 - val_loss: 2.2973
 
-<tensorflow.python.keras.callbacks.History at 0x162a826d0>
+<keras.src.callbacks.history.History at 0x1758bed40>
 
 ```
 </div>
 ---
 ## Shared layers
 
-Another good use for the functional API are for models that use *shared layers*.
-Shared layers are layer instances that are reused multiple times in a same model --
+Another good use for the functional API are models that use *shared layers*.
+Shared layers are layer instances that are reused multiple times in the same model --
 they learn features that correspond to multiple paths in the graph-of-layers.
 
 Shared layers are often used to encode inputs from similar spaces
@@ -825,7 +987,6 @@ text_input_b = keras.Input(shape=(None,), dtype="int32")
 # Reuse the same layer to encode both inputs
 encoded_input_a = shared_embedding(text_input_a)
 encoded_input_b = shared_embedding(text_input_b)
-
 ```
 
 ---
@@ -843,8 +1004,7 @@ Let's look at an example. This is a VGG19 model with weights pretrained on Image
 
 
 ```python
-vgg19 = tf.keras.applications.VGG19()
-
+vgg19 = keras.applications.VGG19()
 ```
 
 And these are the intermediate activations of the model,
@@ -853,7 +1013,6 @@ obtained by querying the graph data structure:
 
 ```python
 features_list = [layer.output for layer in vgg19.layers]
-
 ```
 
 Use these features to create a new feature-extraction model that returns
@@ -865,17 +1024,16 @@ feat_extraction_model = keras.Model(inputs=vgg19.input, outputs=features_list)
 
 img = np.random.random((1, 224, 224, 3)).astype("float32")
 extracted_features = feat_extraction_model(img)
-
 ```
 
 This comes in handy for tasks like
-[neural style transfer](https://www.tensorflow.org/tutorials/generative/style_transfer),
+[neural style transfer](https://keras.io/examples/generative/neural_style_transfer/),
 among other things.
 
 ---
 ## Extend the API using custom layers
 
-`tf.keras` includes a wide range of built-in layers, for example:
+`keras` includes a wide range of built-in layers, for example:
 
 - Convolutional layers: `Conv1D`, `Conv2D`, `Conv3D`, `Conv2DTranspose`
 - Pooling layers: `MaxPooling1D`, `MaxPooling2D`, `MaxPooling3D`, `AveragePooling1D`
@@ -892,14 +1050,14 @@ convention since you can create weights in `__init__`, as well).
 To learn more about creating layers from scratch, read
 [custom layers and models](/guides/making_new_layers_and_models_via_subclassing) guide.
 
-The following is a basic implementation of `tf.keras.layers.Dense`:
+The following is a basic implementation of `keras.layers.Dense`:
 
 
 ```python
 
 class CustomDense(layers.Layer):
     def __init__(self, units=32):
-        super(CustomDense, self).__init__()
+        super().__init__()
         self.units = units
 
     def build(self, input_shape):
@@ -913,17 +1071,16 @@ class CustomDense(layers.Layer):
         )
 
     def call(self, inputs):
-        return tf.matmul(inputs, self.w) + self.b
+        return ops.matmul(inputs, self.w) + self.b
 
 
 inputs = keras.Input((4,))
 outputs = CustomDense(10)(inputs)
 
 model = keras.Model(inputs, outputs)
-
 ```
 
-For serialization support in your custom layer, define a `get_config`
+For serialization support in your custom layer, define a `get_config()`
 method that returns the constructor arguments of the layer instance:
 
 
@@ -931,7 +1088,7 @@ method that returns the constructor arguments of the layer instance:
 
 class CustomDense(layers.Layer):
     def __init__(self, units=32):
-        super(CustomDense, self).__init__()
+        super().__init__()
         self.units = units
 
     def build(self, input_shape):
@@ -945,7 +1102,7 @@ class CustomDense(layers.Layer):
         )
 
     def call(self, inputs):
-        return tf.matmul(inputs, self.w) + self.b
+        return ops.matmul(inputs, self.w) + self.b
 
     def get_config(self):
         return {"units": self.units}
@@ -958,10 +1115,9 @@ model = keras.Model(inputs, outputs)
 config = model.get_config()
 
 new_model = keras.Model.from_config(config, custom_objects={"CustomDense": CustomDense})
-
 ```
 
-Optionally, implement the classmethod `from_config(cls, config)` which is used
+Optionally, implement the class method `from_config(cls, config)` which is used
 when recreating a layer instance given its config dictionary.
 The default implementation of `from_config` is:
 
@@ -973,7 +1129,7 @@ def from_config(cls, config):
 ---
 ## When to use the functional API
 
-When should you use the Keras functional API to create a new model,
+Should you use the Keras functional API to create a new model,
 or just subclass the `Model` class directly? In general, the functional API
 is higher-level, easier and safer, and has a number of
 features that subclassed models do not support.
@@ -983,7 +1139,7 @@ that are not easily expressible as directed acyclic graphs of layers.
 For example, you could not implement a Tree-RNN with the functional API
 and would have to subclass `Model` directly.
 
-For in-depth look at the differences between the functional API and
+For an in-depth look at the differences between the functional API and
 model subclassing, read
 [What are Symbolic and Imperative APIs in TensorFlow 2.0?](https://blog.tensorflow.org/2019/01/what-are-symbolic-and-imperative-apis.html).
 
@@ -995,7 +1151,7 @@ The following properties are also true for Sequential models
 
 #### Less verbose
 
-There is no `super(MyClass, self).__init__(...)`, no `def call(self, ...):`, etc.
+There is no `super().__init__(...)`, no `def call(self, ...):`, etc.
 
 Compare:
 
@@ -1012,7 +1168,7 @@ With the subclassed version:
 class MLP(keras.Model):
 
   def __init__(self, **kwargs):
-    super(MLP, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.dense_1 = layers.Dense(64, activation='relu')
     self.dense_2 = layers.Dense(10)
 
@@ -1024,7 +1180,7 @@ class MLP(keras.Model):
 mlp = MLP()
 # Necessary to create the model's state.
 # The model doesn't have a state until it's called at least once.
-_ = mlp(tf.zeros((1, 32)))
+_ = mlp(ops.zeros((1, 32)))
 ```
 
 #### Model validation while defining its connectivity graph
@@ -1072,13 +1228,12 @@ This is true for most deep learning architectures, but not all -- for example,
 recursive networks or Tree RNNs do not follow this assumption and cannot
 be implemented in the functional API.
 
-
 ---
 ## Mix-and-match API styles
 
 Choosing between the functional API or Model subclassing isn't a
 binary decision that restricts you into one category of models.
-All models in the `tf.keras` API can interact with each other, whether they're
+All models in the `keras` API can interact with each other, whether they're
 `Sequential` models, functional models, or subclassed models that are written
 from scratch.
 
@@ -1100,7 +1255,7 @@ model = keras.Model(inputs, outputs)
 
 class CustomRNN(layers.Layer):
     def __init__(self):
-        super(CustomRNN, self).__init__()
+        super().__init__()
         self.units = units
         self.projection_1 = layers.Dense(units=units, activation="tanh")
         self.projection_2 = layers.Dense(units=units, activation="tanh")
@@ -1109,25 +1264,25 @@ class CustomRNN(layers.Layer):
 
     def call(self, inputs):
         outputs = []
-        state = tf.zeros(shape=(inputs.shape[0], self.units))
+        state = ops.zeros(shape=(inputs.shape[0], self.units))
         for t in range(inputs.shape[1]):
             x = inputs[:, t, :]
             h = self.projection_1(x)
             y = h + self.projection_2(state)
             state = y
             outputs.append(y)
-        features = tf.stack(outputs, axis=1)
+        features = ops.stack(outputs, axis=1)
         print(features.shape)
         return self.classifier(features)
 
 
 rnn_model = CustomRNN()
-_ = rnn_model(tf.zeros((1, timesteps, input_dim)))
-
+_ = rnn_model(ops.zeros((1, timesteps, input_dim)))
 ```
 
 <div class="k-default-codeblock">
 ```
+(1, 10, 32)
 (1, 10, 32)
 
 ```
@@ -1162,7 +1317,7 @@ batch_size = 16
 
 class CustomRNN(layers.Layer):
     def __init__(self):
-        super(CustomRNN, self).__init__()
+        super().__init__()
         self.units = units
         self.projection_1 = layers.Dense(units=units, activation="tanh")
         self.projection_2 = layers.Dense(units=units, activation="tanh")
@@ -1170,14 +1325,14 @@ class CustomRNN(layers.Layer):
 
     def call(self, inputs):
         outputs = []
-        state = tf.zeros(shape=(inputs.shape[0], self.units))
+        state = ops.zeros(shape=(inputs.shape[0], self.units))
         for t in range(inputs.shape[1]):
             x = inputs[:, t, :]
             h = self.projection_1(x)
             y = h + self.projection_2(state)
             state = y
             outputs.append(y)
-        features = tf.stack(outputs, axis=1)
+        features = ops.stack(outputs, axis=1)
         return self.classifier(features)
 
 
@@ -1191,6 +1346,5 @@ outputs = CustomRNN()(x)
 model = keras.Model(inputs, outputs)
 
 rnn_model = CustomRNN()
-_ = rnn_model(tf.zeros((1, 10, 5)))
-
+_ = rnn_model(ops.zeros((1, 10, 5)))
 ```

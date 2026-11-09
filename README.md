@@ -6,6 +6,8 @@ This repository hosts the code used to generate the [keras.io](https://keras.io)
 
 ```
 pip install -r requirements.txt
+# Update Keras version
+pip install -U keras
 cd scripts
 python autogen.py make
 python autogen.py serve
@@ -20,6 +22,14 @@ docker build -t keras-io . && docker run --rm -p 8000:8000 keras-io
 It will take a while the first time because it's going to pull the
 image and the dependencies, but on the next times it'll be much faster.
 
+Another way of testing using Docker is via our Makefile:
+
+```
+make container-test
+```
+
+This command will build a Docker image with a documentation server and run it.
+
 
 ## Call for examples
 
@@ -29,6 +39,19 @@ Please read the information below about adding new code examples.
 
 We are currently interested in [the following examples](https://github.com/keras-team/keras-io/blob/master/call_for_contributions.md).
 
+
+## Fixing something in an existing code example
+
+### Fixing typos
+
+If your fix is very simple, please send out a PR simultaneously updating
+the `.py`, the `.md`, and the `.ipynb` files for the example.
+
+## More extensive fixes
+
+For larger fixes, please send a PR that only includes the `.py` file,
+so we only update the other two files once the code has been reviewed
+and approved.
 
 
 ## Adding a new code example
@@ -57,6 +80,7 @@ Author: (could be `Authors`: as well, and may contain markdown links)
 Date created: (date in yyyy/mm/dd format)
 Last modified: (date in yyyy/mm/dd format)
 Description: (one-line text description)
+Accelerator: (could be GPU, TPU, or None)
 ```
 
 To see examples of tutobooks, you can check out any `.py` file in `examples/` or `guides/`.

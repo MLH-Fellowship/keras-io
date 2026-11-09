@@ -2,9 +2,11 @@
 Title: Simple custom layer example: Antirectifier
 Author: [fchollet](https://twitter.com/fchollet)
 Date created: 2016/01/06
-Last modified: 2020/04/20
+Last modified: 2023/11/20
 Description: Demonstration of custom layer creation.
+Accelerator: GPU
 """
+
 """
 ## Introduction
 
@@ -21,18 +23,30 @@ features back to a space of the original size.
 ## Setup
 """
 
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+import keras
+from keras import layers
+from keras import ops
 
 """
 ## The Antirectifier layer
+
+To implement a custom layer:
+
+- Create the state variables via `add_weight()` in `__init__` or `build()`.
+Similarly, you can also create sublayers.
+- Implement the `call()` method, taking the layer's input tensor(s) and
+return the output tensor(s).
+- Optionally, you can also enable serialization by implementing `get_config()`,
+which returns a configuration dictionary.
+
+See also the guide
+[Making new layers and models via subclassing](https://keras.io/guides/making_new_layers_and_models_via_subclassing/).
 """
 
 
 class Antirectifier(layers.Layer):
     def __init__(self, initializer="he_normal", **kwargs):
-        super(Antirectifier, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.initializer = keras.initializers.get(initializer)
 
     def build(self, input_shape):
@@ -45,16 +59,16 @@ class Antirectifier(layers.Layer):
         )
 
     def call(self, inputs):
-        inputs -= tf.reduce_mean(inputs, axis=-1, keepdims=True)
-        pos = tf.nn.relu(inputs)
-        neg = tf.nn.relu(-inputs)
-        concatenated = tf.concat([pos, neg], axis=-1)
-        mixed = tf.matmul(concatenated, self.kernel)
+        inputs -= ops.mean(inputs, axis=-1, keepdims=True)
+        pos = ops.relu(inputs)
+        neg = ops.relu(-inputs)
+        concatenated = ops.concatenate([pos, neg], axis=-1)
+        mixed = ops.matmul(concatenated, self.kernel)
         return mixed
 
     def get_config(self):
         # Implement get_config to enable serialization. This is optional.
-        base_config = super(Antirectifier, self).get_config()
+        base_config = super().get_config()
         config = {"initializer": keras.initializers.serialize(self.initializer)}
         return dict(list(base_config.items()) + list(config.items()))
 
@@ -105,3 +119,8 @@ model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_spl
 
 # Test the model
 model.evaluate(x_test, y_test)
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 7: A deep dive on Keras](https://deeplearningwithpython.io/chapters/chapter07_deep-dive-keras)
+"""

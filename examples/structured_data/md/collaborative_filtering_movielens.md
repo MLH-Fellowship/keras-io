@@ -35,22 +35,20 @@ the a match score between the user and the movie (predicted rating).
 - [Neural Collaborative Filtering](https://dl.acm.org/doi/pdf/10.1145/3038912.3052569)
 
 
-
 ```python
 import pandas as pd
-import numpy as np
-from zipfile import ZipFile
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
 from pathlib import Path
 import matplotlib.pyplot as plt
+import numpy as np
+from zipfile import ZipFile
 
+import keras
+from keras import layers
+from keras import ops
 ```
 
 ---
 ## First, load the data and apply preprocessing
-
 
 
 ```python
@@ -75,11 +73,18 @@ if not movielens_dir.exists():
 
 ratings_file = movielens_dir / "ratings.csv"
 df = pd.read_csv(ratings_file)
-
 ```
 
-First, need to perform some preprocessing to encode users and movies as integer indices.
+<div class="k-default-codeblock">
+```
+Downloading data from http://files.grouplens.org/datasets/movielens/ml-latest-small.zip
+ 978202/978202 ━━━━━━━━━━━━━━━━━━━━ 0s 0us/step
+Extracting all the files now...
+Done!
 
+```
+</div>
+First, need to perform some preprocessing to encode users and movies as integer indices.
 
 
 ```python
@@ -104,7 +109,6 @@ print(
         num_users, num_movies, min_rating, max_rating
     )
 )
-
 ```
 
 <div class="k-default-codeblock">
@@ -115,7 +119,6 @@ Number of users: 610, Number of Movies: 9724, Min rating: 0.5, Max rating: 5.0
 </div>
 ---
 ## Prepare training and validation data
-
 
 
 ```python
@@ -131,7 +134,6 @@ x_train, x_val, y_train, y_val = (
     y[:train_indices],
     y[train_indices:],
 )
-
 ```
 
 ---
@@ -144,14 +146,13 @@ and adds a per-movie and per-user bias. The match score is scaled to the `[0, 1]
 interval via a sigmoid (since our ratings are normalized to this range).
 
 
-
 ```python
 EMBEDDING_SIZE = 50
 
 
 class RecommenderNet(keras.Model):
     def __init__(self, num_users, num_movies, embedding_size, **kwargs):
-        super(RecommenderNet, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.num_users = num_users
         self.num_movies = num_movies
         self.embedding_size = embedding_size
@@ -175,23 +176,22 @@ class RecommenderNet(keras.Model):
         user_bias = self.user_bias(inputs[:, 0])
         movie_vector = self.movie_embedding(inputs[:, 1])
         movie_bias = self.movie_bias(inputs[:, 1])
-        dot_user_movie = tf.tensordot(user_vector, movie_vector, 2)
+        dot_user_movie = ops.tensordot(user_vector, movie_vector, 2)
         # Add all the components (including bias)
         x = dot_user_movie + user_bias + movie_bias
         # The sigmoid activation forces the rating to between 0 and 1
-        return tf.nn.sigmoid(x)
+        return ops.nn.sigmoid(x)
 
 
 model = RecommenderNet(num_users, num_movies, EMBEDDING_SIZE)
 model.compile(
-    loss=tf.keras.losses.BinaryCrossentropy(), optimizer=keras.optimizers.Adam(lr=0.001)
+    loss=keras.losses.BinaryCrossentropy(),
+    optimizer=keras.optimizers.Adam(learning_rate=0.001),
 )
-
 ```
 
 ---
 ## Train the model based on the data split
-
 
 
 ```python
@@ -203,27 +203,25 @@ history = model.fit(
     verbose=1,
     validation_data=(x_val, y_val),
 )
-
 ```
 
 <div class="k-default-codeblock">
 ```
 Epoch 1/5
-1418/1418 [==============================] - 6s 4ms/step - loss: 0.6368 - val_loss: 0.6206
+ 1418/1418 ━━━━━━━━━━━━━━━━━━━━ 2s 1ms/step - loss: 0.6591 - val_loss: 0.6201
 Epoch 2/5
-1418/1418 [==============================] - 7s 5ms/step - loss: 0.6131 - val_loss: 0.6176
+ 1418/1418 ━━━━━━━━━━━━━━━━━━━━ 1s 894us/step - loss: 0.6159 - val_loss: 0.6191
 Epoch 3/5
-1418/1418 [==============================] - 6s 4ms/step - loss: 0.6083 - val_loss: 0.6146
+ 1418/1418 ━━━━━━━━━━━━━━━━━━━━ 1s 977us/step - loss: 0.6093 - val_loss: 0.6138
 Epoch 4/5
-1418/1418 [==============================] - 6s 4ms/step - loss: 0.6072 - val_loss: 0.6131
+ 1418/1418 ━━━━━━━━━━━━━━━━━━━━ 1s 865us/step - loss: 0.6100 - val_loss: 0.6123
 Epoch 5/5
-1418/1418 [==============================] - 6s 4ms/step - loss: 0.6075 - val_loss: 0.6150
+ 1418/1418 ━━━━━━━━━━━━━━━━━━━━ 1s 854us/step - loss: 0.6072 - val_loss: 0.6121
 
 ```
 </div>
 ---
 ## Plot training and validation loss
-
 
 
 ```python
@@ -234,16 +232,16 @@ plt.ylabel("loss")
 plt.xlabel("epoch")
 plt.legend(["train", "test"], loc="upper left")
 plt.show()
-
 ```
 
 
+    
 ![png](/img/examples/structured_data/collaborative_filtering_movielens/collaborative_filtering_movielens_14_0.png)
+    
 
 
 ---
 ## Show top 10 movie recommendations to a user
-
 
 
 ```python
@@ -261,7 +259,7 @@ movies_not_watched = list(
 movies_not_watched = [[movie2movie_encoded.get(x)] for x in movies_not_watched]
 user_encoder = user2user_encoded.get(user_id)
 user_movie_array = np.hstack(
-    ([[user_id]] * len(movies_not_watched), movies_not_watched)
+    ([[user_encoder]] * len(movies_not_watched), movies_not_watched)
 )
 ratings = model.predict(user_movie_array).flatten()
 top_ratings_indices = ratings.argsort()[-10:][::-1]
@@ -288,33 +286,33 @@ print("----" * 8)
 recommended_movies = movie_df[movie_df["movieId"].isin(recommended_movie_ids)]
 for row in recommended_movies.itertuples():
     print(row.title, ":", row.genres)
-
 ```
 
 <div class="k-default-codeblock">
 ```
-Showing recommendations for user: 474
+ 272/272 ━━━━━━━━━━━━━━━━━━━━ 0s 714us/step
+Showing recommendations for user: 249
 ====================================
 Movies with high ratings from user
 --------------------------------
-Fugitive, The (1993) : Thriller
-Remains of the Day, The (1993) : Drama|Romance
-West Side Story (1961) : Drama|Musical|Romance
-X2: X-Men United (2003) : Action|Adventure|Sci-Fi|Thriller
-Spider-Man 2 (2004) : Action|Adventure|Sci-Fi|IMAX
+Fight Club (1999) : Action|Crime|Drama|Thriller
+Serenity (2005) : Action|Adventure|Sci-Fi
+Departed, The (2006) : Crime|Drama|Thriller
+Prisoners (2013) : Drama|Mystery|Thriller
+Arrival (2016) : Sci-Fi
 --------------------------------
 Top 10 movie recommendations
 --------------------------------
-Dazed and Confused (1993) : Comedy
-Ghost in the Shell (Kôkaku kidôtai) (1995) : Animation|Sci-Fi
-Drugstore Cowboy (1989) : Crime|Drama
-Road Warrior, The (Mad Max 2) (1981) : Action|Adventure|Sci-Fi|Thriller
-Dark Knight, The (2008) : Action|Crime|Drama|IMAX
-Inglourious Basterds (2009) : Action|Drama|War
-Up (2009) : Adventure|Animation|Children|Drama
-Dark Knight Rises, The (2012) : Action|Adventure|Crime|IMAX
-Star Wars: Episode VII - The Force Awakens (2015) : Action|Adventure|Fantasy|Sci-Fi|IMAX
-Thor: Ragnarok (2017) : Action|Adventure|Sci-Fi
+In the Name of the Father (1993) : Drama
+Monty Python and the Holy Grail (1975) : Adventure|Comedy|Fantasy
+Princess Bride, The (1987) : Action|Adventure|Comedy|Fantasy|Romance
+Lawrence of Arabia (1962) : Adventure|Drama|War
+Apocalypse Now (1979) : Action|Drama|War
+Full Metal Jacket (1987) : Drama|War
+Amadeus (1984) : Drama
+Glory (1989) : Drama|War
+Chinatown (1974) : Crime|Film-Noir|Mystery|Thriller
+City of God (Cidade de Deus) (2002) : Action|Adventure|Crime|Drama|Thriller
 
 ```
 </div>

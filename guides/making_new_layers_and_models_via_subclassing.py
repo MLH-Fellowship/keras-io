@@ -2,42 +2,62 @@
 Title: Making new layers and models via subclassing
 Author: [fchollet](https://twitter.com/fchollet)
 Date created: 2019/03/01
-Last modified: 2020/04/13
+Last modified: 2023/06/25
 Description: Complete guide to writing `Layer` and `Model` objects from scratch.
+Accelerator: None
+"""
+
+"""
+## Introduction
+
+This guide will cover everything you need to know to build your own
+subclassed layers and models. In particular, you'll learn about the following features:
+
+- The `Layer` class
+- The `add_weight()` method
+- Trainable and non-trainable weights
+- The `build()` method
+- Making sure your layers can be used with any backend
+- The `add_loss()` method
+- The `training` argument in `call()`
+- The `mask` argument in `call()`
+- Making sure your layers can be serialized
+
+Let's dive in.
 """
 """
 ## Setup
 """
 
-import tensorflow as tf
-from tensorflow import keras
+import numpy as np
+import keras
+from keras import ops
+from keras import layers
 
 """
 ## The `Layer` class: the combination of state (weights) and some computation
 
-One of the central abstraction in Keras is the `Layer` class. A layer
+One of the central abstractions in Keras is the `Layer` class. A layer
 encapsulates both a state (the layer's "weights") and a transformation from
 inputs to outputs (a "call", the layer's forward pass).
 
-Here's a densely-connected layer. It has a state: the variables `w` and `b`.
+Here's a densely-connected layer. It has two state variables:
+the variables `w` and `b`.
 """
 
 
 class Linear(keras.layers.Layer):
     def __init__(self, units=32, input_dim=32):
-        super(Linear, self).__init__()
-        w_init = tf.random_normal_initializer()
-        self.w = tf.Variable(
-            initial_value=w_init(shape=(input_dim, units), dtype="float32"),
+        super().__init__()
+        self.w = self.add_weight(
+            shape=(input_dim, units),
+            initializer="random_normal",
             trainable=True,
         )
-        b_init = tf.zeros_initializer()
-        self.b = tf.Variable(
-            initial_value=b_init(shape=(units,), dtype="float32"), trainable=True
-        )
+        self.b = self.add_weight(shape=(units,), initializer="zeros", trainable=True)
 
     def call(self, inputs):
-        return tf.matmul(inputs, self.w) + self.b
+        return ops.matmul(inputs, self.w) + self.b
 
 
 """
@@ -45,7 +65,7 @@ You would use a layer by calling it on some tensor input(s), much like a Python
 function.
 """
 
-x = tf.ones((2, 2))
+x = ops.ones((2, 2))
 linear_layer = Linear(4, 2)
 y = linear_layer(x)
 print(y)
@@ -56,29 +76,6 @@ being set as layer attributes:
 """
 
 assert linear_layer.weights == [linear_layer.w, linear_layer.b]
-
-"""
-Note you also have access to a quicker shortcut for adding weight to a layer:
-the `add_weight()` method:
-"""
-
-
-class Linear(keras.layers.Layer):
-    def __init__(self, units=32, input_dim=32):
-        super(Linear, self).__init__()
-        self.w = self.add_weight(
-            shape=(input_dim, units), initializer="random_normal", trainable=True
-        )
-        self.b = self.add_weight(shape=(units,), initializer="zeros", trainable=True)
-
-    def call(self, inputs):
-        return tf.matmul(inputs, self.w) + self.b
-
-
-x = tf.ones((2, 2))
-linear_layer = Linear(4, 2)
-y = linear_layer(x)
-print(y)
 
 """
 ## Layers can have non-trainable weights
@@ -93,15 +90,17 @@ Here's how to add and use a non-trainable weight:
 
 class ComputeSum(keras.layers.Layer):
     def __init__(self, input_dim):
-        super(ComputeSum, self).__init__()
-        self.total = tf.Variable(initial_value=tf.zeros((input_dim,)), trainable=False)
+        super().__init__()
+        self.total = self.add_weight(
+            initializer="zeros", shape=(input_dim,), trainable=False
+        )
 
     def call(self, inputs):
-        self.total.assign_add(tf.reduce_sum(inputs, axis=0))
+        self.total.assign_add(ops.sum(inputs, axis=0))
         return self.total
 
 
-x = tf.ones((2, 2))
+x = ops.ones((2, 2))
 my_sum = ComputeSum(2)
 y = my_sum(x)
 print(y.numpy())
@@ -121,21 +120,23 @@ print("trainable_weights:", my_sum.trainable_weights)
 """
 ## Best practice: deferring weight creation until the shape of the inputs is known
 
-Our `Linear` layer above took an `input_dim `argument that was used to compute
+Our `Linear` layer above took an `input_dim` argument that was used to compute
 the shape of the weights `w` and `b` in `__init__()`:
 """
 
 
 class Linear(keras.layers.Layer):
     def __init__(self, units=32, input_dim=32):
-        super(Linear, self).__init__()
+        super().__init__()
         self.w = self.add_weight(
-            shape=(input_dim, units), initializer="random_normal", trainable=True
+            shape=(input_dim, units),
+            initializer="random_normal",
+            trainable=True,
         )
         self.b = self.add_weight(shape=(units,), initializer="zeros", trainable=True)
 
     def call(self, inputs):
-        return tf.matmul(inputs, self.w) + self.b
+        return ops.matmul(inputs, self.w) + self.b
 
 
 """
@@ -143,14 +144,14 @@ In many cases, you may not know in advance the size of your inputs, and you
 would like to lazily create weights when that value becomes known, some time
 after instantiating the layer.
 
-In the Keras API, we recommend creating layer weights in the `build(self,
-inputs_shape)` method of your layer. Like this:
+In the Keras API, we recommend creating layer weights in the
+`build(self, inputs_shape)` method of your layer. Like this:
 """
 
 
 class Linear(keras.layers.Layer):
     def __init__(self, units=32):
-        super(Linear, self).__init__()
+        super().__init__()
         self.units = units
 
     def build(self, input_shape):
@@ -164,7 +165,7 @@ class Linear(keras.layers.Layer):
         )
 
     def call(self, inputs):
-        return tf.matmul(inputs, self.w) + self.b
+        return ops.matmul(inputs, self.w) + self.b
 
 
 """
@@ -179,39 +180,97 @@ linear_layer = Linear(32)
 y = linear_layer(x)
 
 """
-## Layers are recursively composable
-
-If you assign a Layer instance as attribute of another Layer, the outer layer
-will start tracking the weights of the inner layer.
-
-We recommend creating such sublayers in the `__init__()` method (since the
-sublayers will typically have a build method, they will be built when the
-outer layer gets built).
+Implementing `build()` separately as shown above nicely separates creating weights
+only once from using weights in every call.
 """
 
-# Let's assume we are reusing the Linear class
-# with a `build` method that we defined above.
+"""
+## Layers are recursively composable
+
+If you assign a Layer instance as an attribute of another Layer, the outer layer
+will start tracking the weights created by the inner layer.
+
+We recommend creating such sublayers in the `__init__()` method and leave it to
+the first `__call__()` to trigger building their weights.
+"""
 
 
 class MLPBlock(keras.layers.Layer):
     def __init__(self):
-        super(MLPBlock, self).__init__()
+        super().__init__()
         self.linear_1 = Linear(32)
         self.linear_2 = Linear(32)
         self.linear_3 = Linear(1)
 
     def call(self, inputs):
         x = self.linear_1(inputs)
-        x = tf.nn.relu(x)
+        x = keras.activations.relu(x)
         x = self.linear_2(x)
-        x = tf.nn.relu(x)
+        x = keras.activations.relu(x)
         return self.linear_3(x)
 
 
 mlp = MLPBlock()
-y = mlp(tf.ones(shape=(3, 64)))  # The first call to the `mlp` will create the weights
+y = mlp(ops.ones(shape=(3, 64)))  # The first call to the `mlp` will create the weights
 print("weights:", len(mlp.weights))
 print("trainable weights:", len(mlp.trainable_weights))
+
+"""
+## Backend-agnostic layers and backend-specific layers
+
+As long as a layer only uses APIs from the `keras.ops` namespace
+(or other Keras namespaces such as `keras.activations`, `keras.random`, or `keras.layers`),
+then it can be used with any backend -- TensorFlow, JAX, or PyTorch.
+
+All layers you've seen so far in this guide work with all Keras backends.
+
+The `keras.ops` namespace gives you access to:
+
+- The NumPy API, e.g. `ops.matmul`, `ops.sum`, `ops.reshape`, `ops.stack`, etc.
+- Neural networks-specific APIs such as `ops.softmax`, `ops.conv`, `ops.binary_crossentropy`, `ops.relu`, etc.
+
+You can also use backend-native APIs in your layers (such as `tf.nn` functions),
+but if you do this, then your layer will only be usable with the backend in question.
+For instance, you could write the following JAX-specific layer using `jax.numpy`:
+
+```python
+import jax
+
+class Linear(keras.layers.Layer):
+    ...
+
+    def call(self, inputs):
+        return jax.numpy.matmul(inputs, self.w) + self.b
+```
+
+This would be the equivalent TensorFlow-specific layer:
+
+```python
+import tensorflow as tf
+
+class Linear(keras.layers.Layer):
+    ...
+
+    def call(self, inputs):
+        return tf.matmul(inputs, self.w) + self.b
+```
+
+And this would be the equivalent PyTorch-specific layer:
+
+```python
+import torch
+
+class Linear(keras.layers.Layer):
+    ...
+
+    def call(self, inputs):
+        return torch.matmul(inputs, self.w) + self.b
+```
+
+Because cross-backend compatibility is a tremendously useful property, we strongly
+recommend that you seek to always make your layers backend-agnostic by leveraging
+only Keras APIs.
+"""
 
 """
 ## The `add_loss()` method
@@ -221,14 +280,15 @@ you will want to use later, when writing your training loop. This is doable by
 calling `self.add_loss(value)`:
 """
 
+
 # A layer that creates an activity regularization loss
 class ActivityRegularizationLayer(keras.layers.Layer):
     def __init__(self, rate=1e-2):
-        super(ActivityRegularizationLayer, self).__init__()
+        super().__init__()
         self.rate = rate
 
     def call(self, inputs):
-        self.add_loss(self.rate * tf.reduce_sum(inputs))
+        self.add_loss(self.rate * ops.mean(inputs))
         return inputs
 
 
@@ -242,7 +302,7 @@ created during the last forward pass.
 
 class OuterLayer(keras.layers.Layer):
     def __init__(self):
-        super(OuterLayer, self).__init__()
+        super().__init__()
         self.activity_reg = ActivityRegularizationLayer(1e-2)
 
     def call(self, inputs):
@@ -252,11 +312,11 @@ class OuterLayer(keras.layers.Layer):
 layer = OuterLayer()
 assert len(layer.losses) == 0  # No losses yet since the layer has never been called
 
-_ = layer(tf.zeros(1, 1))
+_ = layer(ops.zeros((1, 1)))
 assert len(layer.losses) == 1  # We created one loss value
 
 # `layer.losses` gets reset at the start of each __call__
-_ = layer(tf.zeros(1, 1))
+_ = layer(ops.zeros((1, 1)))
 assert len(layer.losses) == 1  # This is the loss created during the call above
 
 """
@@ -267,9 +327,9 @@ for the weights of any inner layer:
 
 class OuterLayerWithKernelRegularizer(keras.layers.Layer):
     def __init__(self):
-        super(OuterLayerWithKernelRegularizer, self).__init__()
+        super().__init__()
         self.dense = keras.layers.Dense(
-            32, kernel_regularizer=tf.keras.regularizers.l2(1e-3)
+            32, kernel_regularizer=keras.regularizers.l2(1e-3)
         )
 
     def call(self, inputs):
@@ -277,50 +337,23 @@ class OuterLayerWithKernelRegularizer(keras.layers.Layer):
 
 
 layer = OuterLayerWithKernelRegularizer()
-_ = layer(tf.zeros((1, 1)))
+_ = layer(ops.zeros((1, 1)))
 
 # This is `1e-3 * sum(layer.dense.kernel ** 2)`,
 # created by the `kernel_regularizer` above.
 print(layer.losses)
 
 """
-These losses are meant to be taken into account when writing training loops,
-like this:
+These losses are meant to be taken into account when writing custom training loops.
 
-```python
-# Instantiate an optimizer.
-optimizer = tf.keras.optimizers.SGD(learning_rate=1e-3)
-loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-
-# Iterate over the batches of a dataset.
-for x_batch_train, y_batch_train in train_dataset:
-  with tf.GradientTape() as tape:
-    logits = layer(x_batch_train)  # Logits for this minibatch
-    # Loss value for this minibatch
-    loss_value = loss_fn(y_batch_train, logits)
-    # Add extra losses created during this forward pass:
-    loss_value += sum(model.losses)
-
-  grads = tape.gradient(loss_value, model.trainable_weights)
-  optimizer.apply_gradients(zip(grads, model.trainable_weights))
-```
+They also work seamlessly with `fit()` (they get automatically summed and added to the main loss, if any):
 """
-
-"""
-For a detailed guide about writing training loops, see the
-[guide to writing a training loop from scratch](/guides/writing_a_training_loop_from_scratch/).
-
-These losses also work seamlessly with `fit()` (they get automatically summed
-and added to the main loss, if any):
-"""
-
-import numpy as np
 
 inputs = keras.Input(shape=(3,))
 outputs = ActivityRegularizationLayer()(inputs)
 model = keras.Model(inputs, outputs)
 
-# If there is a loss passed in `compile`, thee regularization
+# If there is a loss passed in `compile`, the regularization
 # losses get added to it
 model.compile(optimizer="adam", loss="mse")
 model.fit(np.random.random((2, 3)), np.random.random((2, 3)))
@@ -332,82 +365,17 @@ model.compile(optimizer="adam")
 model.fit(np.random.random((2, 3)), np.random.random((2, 3)))
 
 """
-## The `add_metric()` method
-
-Similarly to `add_loss()`, layers also have an `add_metric()` method
-for tracking the moving average of a quantity during training.
-
-Consider the following layer: a "logistic endpoint" layer.
-It takes as inputs predictions & targets, it computes a loss which it tracks
-via `add_loss()`, and it computes an accuracy scalar, which it tracks via
-`add_metric()`.
-"""
-
-
-class LogisticEndpoint(keras.layers.Layer):
-    def __init__(self, name=None):
-        super(LogisticEndpoint, self).__init__(name=name)
-        self.loss_fn = keras.losses.BinaryCrossentropy(from_logits=True)
-        self.accuracy_fn = keras.metrics.BinaryAccuracy()
-
-    def call(self, targets, logits, sample_weights=None):
-        # Compute the training-time loss value and add it
-        # to the layer using `self.add_loss()`.
-        loss = self.loss_fn(targets, logits, sample_weights)
-        self.add_loss(loss)
-
-        # Log accuracy as a metric and add it
-        # to the layer using `self.add_metric()`.
-        acc = self.accuracy_fn(targets, logits, sample_weights)
-        self.add_metric(acc, name="accuracy")
-
-        # Return the inference-time prediction tensor (for `.predict()`).
-        return tf.nn.softmax(logits)
-
-
-"""
-Metrics tracked in this way are accessible via `layer.metrics`:
-"""
-
-layer = LogisticEndpoint()
-
-targets = tf.ones((2, 2))
-logits = tf.ones((2, 2))
-y = layer(targets, logits)
-
-print("layer.metrics:", layer.metrics)
-print("current accuracy value:", float(layer.metrics[0].result()))
-
-"""
-Just like for `add_loss()`, these metrics are tracked by `fit()`:
-"""
-
-inputs = keras.Input(shape=(3,), name="inputs")
-targets = keras.Input(shape=(10,), name="targets")
-logits = keras.layers.Dense(10)(inputs)
-predictions = LogisticEndpoint(name="predictions")(logits, targets)
-
-model = keras.Model(inputs=[inputs, targets], outputs=predictions)
-model.compile(optimizer="adam")
-
-data = {
-    "inputs": np.random.random((3, 3)),
-    "targets": np.random.random((3, 10)),
-}
-model.fit(data)
-
-"""
 ## You can optionally enable serialization on your layers
 
 If you need your custom layers to be serializable as part of a
-[Functional model](/guides/functional_api/), you can optionally implement a `get_config()`
-method:
+[Functional model](/guides/functional_api/),
+you can optionally implement a `get_config()` method:
 """
 
 
 class Linear(keras.layers.Layer):
     def __init__(self, units=32):
-        super(Linear, self).__init__()
+        super().__init__()
         self.units = units
 
     def build(self, input_shape):
@@ -421,7 +389,7 @@ class Linear(keras.layers.Layer):
         )
 
     def call(self, inputs):
-        return tf.matmul(inputs, self.w) + self.b
+        return ops.matmul(inputs, self.w) + self.b
 
     def get_config(self):
         return {"units": self.units}
@@ -443,7 +411,7 @@ layer config:
 
 class Linear(keras.layers.Layer):
     def __init__(self, units=32, **kwargs):
-        super(Linear, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.units = units
 
     def build(self, input_shape):
@@ -457,10 +425,10 @@ class Linear(keras.layers.Layer):
         )
 
     def call(self, inputs):
-        return tf.matmul(inputs, self.w) + self.b
+        return ops.matmul(inputs, self.w) + self.b
 
     def get_config(self):
-        config = super(Linear, self).get_config()
+        config = super().get_config()
         config.update({"units": self.units})
         return config
 
@@ -477,7 +445,7 @@ implementation of `from_config()`:
 
 ```python
 def from_config(cls, config):
-  return cls(**config)
+    return cls(**config)
 ```
 
 To learn more about serialization and saving, see the complete
@@ -500,12 +468,15 @@ inference.
 
 class CustomDropout(keras.layers.Layer):
     def __init__(self, rate, **kwargs):
-        super(CustomDropout, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.rate = rate
+        self.seed_generator = keras.random.SeedGenerator(1337)
 
     def call(self, inputs, training=None):
         if training:
-            return tf.nn.dropout(inputs, rate=self.rate)
+            return keras.random.dropout(
+                inputs, rate=self.rate, seed=self.seed_generator
+            )
         return inputs
 
 
@@ -522,10 +493,6 @@ Keras will automatically pass the correct `mask` argument to `__call__()` for
 layers that support it, when a mask is generated by a prior layer.
 Mask-generating layers are the `Embedding`
 layer configured with `mask_zero=True`, and the `Masking` layer.
-
-To learn more about masking and how to write masking-enabled layers, please
-check out the guide
-["understanding padding and masking"](/guides/understanding_masking_and_padding/).
 """
 
 """
@@ -567,10 +534,10 @@ a `Model` that we could train with `fit()`, and that we could save with
 
 """
 ```python
-class ResNet(tf.keras.Model):
+class ResNet(keras.Model):
 
-    def __init__(self):
-        super(ResNet, self).__init__()
+    def __init__(self, num_classes=1000):
+        super().__init__()
         self.block_1 = ResNetBlock()
         self.block_2 = ResNetBlock()
         self.global_pool = layers.GlobalAveragePooling2D()
@@ -586,7 +553,7 @@ class ResNet(tf.keras.Model):
 resnet = ResNet()
 dataset = ...
 resnet.fit(dataset, epochs=10)
-resnet.save(filepath)
+resnet.save(filepath.keras)
 ```
 """
 
@@ -598,37 +565,44 @@ Here's what you've learned so far:
 - A `Layer` encapsulate a state (created in `__init__()` or `build()`) and some
 computation (defined in `call()`).
 - Layers can be recursively nested to create new, bigger computation blocks.
-- Layers can create and track losses (typically regularization losses) as well
-as metrics, via `add_loss()` and `add_metric()`
+- Layers are backend-agnostic as long as they only use Keras APIs. You can use
+backend-native APIs (such as `jax.numpy`, `torch.nn` or `tf.nn`), but then
+your layer will only be usable with that specific backend.
+- Layers can create and track losses (typically regularization losses)
+via `add_loss()`.
 - The outer container, the thing you want to train, is a `Model`. A `Model` is
 just like a `Layer`, but with added training and serialization utilities.
 
 Let's put all of these things together into an end-to-end example: we're going
-to implement a Variational AutoEncoder (VAE). We'll train it on MNIST digits.
+to implement a Variational AutoEncoder (VAE) in a backend-agnostic fashion
+-- so that it runs the same with TensorFlow, JAX, and PyTorch.
+We'll train it on MNIST digits.
 
 Our VAE will be a subclass of `Model`, built as a nested composition of layers
 that subclass `Layer`. It will feature a regularization loss (KL divergence).
 """
 
-from tensorflow.keras import layers
-
 
 class Sampling(layers.Layer):
     """Uses (z_mean, z_log_var) to sample z, the vector encoding a digit."""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.seed_generator = keras.random.SeedGenerator(1337)
+
     def call(self, inputs):
         z_mean, z_log_var = inputs
-        batch = tf.shape(z_mean)[0]
-        dim = tf.shape(z_mean)[1]
-        epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
-        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+        batch = ops.shape(z_mean)[0]
+        dim = ops.shape(z_mean)[1]
+        epsilon = keras.random.normal(shape=(batch, dim), seed=self.seed_generator)
+        return z_mean + ops.exp(0.5 * z_log_var) * epsilon
 
 
 class Encoder(layers.Layer):
     """Maps MNIST digits to a triplet (z_mean, z_log_var, z)."""
 
     def __init__(self, latent_dim=32, intermediate_dim=64, name="encoder", **kwargs):
-        super(Encoder, self).__init__(name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
         self.dense_proj = layers.Dense(intermediate_dim, activation="relu")
         self.dense_mean = layers.Dense(latent_dim)
         self.dense_log_var = layers.Dense(latent_dim)
@@ -646,7 +620,7 @@ class Decoder(layers.Layer):
     """Converts z, the encoded digit vector, back into a readable digit."""
 
     def __init__(self, original_dim, intermediate_dim=64, name="decoder", **kwargs):
-        super(Decoder, self).__init__(name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
         self.dense_proj = layers.Dense(intermediate_dim, activation="relu")
         self.dense_output = layers.Dense(original_dim, activation="sigmoid")
 
@@ -666,7 +640,7 @@ class VariationalAutoEncoder(keras.Model):
         name="autoencoder",
         **kwargs
     ):
-        super(VariationalAutoEncoder, self).__init__(name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
         self.original_dim = original_dim
         self.encoder = Encoder(latent_dim=latent_dim, intermediate_dim=intermediate_dim)
         self.decoder = Decoder(original_dim, intermediate_dim=intermediate_dim)
@@ -675,108 +649,24 @@ class VariationalAutoEncoder(keras.Model):
         z_mean, z_log_var, z = self.encoder(inputs)
         reconstructed = self.decoder(z)
         # Add KL divergence regularization loss.
-        kl_loss = -0.5 * tf.reduce_mean(
-            z_log_var - tf.square(z_mean) - tf.exp(z_log_var) + 1
+        kl_loss = -0.5 * ops.mean(
+            z_log_var - ops.square(z_mean) - ops.exp(z_log_var) + 1
         )
         self.add_loss(kl_loss)
         return reconstructed
 
 
 """
-Let's write a simple training loop on MNIST:
+Let's train it on MNIST using the `fit()` API:
 """
 
-original_dim = 784
-vae = VariationalAutoEncoder(original_dim, 64, 32)
-
-optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
-mse_loss_fn = tf.keras.losses.MeanSquaredError()
-
-loss_metric = tf.keras.metrics.Mean()
-
-(x_train, _), _ = tf.keras.datasets.mnist.load_data()
+(x_train, _), _ = keras.datasets.mnist.load_data()
 x_train = x_train.reshape(60000, 784).astype("float32") / 255
 
-train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
-train_dataset = train_dataset.shuffle(buffer_size=1024).batch(64)
-
-epochs = 2
-
-# Iterate over epochs.
-for epoch in range(epochs):
-    print("Start of epoch %d" % (epoch,))
-
-    # Iterate over the batches of the dataset.
-    for step, x_batch_train in enumerate(train_dataset):
-        with tf.GradientTape() as tape:
-            reconstructed = vae(x_batch_train)
-            # Compute reconstruction loss
-            loss = mse_loss_fn(x_batch_train, reconstructed)
-            loss += sum(vae.losses)  # Add KLD regularization loss
-
-        grads = tape.gradient(loss, vae.trainable_weights)
-        optimizer.apply_gradients(zip(grads, vae.trainable_weights))
-
-        loss_metric(loss)
-
-        if step % 100 == 0:
-            print("step %d: mean loss = %.4f" % (step, loss_metric.result()))
-
-"""
-Note that since the VAE is subclassing `Model`, it features built-in training
-loops. So you could also have trained it like this:
-"""
-
+original_dim = 784
 vae = VariationalAutoEncoder(784, 64, 32)
 
-optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
+optimizer = keras.optimizers.Adam(learning_rate=1e-3)
+vae.compile(optimizer, loss=keras.losses.MeanSquaredError())
 
-vae.compile(optimizer, loss=tf.keras.losses.MeanSquaredError())
 vae.fit(x_train, x_train, epochs=2, batch_size=64)
-
-"""
-## Beyond object-oriented development: the Functional API
-
-Was this example too much object-oriented development for you? You can also
-build models using the [Functional API](/guides/functional_api/). Importantly,
-choosing one style or another does not prevent you from leveraging components
-written in the other style: you can always mix-and-match.
-
-For instance, the Functional API example below reuses the same `Sampling` layer
-we defined in the example above:
-"""
-
-original_dim = 784
-intermediate_dim = 64
-latent_dim = 32
-
-# Define encoder model.
-original_inputs = tf.keras.Input(shape=(original_dim,), name="encoder_input")
-x = layers.Dense(intermediate_dim, activation="relu")(original_inputs)
-z_mean = layers.Dense(latent_dim, name="z_mean")(x)
-z_log_var = layers.Dense(latent_dim, name="z_log_var")(x)
-z = Sampling()((z_mean, z_log_var))
-encoder = tf.keras.Model(inputs=original_inputs, outputs=z, name="encoder")
-
-# Define decoder model.
-latent_inputs = tf.keras.Input(shape=(latent_dim,), name="z_sampling")
-x = layers.Dense(intermediate_dim, activation="relu")(latent_inputs)
-outputs = layers.Dense(original_dim, activation="sigmoid")(x)
-decoder = tf.keras.Model(inputs=latent_inputs, outputs=outputs, name="decoder")
-
-# Define VAE model.
-outputs = decoder(z)
-vae = tf.keras.Model(inputs=original_inputs, outputs=outputs, name="vae")
-
-# Add KL divergence regularization loss.
-kl_loss = -0.5 * tf.reduce_mean(z_log_var - tf.square(z_mean) - tf.exp(z_log_var) + 1)
-vae.add_loss(kl_loss)
-
-# Train.
-optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
-vae.compile(optimizer, loss=tf.keras.losses.MeanSquaredError())
-vae.fit(x_train, x_train, epochs=3, batch_size=64)
-
-"""
-For more information, make sure to read the [Functional API guide](/guides/functional_api/).
-"""

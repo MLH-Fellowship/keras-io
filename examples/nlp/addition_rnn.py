@@ -2,9 +2,11 @@
 Title: Sequence to sequence learning for performing number addition
 Author: [Smerity](https://twitter.com/Smerity) and others
 Date created: 2015/08/17
-Last modified: 2020/04/17
+Last modified: 2024/02/13
 Description: A model that learns to add strings of numbers, e.g. "535+61" -> "596".
+Accelerator: GPU
 """
+
 """
 ## Introduction
 
@@ -45,8 +47,8 @@ Five digits (reversed):
 ## Setup
 """
 
-from tensorflow import keras
-from tensorflow.keras import layers
+import keras
+from keras import layers
 import numpy as np
 
 # Parameters for the model and dataset.
@@ -145,8 +147,8 @@ print("Total questions:", len(questions))
 """
 
 print("Vectorization...")
-x = np.zeros((len(questions), MAXLEN, len(chars)), dtype=np.bool)
-y = np.zeros((len(questions), DIGITS + 1, len(chars)), dtype=np.bool)
+x = np.zeros((len(questions), MAXLEN, len(chars)), dtype=bool)
+y = np.zeros((len(questions), DIGITS + 1, len(chars)), dtype=bool)
 for i, sentence in enumerate(questions):
     x[i] = ctable.encode(sentence, MAXLEN)
 for i, sentence in enumerate(expected):
@@ -161,8 +163,8 @@ y = y[indices]
 
 # Explicitly set apart 10% for validation data that we never train over.
 split_at = len(x) - len(x) // 10
-(x_train, x_val) = x[:split_at], x[split_at:]
-(y_train, y_val) = y[:split_at], y[split_at:]
+x_train, x_val = x[:split_at], x[split_at:]
+y_train, y_val = y[:split_at], y[split_at:]
 
 print("Training Data:")
 print(x_train.shape)
@@ -183,7 +185,8 @@ model = keras.Sequential()
 # "Encode" the input sequence using a LSTM, producing an output of size 128.
 # Note: In a situation where your input sequences have a variable length,
 # use input_shape=(None, num_feature).
-model.add(layers.LSTM(128, input_shape=(MAXLEN, len(chars))))
+model.add(layers.Input((MAXLEN, len(chars))))
+model.add(layers.LSTM(128))
 # As the decoder RNN's input, repeatedly provide with the last output of
 # RNN for each time step. Repeat 'DIGITS + 1' times as that's the maximum
 # length of output, e.g., when DIGITS=3, max output is 999+999=1998.
@@ -206,9 +209,14 @@ model.summary()
 ## Train the model
 """
 
+# Training parameters.
 epochs = 30
 batch_size = 32
 
+# Formatting characters for results display.
+green_color = "\033[92m"
+red_color = "\033[91m"
+end_char = "\033[0m"
 
 # Train the model each generation and show predictions against the validation
 # dataset.
@@ -227,17 +235,23 @@ for epoch in range(1, epochs):
     for i in range(10):
         ind = np.random.randint(0, len(x_val))
         rowx, rowy = x_val[np.array([ind])], y_val[np.array([ind])]
-        preds = np.argmax(model.predict(rowx), axis=-1)
+        preds = np.argmax(model.predict(rowx, verbose=0), axis=-1)
         q = ctable.decode(rowx[0])
         correct = ctable.decode(rowy[0])
         guess = ctable.decode(preds[0], calc_argmax=False)
         print("Q", q[::-1] if REVERSE else q, end=" ")
         print("T", correct, end=" ")
         if correct == guess:
-            print("☑ " + guess)
+            print(f"{green_color}☑ {guess}{end_char}")
         else:
-            print("☒ " + guess)
+            print(f"{red_color}☒ {guess}{end_char}")
 
 """
 You'll get to 99+% validation accuracy after ~30 epochs.
+"""
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 15: Language models and the Transformer](https://deeplearningwithpython.io/chapters/chapter15_language-models-and-the-transformer)
+- [Chapter 16: Text generation](https://deeplearningwithpython.io/chapters/chapter16_text-generation)
 """

@@ -4,7 +4,9 @@ Authors: Mark Omernick, Francois Chollet
 Date created: 2019/11/06
 Last modified: 2020/05/17
 Description: Text sentiment classification starting from raw text files.
+Accelerator: GPU
 """
+
 """
 ## Introduction
 
@@ -18,8 +20,14 @@ classification dataset (unprocessed version). We use the `TextVectorization` lay
 ## Setup
 """
 
+import os
+
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import keras
 import tensorflow as tf
 import numpy as np
+from keras import layers
 
 """
 ## Load the data: IMDB movie review sentiment classification
@@ -50,7 +58,7 @@ ls aclImdb/train
 
 """
 The `aclImdb/train/pos` and `aclImdb/train/neg` folders contain text files, each of
- which represents on review (either positive or negative):
+ which represents one review (either positive or negative):
 """
 
 """shell
@@ -58,7 +66,7 @@ cat aclImdb/train/pos/6248_7.txt
 """
 
 """
-We are only interest in the `pos` and `neg` subfolders, so let's delete the rest:
+We are only interested in the `pos` and `neg` subfolders, so let's delete the other subfolder that has text files in it:
 """
 
 """shell
@@ -66,7 +74,7 @@ rm -r aclImdb/train/unsup
 """
 
 """
-You can use the utility `tf.keras.preprocessing.text_dataset_from_directory` to
+You can use the utility `keras.utils.text_dataset_from_directory` to
 generate a labeled `tf.data.Dataset` object from a set of text files on disk filed
  into class-specific folders.
 
@@ -88,35 +96,27 @@ get have no overlap.
 """
 
 batch_size = 32
-raw_train_ds = tf.keras.preprocessing.text_dataset_from_directory(
+raw_train_ds = keras.utils.text_dataset_from_directory(
     "aclImdb/train",
     batch_size=batch_size,
     validation_split=0.2,
     subset="training",
     seed=1337,
 )
-raw_val_ds = tf.keras.preprocessing.text_dataset_from_directory(
+raw_val_ds = keras.utils.text_dataset_from_directory(
     "aclImdb/train",
     batch_size=batch_size,
     validation_split=0.2,
     subset="validation",
     seed=1337,
 )
-raw_test_ds = tf.keras.preprocessing.text_dataset_from_directory(
+raw_test_ds = keras.utils.text_dataset_from_directory(
     "aclImdb/test", batch_size=batch_size
 )
 
-print(
-    "Number of batches in raw_train_ds: %d"
-    % tf.data.experimental.cardinality(raw_train_ds)
-)
-print(
-    "Number of batches in raw_val_ds: %d" % tf.data.experimental.cardinality(raw_val_ds)
-)
-print(
-    "Number of batches in raw_test_ds: %d"
-    % tf.data.experimental.cardinality(raw_test_ds)
-)
+print(f"Number of batches in raw_train_ds: {raw_train_ds.cardinality()}")
+print(f"Number of batches in raw_val_ds: {raw_val_ds.cardinality()}")
+print(f"Number of batches in raw_test_ds: {raw_test_ds.cardinality()}")
 
 """
 Let's preview a few samples:
@@ -139,9 +139,9 @@ for text_batch, label_batch in raw_train_ds.take(1):
 In particular, we remove `<br />` tags.
 """
 
-from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 import string
 import re
+
 
 # Having looked at our data above, we see that the raw text contains HTML break
 # tags of the form '<br />'. These tags will not be removed by the default
@@ -151,7 +151,7 @@ def custom_standardization(input_data):
     lowercase = tf.strings.lower(input_data)
     stripped_html = tf.strings.regex_replace(lowercase, "<br />", " ")
     return tf.strings.regex_replace(
-        stripped_html, "[%s]" % re.escape(string.punctuation), ""
+        stripped_html, f"[{re.escape(string.punctuation)}]", ""
     )
 
 
@@ -167,14 +167,14 @@ sequence_length = 500
 # and the custom standardization defined above.
 # We also set an explicit maximum sequence length, since the CNNs later in our
 # model won't support ragged sequences.
-vectorize_layer = TextVectorization(
+vectorize_layer = keras.layers.TextVectorization(
     standardize=custom_standardization,
     max_tokens=max_features,
     output_mode="int",
     output_sequence_length=sequence_length,
 )
 
-# Now that the vocab layer has been created, call `adapt` on a text-only
+# Now that the vectorize_layer has been created, call `adapt` on a text-only
 # dataset to create the vocabulary. You don't have to batch, but for very large
 # datasets this means you're not keeping spare copies of the dataset in memory.
 
@@ -195,7 +195,7 @@ There are 2 ways we can use our text vectorization layer:
 """
 
 ```python
-text_input = tf.keras.Input(shape=(1,), dtype=tf.string, name='text')
+text_input = keras.Input(shape=(1,), dtype=tf.string, name='text')
 x = vectorize_layer(text_input)
 x = layers.Embedding(max_features + 1, embedding_dim)(x)
 ...
@@ -238,10 +238,8 @@ test_ds = test_ds.cache().prefetch(buffer_size=10)
 We choose a simple 1D convnet starting with an `Embedding` layer.
 """
 
-from tensorflow.keras import layers
-
 # A integer input for vocab indices.
-inputs = tf.keras.Input(shape=(None,), dtype="int64")
+inputs = keras.Input(shape=(None,), dtype="int64")
 
 # Next, we add a layer to map those vocab indices into a space of dimensionality
 # 'embedding_dim'.
@@ -260,7 +258,7 @@ x = layers.Dropout(0.5)(x)
 # We project onto a single unit output layer, and squash it with a sigmoid:
 predictions = layers.Dense(1, activation="sigmoid", name="predictions")(x)
 
-model = tf.keras.Model(inputs, predictions)
+model = keras.Model(inputs, predictions)
 
 # Compile the model with binary crossentropy loss and an adam optimizer.
 model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
@@ -288,17 +286,22 @@ create a new model (using the weights we just trained):
 """
 
 # A string input
-inputs = tf.keras.Input(shape=(1,), dtype="string")
+inputs = keras.Input(shape=(1,), dtype="string")
 # Turn strings into vocab indices
 indices = vectorize_layer(inputs)
 # Turn vocab indices into predictions
 outputs = model(indices)
 
 # Our end to end model
-end_to_end_model = tf.keras.Model(inputs, outputs)
+end_to_end_model = keras.Model(inputs, outputs)
 end_to_end_model.compile(
     loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"]
 )
 
 # Test it with `raw_test_ds`, which yields raw strings
 end_to_end_model.evaluate(raw_test_ds)
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 14: Text classification](https://deeplearningwithpython.io/chapters/chapter14_text-classification)
+"""

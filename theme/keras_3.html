@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Keras 3 runs the same model code on any supported backend, including JAX, PyTorch, and TensorFlow. Learn what's new, how backends work, and how to migrate.">
+  <meta name="author" content="Keras Team">
+
+  <title>Keras 3: Multi-backend deep learning</title>
+
+  <!-- Bootstrap core CSS -->
+  <link href="/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Custom fonts for this template -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Custom styles for this template -->
+  <link href="/css/landing.css?v=3" rel="stylesheet">
+  <link href="/css/announcement.css?v=3" rel="stylesheet">
+  <link href="{{base_url}}css/monokai.css" rel="stylesheet">
+
+  <!-- Google Tag Manager -->
+  <script>(function (w, d, s, l, i) {
+      w[l] = w[l] || []; w[l].push({
+        'gtm.start':
+          new Date().getTime(), event: 'gtm.js'
+      }); var f = d.getElementsByTagName(s)[0],
+        j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+          'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+    })(window, document, 'script', 'dataLayer', 'GTM-5DNGF4N');
+  </script>
+  <!-- End Google Tag Manager -->
+
+</head>
+
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5DNGF4N"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <div class="hidden">
+    {% set related_nav_urls_map = {
+      "/api/": ["/2.18/api/"],
+      "/2.18/api/": ["/api/"],
+      "/keras_tuner/": ["/keras_hub/"],
+      "/keras_hub/": ["/keras_tuner/"],
+    } %}
+    {% set vars = {'related_urls': [], 'active_url': ''} %}
+    {% for item in nav %}
+      {% if item.active %}
+        {{ vars.update({'related_urls': related_nav_urls_map[item.url], 'active_url': item.url}) }}
+    {% endif %}
+    {% endfor %}
+  </div>
+  <nav class="nav__container">
+    <div class="nav__wrapper">
+      <div class="nav__controls--mobile">
+        <button class="nav__menu--button"><i class="icon--menu"></i></button>
+        <button class="nav__menu--close"><i class="icon--close"></i></button>
+        <a href="/">
+          <img class="nav__logo nav__logo--mobile" src="/img/k-logo.png" alt="keras.io logo" />
+        </a>
+        <button class="nav__search--mobile">
+          <i class="icon__search--mobile"></i>
+        </button>
+      </div>
+      <form class="nav__search nav__search-form--mobile">
+        <input
+          class="nav__search--input"
+          type="search"
+          placeholder="SEARCH"
+          aria-label="Search"
+        />
+        <button class="nav__search--button" type="submit">
+          <i class="icon--search"></i>
+        </button>
+      </form>
+      <div class="k-nav nav__mobile-menu" id="nav-menu">
+        <div class="nav flex-column nav-pills" role="tablist" aria-orientation="vertical">
+          <a class="nav-link" href="/about/" role="tab" aria-selected="">About Keras</a>
+          <a class="nav-link" href="/getting_started/" role="tab" aria-selected="">Getting started</a>
+          <a class="nav-link" href="/guides/" role="tab" aria-selected="">Developer guides</a>
+          <a class="nav-link" href="/examples/" role="tab" aria-selected="">Code examples</a>
+          <a class="nav-link" href="/api/" role="tab" aria-selected="">Keras 3 API documentation</a>
+          <a class="nav-link" href="/2.18/api/" role="tab" aria-selected="">Keras 2 API documentation</a>
+          <a class="nav-link" href="/keras_tuner/" role="tab" aria-selected="">KerasTuner: Hyperparam Tuning</a>
+          <a class="nav-link" href="/keras_hub/" role="tab" aria-selected="">KerasHub: Pretrained Models</a>
+        </div>
+      </div>
+      <a href="/">
+        <img class="nav__logo nav__logo--desktop" src="/img/logo.png" alt="keras.io logo"/>
+      </a>
+      <div class="nav__menu">
+        <ul class="nav__item--container">
+          <li class="nav__item">
+            <a class="nav__link" href="/getting_started/">GET STARTED</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link" href="/guides/">GUIDES</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link" href="/api/">API</a>
+          </li>
+          <li class="nav__item">
+            <a class="nav__link" href="/examples/">EXAMPLES</a>
+          </li>
+          <li class="nav__item"><a class="nav__link" href="/keras_hub/">KERAS HUB</a></li>
+          <li class="nav__item"><a class="nav__link" href="/keras_rs/">KERAS RS</a></li>
+          <li class="nav__item"><a class="nav__link" href="/keras_tuner/">KERAS TUNER</a></li>
+        </ul>
+
+        <form class="nav__search">
+          <input
+            class="nav__search--input"
+            type="search"
+            placeholder="SEARCH"
+            aria-label="Search"
+          />
+          <button class="nav__search--button" type="submit">
+            <i class="icon--search"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </nav>
+  
+  <div class="page__container container">
+    <!-- Masthead -->
+    <div class="masthead text-center">
+      <div class="container">
+        <div class="row">
+          <div class="mx-auto">
+            <h1 class="announcement__headline">Introducing Keras 3.0</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg">
+        <div class="blog-content">
+          {{content|safe}}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{base_url}}js/index.js"></script>
+
+</body>
+
+</html>

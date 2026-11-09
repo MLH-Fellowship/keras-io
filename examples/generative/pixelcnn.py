@@ -4,6 +4,7 @@ Author: [ADMoreau](https://github.com/ADMoreau)
 Date created: 2020/05/17
 Last modified: 2020/05/23
 Description: PixelCNN implemented in Keras.
+Accelerator: GPU
 """
 
 """
@@ -11,20 +12,20 @@ Description: PixelCNN implemented in Keras.
 
 PixelCNN is a generative model proposed in 2016 by van den Oord et al.
 (reference: [Conditional Image Generation with PixelCNN Decoders](https://arxiv.org/abs/1606.05328)).
-It is designed to generate images (or other data types) iteratively,
+It is designed to generate images (or other data types) iteratively
 from an input vector where the probability distribution of prior elements dictates the
 probability distribution of later elements. In the following example, images are generated
 in this fashion, pixel-by-pixel, via a masked convolution kernel that only looks at data
 from previously generated pixels (origin at the top left) to generate later pixels.
-During inference, the output of the network is used as a probability ditribution
+During inference, the output of the network is used as a probability distribution
 from which new pixel values are sampled to generate a new image
 (here, with MNIST, the pixels values are either black or white).
 """
 
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+import keras
+from keras import layers
+from keras import ops
 from tqdm import tqdm
 
 """
@@ -37,7 +38,7 @@ input_shape = (28, 28, 1)
 n_residual_blocks = 5
 # The data, split between train and test sets
 (x, _), (y, _) = keras.datasets.mnist.load_data()
-# Concatenate all of the images together
+# Concatenate all the images together
 data = np.concatenate((x, y), axis=0)
 # Round all pixel values less than 33% of the max 256 value to 0
 # anything above this value gets rounded up to 1 so that all values are either
@@ -49,11 +50,12 @@ data = data.astype(np.float32)
 ## Create two classes for the requisite Layers for the model
 """
 
+
 # The first layer is the PixelCNN layer. This layer simply
 # builds on the 2D convolutional layer, but includes masking.
 class PixelConvLayer(layers.Layer):
     def __init__(self, mask_type, **kwargs):
-        super(PixelConvLayer, self).__init__()
+        super().__init__()
         self.mask_type = mask_type
         self.conv = layers.Conv2D(**kwargs)
 
@@ -61,7 +63,7 @@ class PixelConvLayer(layers.Layer):
         # Build the conv2d layer to initialize kernel variables
         self.conv.build(input_shape)
         # Use the initialized kernel to create the mask
-        kernel_shape = self.conv.kernel.get_shape()
+        kernel_shape = ops.shape(self.conv.kernel)
         self.mask = np.zeros(shape=kernel_shape)
         self.mask[: kernel_shape[0] // 2, ...] = 1.0
         self.mask[kernel_shape[0] // 2, : kernel_shape[1] // 2, ...] = 1.0
@@ -77,7 +79,7 @@ class PixelConvLayer(layers.Layer):
 # This is just a normal residual block, but based on the PixelConvLayer.
 class ResidualBlock(keras.layers.Layer):
     def __init__(self, filters, **kwargs):
-        super(ResidualBlock, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.conv1 = keras.layers.Conv2D(
             filters=filters, kernel_size=1, activation="relu"
         )
@@ -103,7 +105,7 @@ class ResidualBlock(keras.layers.Layer):
 ## Build the model based on the original paper
 """
 
-inputs = keras.Input(shape=input_shape)
+inputs = keras.Input(shape=input_shape, batch_size=128)
 x = PixelConvLayer(
     mask_type="A", filters=128, kernel_size=7, activation="relu", padding="same"
 )(inputs)
@@ -137,7 +139,7 @@ pixel_cnn.fit(
 """
 ## Demonstration
 
-The PixelCNN cannot generate the full image at once, and must instead generate each pixel in
+The PixelCNN cannot generate the full image at once. Instead, it must generate each pixel in
 order, append the last generated pixel to the current image, and feed the image back into the
 model to repeat the process.
 """
@@ -149,17 +151,17 @@ batch = 4
 pixels = np.zeros(shape=(batch,) + (pixel_cnn.input_shape)[1:])
 batch, rows, cols, channels = pixels.shape
 
-# Iterate the pixels because generation has to be done sequentially pixel by pixel.
+# Iterate over the pixels because generation has to be done sequentially pixel by pixel.
 for row in tqdm(range(rows)):
     for col in range(cols):
         for channel in range(channels):
             # Feed the whole array and retrieving the pixel value probabilities for the next
             # pixel.
-            probs = pixel_cnn.predict(pixels)[:, row, col, channel]
+            probs = pixel_cnn.predict(pixels, verbose=0)[:, row, col, channel]
             # Use the probabilities to pick pixel values and append the values to the image
             # frame.
-            pixels[:, row, col, channel] = tf.math.ceil(
-                probs - tf.random.uniform(probs.shape)
+            pixels[:, row, col, channel] = ops.ceil(
+                probs - keras.random.uniform(probs.shape)
             )
 
 
@@ -173,9 +175,9 @@ def deprocess_image(x):
     return x
 
 
-# Iterate the generated images and plot them with matplotlib.
+# Iterate over the generated images and plot them with matplotlib.
 for i, pic in enumerate(pixels):
-    keras.preprocessing.image.save_img(
+    keras.utils.save_img(
         "generated_image_{}.png".format(i), deprocess_image(np.squeeze(pic, -1))
     )
 
@@ -183,3 +185,8 @@ display(Image("generated_image_0.png"))
 display(Image("generated_image_1.png"))
 display(Image("generated_image_2.png"))
 display(Image("generated_image_3.png"))
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 17: Image generation](https://deeplearningwithpython.io/chapters/chapter17_image-generation)
+"""

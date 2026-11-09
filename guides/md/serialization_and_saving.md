@@ -1,9 +1,9 @@
-# Serialization and saving
+# Save, serialize, and export models
 
-**Authors:** Kathy Wu, Francois Chollet<br>
-**Date created:** 2020/04/28<br>
-**Last modified:** 2020/04/28<br>
-**Description:** Complete guide to saving & serializing models.
+**Authors:** Neel Kovelamudi, Francois Chollet<br>
+**Date created:** 2023/06/14<br>
+**Last modified:** 2023/06/30<br>
+**Description:** Complete guide to saving, serializing, and exporting models.
 
 
 <img class="k-inline-icon" src="https://colab.research.google.com/img/colab_favicon.ico"/> [**View in Colab**](https://colab.research.google.com/github/keras-team/keras-io/blob/master/guides/ipynb/serialization_and_saving.ipynb)  <span class="k-dot">•</span><img class="k-inline-icon" src="https://github.com/favicon.ico"/> [**GitHub source**](https://github.com/keras-team/keras-io/blob/master/guides/serialization_and_saving.py)
@@ -15,27 +15,26 @@
 
 A Keras model consists of multiple components:
 
-- An architecture, or configuration, which specifyies what layers the model
+- The architecture, or configuration, which specifies what layers the model
 contain, and how they're connected.
 - A set of weights values (the "state of the model").
 - An optimizer (defined by compiling the model).
-- A set of losses and metrics (defined by compiling the model or calling
-`add_loss()` or `add_metric()`).
+- A set of losses and metrics (defined by compiling the model).
 
-The Keras API makes it possible to save of these pieces to disk at once,
-or to only selectively save some of them:
+The Keras API saves all of these pieces together in a unified format,
+marked by the `.keras` extension. This is a zip archive consisting of the
+following:
 
-- Saving everything into a single archive in the TensorFlow SavedModel format
-(or in the older Keras H5 format). This is the standard practice.
-- Saving the architecture / configuration only, typically as a JSON file.
-- Saving the weights values only. This is generally used when training the model.
+- A JSON-based configuration file (config.json): Records of model, layer, and
+other trackables' configuration.
+- A H5-based state file, such as `model.weights.h5` (for the whole model),
+with directory keys for layers and their weights.
+- A metadata file in JSON, storing things such as the current Keras version.
 
-Let's take a look at each of these options: when would you use one or the other?
-How do they work?
-
+Let's take a look at how this works.
 
 ---
-## The short answer to saving & loading
+## How to save and load a model
 
 If you only have 10 seconds to read this guide, here's what you need to know.
 
@@ -43,61 +42,47 @@ If you only have 10 seconds to read this guide, here's what you need to know.
 
 ```python
 model = ...  # Get model (Sequential, Functional Model, or Model subclass)
-model.save('path/to/location')
+model.save('path/to/location.keras')  # The file needs to end with the .keras extension
 ```
 
 **Loading the model back:**
 
 ```python
-from tensorflow import keras
-model = keras.models.load_model('path/to/location')
+model = keras.models.load_model('path/to/location.keras')
 ```
 
 Now, let's look at the details.
-
 
 ---
 ## Setup
 
 
-
 ```python
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
-
+import keras
+from keras import ops
 ```
 
 ---
-## Whole-model saving & loading
+## Saving
 
-You can save an entire model to a single artifact. It will include:
+This section is about saving an entire model to a single file. The file will include:
 
 - The model's architecture/config
 - The model's weight values (which were learned during training)
-- The model's compilation information (if `compile()`) was called
+- The model's compilation information (if `compile()` was called)
 - The optimizer and its state, if any (this enables you to restart training
 where you left)
 
 #### APIs
 
-- `model.save()` or `tf.keras.models.save_model()`
-- `tf.keras.models.load_model()`
+You can save a model with `model.save()` or `keras.models.save_model()` (which is equivalent).
+You can load it back with `keras.models.load_model()`.
 
-There are two formats you can use to save an entire model to disk:
-**the TensorFlow SavedModel format**, and **the older Keras H5 format**.
-The recommended format is SavedModel. It is the default when you use `model.save()`.
-
-You can switch to the H5 format by:
-
-- Passing `format='h5'` to `save()`.
-- Passing a filename that ends in `.h5` or `.keras` to `save()`.
-
-
-### SavedModel format
+The only supported format in Keras 3 is the "Keras v3" format,
+which uses the `.keras` extension.
 
 **Example:**
-
 
 
 ```python
@@ -107,7 +92,7 @@ def get_model():
     inputs = keras.Input(shape=(32,))
     outputs = keras.layers.Dense(1)(inputs)
     model = keras.Model(inputs, outputs)
-    model.compile(optimizer="adam", loss="mean_squared_error")
+    model.compile(optimizer=keras.optimizers.Adam(), loss="mean_squared_error")
     return model
 
 
@@ -118,248 +103,297 @@ test_input = np.random.random((128, 32))
 test_target = np.random.random((128, 1))
 model.fit(test_input, test_target)
 
-# Calling `save('my_model')` creates a SavedModel folder `my_model`.
-model.save("my_model")
+# Calling `save('my_model.keras')` creates a zip archive `my_model.keras`.
+model.save("my_model.keras")
 
 # It can be used to reconstruct the model identically.
-reconstructed_model = keras.models.load_model("my_model")
+reconstructed_model = keras.models.load_model("my_model.keras")
 
 # Let's check:
 np.testing.assert_allclose(
     model.predict(test_input), reconstructed_model.predict(test_input)
 )
-
-# The reconstructed model is already compiled and has retained the optimizer
-# state, so training can resume:
-reconstructed_model.fit(test_input, test_target)
-
 ```
 
 <div class="k-default-codeblock">
 ```
-4/4 [==============================] - 0s 978us/step - loss: 0.2587
-WARNING:tensorflow:From /opt/conda/lib/python3.7/site-packages/tensorflow/python/training/tracking/tracking.py:105: Network.state_updates (from tensorflow.python.keras.engine.network) is deprecated and will be removed in a future version.
-Instructions for updating:
-This property should not be used in TensorFlow 2.0, as updates are applied automatically.
-INFO:tensorflow:Assets written to: my_model/assets
-4/4 [==============================] - 0s 998us/step - loss: 0.2538
-
-<tensorflow.python.keras.callbacks.History at 0x7f92b8109250>
+ 4/4 ━━━━━━━━━━━━━━━━━━━━ 0s 8ms/step - loss: 0.4232  
+ 4/4 ━━━━━━━━━━━━━━━━━━━━ 0s 281us/step
+ 4/4 ━━━━━━━━━━━━━━━━━━━━ 0s 373us/step
 
 ```
 </div>
-#### What the SavedModel contains
+### Custom objects
 
-Calling `model.save('my_model')` creates a folder named `my_model`,
-containing the following:
+This section covers the basic workflows for handling custom layers, functions, and
+models in Keras saving and reloading.
 
+When saving a model that includes custom objects, such as a subclassed Layer,
+you **must** define a `get_config()` method on the object class.
+If the arguments passed to the constructor (`__init__()` method) of the custom object
+aren't Python objects (anything other than base types like ints, strings,
+etc.), then you **must** also explicitly deserialize these arguments in the `from_config()`
+class method.
 
+Like this:
 
 ```python
-!ls my_model
+class CustomLayer(keras.layers.Layer):
+    def __init__(self, sublayer, **kwargs):
+        super().__init__(**kwargs)
+        self.sublayer = sublayer
 
+    def call(self, x):
+        return self.sublayer(x)
+
+    def get_config(self):
+        base_config = super().get_config()
+        config = {
+            "sublayer": keras.saving.serialize_keras_object(self.sublayer),
+        }
+        return {**base_config, **config}
+
+    @classmethod
+    def from_config(cls, config):
+        sublayer_config = config.pop("sublayer")
+        sublayer = keras.saving.deserialize_keras_object(sublayer_config)
+        return cls(sublayer, **config)
 ```
 
-<div class="k-default-codeblock">
-```
-assets	saved_model.pb	variables
+Please see the [Defining the config methods section](#config_methods) for more
+details and examples.
 
-```
-</div>
-The model architecture, and training configuration
-(including the optimizer, losses, and metrics) are stored in `saved_model.pb`.
-The weights are saved in the `variables/` directory.
+The saved `.keras` file is lightweight and does not store the Python code for custom
+objects. Therefore, to reload the model, `load_model` requires access to the definition
+of any custom objects used through one of the following methods:
 
-For detailed information on the SavedModel format, see the
-[SavedModel guide (*The SavedModel format on disk*)](
-  https://www.tensorflow.org/guide/saved_model#the_savedmodel_format_on_disk).
+1. Registering custom objects **(preferred)**,
+2. Passing custom objects directly when loading, or
+3. Using a custom object scope
 
+Below are examples of each workflow:
 
-#### How SavedModel handles custom objects
+#### Registering custom objects (**preferred**)
 
-When saving the model and its layers, the SavedModel format stores the
-class name, **call function**, losses, and weights (and the config, if implemented).
-The call function defines the computation graph of the model/layer.
+This is the preferred method, as custom object registration greatly simplifies saving and
+loading code. Adding the `@keras.saving.register_keras_serializable` decorator to the
+class definition of a custom object registers the object globally in a master list,
+allowing Keras to recognize the object when loading the model.
 
-In the absence of the model/layer config, the call function is used to create
-a model that exists like the original model which can be trained, evaluated,
-and used for inference.
-
-Nevertheless, it is always a good practice to define the `get_config`
-and `from_config` methods when writing a custom model or layer class.
-This allows you to easily update the computation later if needed.
-See the section about [Custom objects](save_and_serialize.ipynb#custom-objects)
-for more information.
-
-Below is an example of what happens when loading custom layers from
-he SavedModel format **without** overwriting the config methods.
-
-
-
-```python
-
-class CustomModel(keras.Model):
-    def __init__(self, hidden_units):
-        super(CustomModel, self).__init__()
-        self.dense_layers = [keras.layers.Dense(u) for u in hidden_units]
-
-    def call(self, inputs):
-        x = inputs
-        for layer in self.dense_layers:
-            x = layer(x)
-        return x
-
-
-model = CustomModel([16, 16, 10])
-# Build the model by calling it
-input_arr = tf.random.uniform((1, 5))
-outputs = model(input_arr)
-model.save("my_model")
-
-# Delete the custom-defined model class to ensure that the loader does not have
-# access to it.
-del CustomModel
-
-loaded = keras.models.load_model("my_model")
-np.testing.assert_allclose(loaded(input_arr), outputs)
-
-print("Original model:", model)
-print("Loaded model:", loaded)
-
-```
-
-<div class="k-default-codeblock">
-```
-INFO:tensorflow:Assets written to: my_model/assets
-WARNING:tensorflow:No training configuration found in save file, so the model was *not* compiled. Compile it manually.
-Original model: <__main__.CustomModel object at 0x7f92d80e9910>
-Loaded model: <tensorflow.python.keras.saving.saved_model.load.CustomModel object at 0x7f92b8050550>
-
-```
-</div>
-As seen in the example above, the loader dynamically creates a new model class
-that acts like the original model.
-
-
-### Keras H5 format
-
-Keras also supports saving a single HDF5 file containing the model's architecture,
-weights values, and `compile()` information.
-It is a light-weight alternative to SavedModel.
+Let's create a custom model involving both a custom layer and a custom activation
+function to demonstrate this.
 
 **Example:**
 
 
+```python
+# Clear all previously registered custom objects
+keras.saving.get_custom_objects().clear()
+
+
+# Upon registration, you can optionally specify a package or a name.
+# If left blank, the package defaults to `Custom` and the name defaults to
+# the class name.
+@keras.saving.register_keras_serializable(package="MyLayers")
+class CustomLayer(keras.layers.Layer):
+    def __init__(self, factor):
+        super().__init__()
+        self.factor = factor
+
+    def call(self, x):
+        return x * self.factor
+
+    def get_config(self):
+        return {"factor": self.factor}
+
+
+@keras.saving.register_keras_serializable(package="my_package", name="custom_fn")
+def custom_fn(x):
+    return x**2
+
+
+# Create the model.
+def get_model():
+    inputs = keras.Input(shape=(4,))
+    mid = CustomLayer(0.5)(inputs)
+    outputs = keras.layers.Dense(1, activation=custom_fn)(mid)
+    model = keras.Model(inputs, outputs)
+    model.compile(optimizer="rmsprop", loss="mean_squared_error")
+    return model
+
+
+# Train the model.
+def train_model(model):
+    input = np.random.random((4, 4))
+    target = np.random.random((4, 1))
+    model.fit(input, target)
+    return model
+
+
+test_input = np.random.random((4, 4))
+test_target = np.random.random((4, 1))
+
+model = get_model()
+model = train_model(model)
+model.save("custom_model.keras")
+
+# Now, we can simply load without worrying about our custom objects.
+reconstructed_model = keras.models.load_model("custom_model.keras")
+
+# Let's check:
+np.testing.assert_allclose(
+    model.predict(test_input), reconstructed_model.predict(test_input)
+)
+```
+
+<div class="k-default-codeblock">
+```
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 46ms/step - loss: 0.2571
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 11ms/step
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 12ms/step
+
+```
+</div>
+#### Passing custom objects to `load_model()`
+
 
 ```python
 model = get_model()
+model = train_model(model)
 
-# Train the model.
-test_input = np.random.random((128, 32))
-test_target = np.random.random((128, 1))
-model.fit(test_input, test_target)
+# Calling `save('my_model.keras')` creates a zip archive `my_model.keras`.
+model.save("custom_model.keras")
 
-# Calling `save('my_model.h5')` creates a h5 file `my_model.h5`.
-model.save("my_h5_model.h5")
-
-# It can be used to reconstruct the model identically.
-reconstructed_model = keras.models.load_model("my_h5_model.h5")
+# Upon loading, pass a dict containing the custom objects used in the
+# `custom_objects` argument of `keras.models.load_model()`.
+reconstructed_model = keras.models.load_model(
+    "custom_model.keras",
+    custom_objects={"CustomLayer": CustomLayer, "custom_fn": custom_fn},
+)
 
 # Let's check:
 np.testing.assert_allclose(
     model.predict(test_input), reconstructed_model.predict(test_input)
 )
 
-# The reconstructed model is already compiled and has retained the optimizer
-# state, so training can resume:
-reconstructed_model.fit(test_input, test_target)
-
 ```
 
 <div class="k-default-codeblock">
 ```
-4/4 [==============================] - 0s 911us/step - loss: 0.8166
-4/4 [==============================] - 0s 958us/step - loss: 0.7211
-
-<tensorflow.python.keras.callbacks.History at 0x7f9276766050>
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step - loss: 0.0535
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 12ms/step
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 12ms/step
 
 ```
 </div>
-#### Limitations
+#### Using a custom object scope
 
-Compared to the SavedModel format, there are two things that don't
-get included in the H5 file:
+Any code within the custom object scope will be able to recognize the custom objects
+passed to the scope argument. Therefore, loading the model within the scope will allow
+the loading of our custom objects.
 
-- **External losses & metrics** added via `model.add_loss()`
-& `model.add_metric()` are not saved (unlike SavedModel).
-If you have such losses & metrics on your model and you want to resume training,
-you need to add these losses back yourself after loading the model.
-Note that this does not apply to losses/metrics created *inside* layers via
-`self.add_loss()` & `self.add_metric()`. As long as the layer gets loaded,
-these losses & metrics are kept, since they are part of the `call` method of the layer.
-- The **computation graph of custom objects** such as custom layers
-is not included in the saved file. At loading time, Keras will need access
-to the Python classes/functions of these objects in order to reconstruct the model.
-See [Custom objects](save_and_serialize.ipynb#custom-objects).
+**Example:**
 
 
+```python
+model = get_model()
+model = train_model(model)
+model.save("custom_model.keras")
 
----
-## Saving the architecture
+# Pass the custom objects dictionary to a custom object scope and place
+# the `keras.models.load_model()` call within the scope.
+custom_objects = {"CustomLayer": CustomLayer, "custom_fn": custom_fn}
 
+with keras.saving.custom_object_scope(custom_objects):
+    reconstructed_model = keras.models.load_model("custom_model.keras")
+
+# Let's check:
+np.testing.assert_allclose(
+    model.predict(test_input), reconstructed_model.predict(test_input)
+)
+```
+
+<div class="k-default-codeblock">
+```
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 40ms/step - loss: 0.0868
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 11ms/step
+ 1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 11ms/step
+
+```
+</div>
+### Model serialization
+
+This section is about saving only the model's configuration, without its state.
 The model's configuration (or architecture) specifies what layers the model
-contains, and how these layers are connected*. If you have the configuration of a model,
-then the model can be created with a freshly initialized state for the weights
-and no compilation information.
-
-*Note this only applies to models defined using the functional or Sequential apis
- not subclassed models.
-
-
-### Configuration of a Sequential model or Functional API model
-
-These types of models are explicit graphs of layers: their configuration
-is always available in a structured form.
+contains, and how these layers are connected. If you have the configuration of a model,
+then the model can be created with a freshly initialized state (no weights or compilation
+information).
 
 #### APIs
 
-- `get_config()` and `from_config()`
-- `tf.keras.models.model_to_json()` and `tf.keras.models.model_from_json()`
+The following serialization APIs are available:
 
+- `keras.models.clone_model(model)`: make a (randomly initialized) copy of a model.
+- `get_config()` and `cls.from_config()`: retrieve the configuration of a layer or model, and recreate
+a model instance from its config, respectively.
+- `keras.models.model_to_json()` and `keras.models.model_from_json()`: similar, but as JSON strings.
+- `keras.saving.serialize_keras_object()`: retrieve the configuration any arbitrary Keras object.
+- `keras.saving.deserialize_keras_object()`: recreate an object instance from its configuration.
+
+#### In-memory model cloning
+
+You can do in-memory cloning of a model via `keras.models.clone_model()`.
+This is equivalent to getting the config then recreating the model from its config
+(so it does not preserve compilation information or layer weights values).
+
+**Example:**
+
+
+```python
+new_model = keras.models.clone_model(model)
+```
 
 #### `get_config()` and `from_config()`
 
-Calling `config = model.get_config()` will return a Python dict containing
-the configuration of the model. The same model can then be reconstructed via
-`Sequential.from_config(config)` (for a `Sequential` model) or
-`Model.from_config(config)` (for a Functional API model).
+Calling `model.get_config()` or `layer.get_config()` will return a Python dict containing
+the configuration of the model or layer, respectively. You should define `get_config()`
+to contain arguments needed for the `__init__()` method of the model or layer. At loading time,
+the `from_config(config)` method will then call `__init__()` with these arguments to
+reconstruct the model or layer.
 
-The same workflow also works for any serializable layer.
 
 **Layer example:**
-
 
 
 ```python
 layer = keras.layers.Dense(3, activation="relu")
 layer_config = layer.get_config()
-new_layer = keras.layers.Dense.from_config(layer_config)
+print(layer_config)
+```
 
+<div class="k-default-codeblock">
+```
+{'name': 'dense_4', 'trainable': True, 'dtype': 'float32', 'units': 3, 'activation': 'relu', 'use_bias': True, 'kernel_initializer': {'module': 'keras.src.initializers.random_initializers', 'class_name': 'GlorotUniform', 'config': {'seed': None}, 'registered_name': 'GlorotUniform'}, 'bias_initializer': {'module': 'keras.src.initializers.constant_initializers', 'class_name': 'Zeros', 'config': {}, 'registered_name': 'Zeros'}, 'kernel_regularizer': None, 'bias_regularizer': None, 'kernel_constraint': None, 'bias_constraint': None}
+
+```
+</div>
+Now let's reconstruct the layer using the `from_config()` method:
+
+
+```python
+new_layer = keras.layers.Dense.from_config(layer_config)
 ```
 
 **Sequential model example:**
-
 
 
 ```python
 model = keras.Sequential([keras.Input((32,)), keras.layers.Dense(1)])
 config = model.get_config()
 new_model = keras.Sequential.from_config(config)
-
 ```
 
 **Functional model example:**
-
 
 
 ```python
@@ -368,17 +402,15 @@ outputs = keras.layers.Dense(1)(inputs)
 model = keras.Model(inputs, outputs)
 config = model.get_config()
 new_model = keras.Model.from_config(config)
-
 ```
 
-#### `to_json()` and `tf.keras.models.model_from_json()`
+#### `to_json()` and `keras.models.model_from_json()`
 
 This is similar to `get_config` / `from_config`, except it turns the model
 into a JSON string, which can then be loaded without the original model class.
 It is also specific to models, it isn't meant for layers.
 
 **Example:**
-
 
 
 ```python
@@ -388,198 +420,45 @@ new_model = keras.models.model_from_json(json_config)
 
 ```
 
-### Custom objects
+#### Arbitrary object serialization and deserialization
 
-**Models and layers**
+The `keras.saving.serialize_keras_object()` and `keras.saving.deserialize_keras_object()`
+APIs are general-purpose APIs that can be used to serialize or deserialize any Keras
+object and any custom object. It is at the foundation of saving model architecture and is
+behind all `serialize()`/`deserialize()` calls in keras.
 
-The architecture of subclassed models and layers are defined in the methods
-`__init__` and `call`. They are considered Python bytecode,
-which cannot be serialized into a JSON-compatible config
--- you could try serializing the bytecode (e.g. via `pickle`),
-but it's completely unsafe and means your model cannot be loaded on a different system.
-
-In order to save/load a model with custom-defined layers, or a subclassed model,
-you should overwrite the `get_config` and optionally `from_config` methods.
-Additionally, you should use register the custom object so that Keras is aware of it.
-
-**Custom functions**
-
-Custom-defined functions (e.g. activation loss or initialization) do not need
-a `get_config` method. The function name is sufficient for loading as long
-as it is registered as a custom object.
-
-**Loading the TensorFlow graph only**
-
-It's possible to load the TensorFlow graph generated by the Keras. If you
-do so, you won't need to provide any `custom_objects`. You can do so like
-this:
-
+**Example**:
 
 
 ```python
-model.save("my_model")
-tensorflow_graph = tf.saved_model.load("my_model")
-x = np.random.uniform(size=(4, 32)).astype(np.float32)
-predicted = tensorflow_graph(x).numpy()
-
+my_reg = keras.regularizers.L1(0.005)
+config = keras.saving.serialize_keras_object(my_reg)
+print(config)
 ```
 
 <div class="k-default-codeblock">
 ```
-INFO:tensorflow:Assets written to: my_model/assets
+{'module': 'keras.src.regularizers.regularizers', 'class_name': 'L1', 'config': {'l1': 0.004999999888241291}, 'registered_name': 'L1'}
 
 ```
 </div>
-Note that this method has several drawbacks:
-* For traceability reasons, you should always have access to the custom
-objects that were used. You wouldn't want to put in production a model
-that you cannot re-create.
-* The object returned by `tf.saved_model.load` isn't a Keras model. So it's
-not as easy to use. For example, you won't have access to `.predict()` or `.fit()`
+Note the serialization format containing all the necessary information for proper
+reconstruction:
 
-Even if its use is discouraged, it can help you if you're in a tight spot,
-for example, if you lost the code of your custom objects or have issues
-loading the model with `tf.keras.models.load_model()`.
+- `module` containing the name of the Keras module or other identifying module the object
+comes from
+- `class_name` containing the name of the object's class.
+- `config` with all the information needed to reconstruct the object
+- `registered_name` for custom objects. See [here](#custom_object_serialization).
 
-You can find out more in
-the [page about `tf.saved_model.load`](https://www.tensorflow.org/api_docs/python/tf/saved_model/load)
-
-
-#### Defining the config methods
-
-Specifications:
-
-* `get_config` should return a JSON-serializable dictionary in order to be
-compatible with the Keras architecture- and model-saving APIs.
-* `from_config(config)` (`classmethod`) should return a new layer or model
-object that is created from the config.
-The default implementation returns `cls(**config)`.
-
-**Example:**
-
+Now we can reconstruct the regularizer.
 
 
 ```python
-
-class CustomLayer(keras.layers.Layer):
-    def __init__(self, a):
-        self.var = tf.Variable(a, name="var_a")
-
-    def call(self, inputs, training=False):
-        if training:
-            return inputs * self.var
-        else:
-            return inputs
-
-    def get_config(self):
-        return {"a": self.var.numpy()}
-
-    # There's actually no need to define `from_config` here, since returning
-    # `cls(**config)` is the default behavior.
-    @classmethod
-    def from_config(cls, config):
-        return cls(**config)
-
-
-layer = CustomLayer(5)
-layer.var.assign(2)
-
-serialized_layer = keras.layers.serialize(layer)
-new_layer = keras.layers.deserialize(
-    serialized_layer, custom_objects={"CustomLayer": CustomLayer}
-)
-
+new_reg = keras.saving.deserialize_keras_object(config)
 ```
 
-#### Registering the custom object
-
-Keras keeps a note of which class generated the config.
-From the example above, `tf.keras.layers.serialize`
-generates a serialized form of the custom layer:
-
-```
-{'class_name': 'CustomLayer', 'config': {'a': 2}}
-```
-
-Keras keeps a master list of all built-in layer, model, optimizer,
-and metric classes, which is used to find the correct class to call `from_config`.
-If the  class can't be found, than an error is raised (`Value Error: Unknown layer`).
-There are a few ways to register custom classes to this list:
-
-1. Setting `custom_objects` argument in the loading function. (see the example
-in section above "Defining the config methods")
-2. `tf.keras.utils.custom_object_scope` or `tf.keras.utils.CustomObjectScope`
-3. `tf.keras.utils.register_keras_serializable`
-
-
-#### Custom layer and function example
-
-
-
-```python
-
-class CustomLayer(keras.layers.Layer):
-    def __init__(self, units=32, **kwargs):
-        super(CustomLayer, self).__init__(**kwargs)
-        self.units = units
-
-    def build(self, input_shape):
-        self.w = self.add_weight(
-            shape=(input_shape[-1], self.units),
-            initializer="random_normal",
-            trainable=True,
-        )
-        self.b = self.add_weight(
-            shape=(self.units,), initializer="random_normal", trainable=True
-        )
-
-    def call(self, inputs):
-        return tf.matmul(inputs, self.w) + self.b
-
-    def get_config(self):
-        config = super(CustomLayer, self).get_config()
-        config.update({"units": self.units})
-        return config
-
-
-def custom_activation(x):
-    return tf.nn.tanh(x) ** 2
-
-
-# Make a model with the CustomLayer and custom_activation
-inputs = keras.Input((32,))
-x = CustomLayer(32)(inputs)
-outputs = keras.layers.Activation(custom_activation)(x)
-model = keras.Model(inputs, outputs)
-
-# Retrieve the config
-config = model.get_config()
-
-# At loading time, register the custom objects with a `custom_object_scope`:
-custom_objects = {"CustomLayer": CustomLayer, "custom_activation": custom_activation}
-with keras.utils.custom_object_scope(custom_objects):
-    new_model = keras.Model.from_config(config)
-
-```
-
-### In-memory model cloning
-
-You can also do in-memory cloning of a model via `tf.keras.models.clone_model()`.
-This is equivalent to getting the config then recreating the model from its config
-(so it does not preserve compilation information or layer weights values).
-
-**Example:**
-
-
-
-```python
-with keras.utils.custom_object_scope(custom_objects):
-    new_model = keras.models.clone_model(model)
-
-```
-
----
-## Saving & loading only the model's weights values
+### Model weights saving
 
 You can choose to only save & load a model's weights. This can be useful if:
 
@@ -589,21 +468,18 @@ restart training, so you don't need the compilation information or optimizer sta
 reusing the state of a prior model, so you don't need the compilation
 information of the prior model.
 
+#### APIs for in-memory weight transfer
 
-### APIs for in-memory weight transfer
+Weights can be copied between different objects by using `get_weights()`
+and `set_weights()`:
 
-Weights can be copied between different objects by using `get_weights`
-and `set_weights`:
+* `keras.layers.Layer.get_weights()`: Returns a list of NumPy arrays of weight values.
+* `keras.layers.Layer.set_weights(weights)`: Sets the model weights to the values
+provided (as NumPy arrays).
 
-* `tf.keras.layers.Layer.get_weights()`: Returns a list of numpy arrays.
-* `tf.keras.layers.Layer.set_weights()`: Sets the model weights to the values
-in the `weights` argument.
+Examples:
 
-Examples below.
-
-
-***Transfering weights from one layer to another, in memory***
-
+***Transferring weights from one layer to another, in memory***
 
 
 ```python
@@ -617,14 +493,11 @@ def create_layer():
 layer_1 = create_layer()
 layer_2 = create_layer()
 
-# Copy weights from layer 2 to layer 1
+# Copy weights from layer 1 to layer 2
 layer_2.set_weights(layer_1.get_weights())
-
 ```
 
-***Transfering weights from one model to another model with a
-compatible architecture, in memory***
-
+***Transferring weights from one model to another model with a compatible architecture, in memory***
 
 
 ```python
@@ -635,10 +508,11 @@ x = keras.layers.Dense(64, activation="relu", name="dense_2")(x)
 outputs = keras.layers.Dense(10, name="predictions")(x)
 functional_model = keras.Model(inputs=inputs, outputs=outputs, name="3_layer_mlp")
 
+
 # Define a subclassed model with the same architecture
 class SubclassedModel(keras.Model):
     def __init__(self, output_dim, name=None):
-        super(SubclassedModel, self).__init__(name=name)
+        super().__init__(name=name)
         self.output_dim = output_dim
         self.dense_1 = keras.layers.Dense(64, activation="relu", name="dense_1")
         self.dense_2 = keras.layers.Dense(64, activation="relu", name="dense_2")
@@ -656,7 +530,7 @@ class SubclassedModel(keras.Model):
 
 subclassed_model = SubclassedModel(10)
 # Call the subclassed model once to create the weights.
-subclassed_model(tf.ones((1, 784)))
+subclassed_model(np.ones((1, 784)))
 
 # Copy weights from functional_model to subclassed_model.
 subclassed_model.set_weights(functional_model.get_weights())
@@ -664,7 +538,6 @@ subclassed_model.set_weights(functional_model.get_weights())
 assert len(functional_model.weights) == len(subclassed_model.weights)
 for a, b in zip(functional_model.weights, subclassed_model.weights):
     np.testing.assert_allclose(a.numpy(), b.numpy())
-
 ```
 
 ***The case of stateless layers***
@@ -672,7 +545,6 @@ for a, b in zip(functional_model.weights, subclassed_model.weights):
 Because stateless layers do not change the order or number of weights,
 models can have compatible architectures even if there are extra/missing
 stateless layers.
-
 
 
 ```python
@@ -694,33 +566,14 @@ functional_model_with_dropout = keras.Model(
 )
 
 functional_model_with_dropout.set_weights(functional_model.get_weights())
-
 ```
 
-### APIs for saving weights to disk & loading them back
+#### APIs for saving weights to disk & loading them back
 
-Weights can be saved to disk by calling `model.save_weights`
-in the following formats:
-
-* TensorFlow Checkpoint
-* HDF5
-
-The default format for `model.save_weights` is TensorFlow checkpoint.
-There are two ways to specify the save format:
-
-1. `save_format` argument: Set the value to `save_format="tf"` or `save_format="h5"`.
-2. `path` argument: If the path ends with `.h5` or `.hdf5`,
-then the HDF5 format is used. Other suffixes will result in a TensorFlow
-checkpoint unless `save_format` is set.
-
-There is also an option of retrieving weights as in-memory numpy arrays.
-Each API has their pros and cons which are detailed below .
-
-
-### TF Checkpoint format
+Weights can be saved to disk by calling `model.save_weights(filepath)`.
+The filename should end in `.weights.h5`.
 
 **Example:**
-
 
 
 ```python
@@ -733,284 +586,19 @@ sequential_model = keras.Sequential(
         keras.layers.Dense(10, name="predictions"),
     ]
 )
-sequential_model.save_weights("ckpt")
-load_status = sequential_model.load_weights("ckpt")
-
-# `assert_consumed` can be used as validation that all variable values have been
-# restored from the checkpoint. See `tf.train.Checkpoint.restore` for other
-# methods in the Status object.
-load_status.assert_consumed()
-
-```
-
-
-
-
-<div class="k-default-codeblock">
-```
-<tensorflow.python.training.tracking.util.CheckpointLoadStatus at 0x7f9275513150>
-
-```
-</div>
-#### Format details
-
-The TensorFlow Checkpoint format saves and restores the weights using
-object attribute names. For instance, consider the `tf.keras.layers.Dense` layer.
-The layer contains two weights: `dense.kernel` and `dense.bias`.
-When the layer is saved to the `tf` format, the resulting checkpoint contains the keys
-`"kernel"` and `"bias"` and their corresponding weight values.
-For more information see
-["Loading mechanics" in the TF Checkpoint guide](https://www.tensorflow.org/guide/checkpoint#loading_mechanics).
-
-Note that attribute/graph edge is named after **the name used in parent object,
-not the name of the variable**. Consider the `CustomLayer` in the example below.
-The variable `CustomLayer.var` is saved with `"var"` as part of key, not `"var_a"`.
-
-
-
-```python
-
-class CustomLayer(keras.layers.Layer):
-    def __init__(self, a):
-        self.var = tf.Variable(a, name="var_a")
-
-
-layer = CustomLayer(5)
-layer_ckpt = tf.train.Checkpoint(layer=layer).save("custom_layer")
-
-ckpt_reader = tf.train.load_checkpoint(layer_ckpt)
-
-ckpt_reader.get_variable_to_dtype_map()
-
-```
-
-
-
-
-<div class="k-default-codeblock">
-```
-{'save_counter/.ATTRIBUTES/VARIABLE_VALUE': tf.int64,
- '_CHECKPOINTABLE_OBJECT_GRAPH': tf.string,
- 'layer/var/.ATTRIBUTES/VARIABLE_VALUE': tf.int32}
-
-```
-</div>
-#### Transfer learning example
-
-Essentially, as long as two models have the same architecture,
-they are able to share the same checkpoint.
-
-**Example:**
-
-
-
-```python
-inputs = keras.Input(shape=(784,), name="digits")
-x = keras.layers.Dense(64, activation="relu", name="dense_1")(inputs)
-x = keras.layers.Dense(64, activation="relu", name="dense_2")(x)
-outputs = keras.layers.Dense(10, name="predictions")(x)
-functional_model = keras.Model(inputs=inputs, outputs=outputs, name="3_layer_mlp")
-
-# Extract a portion of the functional model defined in the Setup section.
-# The following lines produce a new model that excludes the final output
-# layer of the functional model.
-pretrained = keras.Model(
-    functional_model.inputs, functional_model.layers[-1].input, name="pretrained_model"
-)
-# Randomly assign "trained" weights.
-for w in pretrained.weights:
-    w.assign(tf.random.normal(w.shape))
-pretrained.save_weights("pretrained_ckpt")
-pretrained.summary()
-
-# Assume this is a separate program where only 'pretrained_ckpt' exists.
-# Create a new functional model with a different output dimension.
-inputs = keras.Input(shape=(784,), name="digits")
-x = keras.layers.Dense(64, activation="relu", name="dense_1")(inputs)
-x = keras.layers.Dense(64, activation="relu", name="dense_2")(x)
-outputs = keras.layers.Dense(5, name="predictions")(x)
-model = keras.Model(inputs=inputs, outputs=outputs, name="new_model")
-
-# Load the weights from pretrained_ckpt into model.
-model.load_weights("pretrained_ckpt")
-
-# Check that all of the pretrained weights have been loaded.
-for a, b in zip(pretrained.weights, model.weights):
-    np.testing.assert_allclose(a.numpy(), b.numpy())
-
-print("\n", "-" * 50)
-model.summary()
-
-# Example 2: Sequential model
-# Recreate the pretrained model, and load the saved weights.
-inputs = keras.Input(shape=(784,), name="digits")
-x = keras.layers.Dense(64, activation="relu", name="dense_1")(inputs)
-x = keras.layers.Dense(64, activation="relu", name="dense_2")(x)
-pretrained_model = keras.Model(inputs=inputs, outputs=x, name="pretrained")
-
-# Sequential example:
-model = keras.Sequential([pretrained_model, keras.layers.Dense(5, name="predictions")])
-model.summary()
-
-pretrained_model.load_weights("pretrained_ckpt")
-
-# Warning! Calling `model.load_weights('pretrained_ckpt')` won't throw an error,
-# but will *not* work as expected. If you inspect the weights, you'll see that
-# none of the weights will have loaded. `pretrained_model.load_weights()` is the
-# correct method to call.
-
-```
-
-<div class="k-default-codeblock">
-```
-Model: "pretrained_model"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-digits (InputLayer)          [(None, 784)]             0         
-_________________________________________________________________
-dense_1 (Dense)              (None, 64)                50240     
-_________________________________________________________________
-dense_2 (Dense)              (None, 64)                4160      
-=================================================================
-Total params: 54,400
-Trainable params: 54,400
-Non-trainable params: 0
-_________________________________________________________________
-```
-</div>
-    
-<div class="k-default-codeblock">
-```
- --------------------------------------------------
-Model: "new_model"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-digits (InputLayer)          [(None, 784)]             0         
-_________________________________________________________________
-dense_1 (Dense)              (None, 64)                50240     
-_________________________________________________________________
-dense_2 (Dense)              (None, 64)                4160      
-_________________________________________________________________
-predictions (Dense)          (None, 5)                 325       
-=================================================================
-Total params: 54,725
-Trainable params: 54,725
-Non-trainable params: 0
-_________________________________________________________________
-Model: "sequential_3"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-pretrained (Model)           (None, 64)                54400     
-_________________________________________________________________
-predictions (Dense)          (None, 5)                 325       
-=================================================================
-Total params: 54,725
-Trainable params: 54,725
-Non-trainable params: 0
-_________________________________________________________________
-
-<tensorflow.python.training.tracking.util.CheckpointLoadStatus at 0x7f92a9790ed0>
-
-```
-</div>
-It is generally recommended to stick to the same API for building models. If you
-switch between Sequential and Functional, or Functional and subclassed,
-etc., then always rebuild the pre-trained model and load the pre-trained
-weights to that model.
-
-
-The next question is, how can weights be saved and loaded to different models
-if the model architectures are quite different?
-The solution is to use `tf.train.Checkpoint` to save and restore the exact layers/variables.
-
-**Example:**
-
-
-
-```python
-# Create a subclassed model that essentially uses functional_model's first
-# and last layers.
-# First, save the weights of functional_model's first and last dense layers.
-first_dense = functional_model.layers[1]
-last_dense = functional_model.layers[-1]
-ckpt_path = tf.train.Checkpoint(
-    dense=first_dense, kernel=last_dense.kernel, bias=last_dense.bias
-).save("ckpt")
-
-# Define the subclassed model.
-class ContrivedModel(keras.Model):
-    def __init__(self):
-        super(ContrivedModel, self).__init__()
-        self.first_dense = keras.layers.Dense(64)
-        self.kernel = self.add_variable("kernel", shape=(64, 10))
-        self.bias = self.add_variable("bias", shape=(10,))
-
-    def call(self, inputs):
-        x = self.first_dense(inputs)
-        return tf.matmul(x, self.kernel) + self.bias
-
-
-model = ContrivedModel()
-# Call model on inputs to create the variables of the dense layer.
-_ = model(tf.ones((1, 784)))
-
-# Create a Checkpoint with the same structure as before, and load the weights.
-tf.train.Checkpoint(
-    dense=model.first_dense, kernel=model.kernel, bias=model.bias
-).restore(ckpt_path).assert_consumed()
-
-```
-
-<div class="k-default-codeblock">
-```
-WARNING:tensorflow:From <ipython-input-20-eec1d28bc826>:15: Layer.add_variable (from tensorflow.python.keras.engine.base_layer) is deprecated and will be removed in a future version.
-Instructions for updating:
-Please use `layer.add_weight` method instead.
-
-<tensorflow.python.training.tracking.util.CheckpointLoadStatus at 0x7f92a9785850>
-
-```
-</div>
-### HDF5 format
-
-The HDF5 format contains weights grouped by layer names.
-The weights are lists ordered by concatenating the list of trainable weights
-to the list of non-trainable weights (same as `layer.weights`).
-Thus, a model can use a hdf5 checkpoint if it has the same layers and trainable
-statuses as saved in the checkpoint.
-
-**Example:**
-
-
-
-```python
-# Runnable example
-sequential_model = keras.Sequential(
-    [
-        keras.Input(shape=(784,), name="digits"),
-        keras.layers.Dense(64, activation="relu", name="dense_1"),
-        keras.layers.Dense(64, activation="relu", name="dense_2"),
-        keras.layers.Dense(10, name="predictions"),
-    ]
-)
-sequential_model.save_weights("weights.h5")
-sequential_model.load_weights("weights.h5")
-
+sequential_model.save_weights("my_model.weights.h5")
+sequential_model.load_weights("my_model.weights.h5")
 ```
 
 Note that changing `layer.trainable` may result in a different
 `layer.weights` ordering when the model contains nested layers.
 
 
-
 ```python
 
 class NestedDenseLayer(keras.layers.Layer):
     def __init__(self, units, name=None):
-        super(NestedDenseLayer, self).__init__(name=name)
+        super().__init__(name=name)
         self.dense_1 = keras.layers.Dense(units, name="dense_1")
         self.dense_2 = keras.layers.Dense(units, name="dense_2")
 
@@ -1028,12 +616,11 @@ nested_model.get_layer("nested").dense_1.trainable = False
 variable_names_2 = [v.name for v in nested_model.weights]
 print("\nvariables: {}".format(variable_names_2))
 print("variable ordering changed:", variable_names != variable_names_2)
-
 ```
 
 <div class="k-default-codeblock">
 ```
-variables: ['nested/dense_1/kernel:0', 'nested/dense_1/bias:0', 'nested/dense_2/kernel:0', 'nested/dense_2/bias:0']
+variables: ['kernel', 'bias', 'kernel', 'bias']
 ```
 </div>
     
@@ -1045,19 +632,18 @@ Changing trainable status of one of the nested layers...
     
 <div class="k-default-codeblock">
 ```
-variables: ['nested/dense_2/kernel:0', 'nested/dense_2/bias:0', 'nested/dense_1/kernel:0', 'nested/dense_1/bias:0']
-variable ordering changed: True
+variables: ['kernel', 'bias', 'kernel', 'bias']
+variable ordering changed: False
 
 ```
 </div>
-#### Transfer learning example
+##### **Transfer learning example**
 
-When loading pretrained weights from HDF5, it is recommended to load
+When loading pretrained weights from a weights file, it is recommended to load
 the weights into the original checkpointed model, and then extract
 the desired weights/layers into a new model.
 
 **Example:**
-
 
 
 ```python
@@ -1071,36 +657,233 @@ def create_functional_model():
 
 
 functional_model = create_functional_model()
-functional_model.save_weights("pretrained_weights.h5")
+functional_model.save_weights("pretrained.weights.h5")
 
 # In a separate program:
 pretrained_model = create_functional_model()
-pretrained_model.load_weights("pretrained_weights.h5")
+pretrained_model.load_weights("pretrained.weights.h5")
 
 # Create a new model by extracting layers from the original model:
 extracted_layers = pretrained_model.layers[:-1]
 extracted_layers.append(keras.layers.Dense(5, name="dense_3"))
 model = keras.Sequential(extracted_layers)
 model.summary()
+```
 
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold">Model: "sequential_4"</span>
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> Layer (type)                    </span>┃<span style="font-weight: bold"> Output Shape              </span>┃<span style="font-weight: bold">    Param # </span>┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ dense_1 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)                 │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)                │     <span style="color: #00af00; text-decoration-color: #00af00">50,240</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ dense_2 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)                 │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">64</span>)                │      <span style="color: #00af00; text-decoration-color: #00af00">4,160</span> │
+├─────────────────────────────────┼───────────────────────────┼────────────┤
+│ dense_3 (<span style="color: #0087ff; text-decoration-color: #0087ff">Dense</span>)                 │ (<span style="color: #00d7ff; text-decoration-color: #00d7ff">None</span>, <span style="color: #00af00; text-decoration-color: #00af00">5</span>)                 │        <span style="color: #00af00; text-decoration-color: #00af00">325</span> │
+└─────────────────────────────────┴───────────────────────────┴────────────┘
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Total params: </span><span style="color: #00af00; text-decoration-color: #00af00">54,725</span> (213.77 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">54,725</span> (213.77 KB)
+</pre>
+
+
+
+
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="font-weight: bold"> Non-trainable params: </span><span style="color: #00af00; text-decoration-color: #00af00">0</span> (0.00 B)
+</pre>
+
+
+
+### Appendix: Handling custom objects
+
+<a name="config_methods"></a>
+#### Defining the config methods
+
+Specifications:
+
+* `get_config()` should return a JSON-serializable dictionary in order to be
+compatible with the Keras architecture- and model-saving APIs.
+* `from_config(config)` (a `classmethod`) should return a new layer or model
+object that is created from the config.
+The default implementation returns `cls(**config)`.
+
+**NOTE**:  If all your constructor arguments are already serializable, e.g. strings and
+ints, or non-custom Keras objects, overriding `from_config` is not necessary. However,
+for more complex objects such as layers or models passed to `__init__`, deserialization
+must be handled explicitly either in `__init__` itself or overriding the `from_config()`
+method.
+
+**Example:**
+
+
+```python
+
+@keras.saving.register_keras_serializable(package="MyLayers", name="KernelMult")
+class MyDense(keras.layers.Layer):
+    def __init__(
+        self,
+        units,
+        *,
+        kernel_regularizer=None,
+        kernel_initializer=None,
+        nested_model=None,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.hidden_units = units
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_initializer = kernel_initializer
+        self.nested_model = nested_model
+
+    def get_config(self):
+        config = super().get_config()
+        # Update the config with the custom layer's parameters
+        config.update(
+            {
+                "units": self.hidden_units,
+                "kernel_regularizer": self.kernel_regularizer,
+                "kernel_initializer": self.kernel_initializer,
+                "nested_model": self.nested_model,
+            }
+        )
+        return config
+
+    def build(self, input_shape):
+        input_units = input_shape[-1]
+        self.kernel = self.add_weight(
+            name="kernel",
+            shape=(input_units, self.hidden_units),
+            regularizer=self.kernel_regularizer,
+            initializer=self.kernel_initializer,
+        )
+
+    def call(self, inputs):
+        return ops.matmul(inputs, self.kernel)
+
+
+layer = MyDense(units=16, kernel_regularizer="l1", kernel_initializer="ones")
+layer3 = MyDense(units=64, nested_model=layer)
+
+config = keras.layers.serialize(layer3)
+
+print(config)
+
+new_layer = keras.layers.deserialize(config)
+
+print(new_layer)
 ```
 
 <div class="k-default-codeblock">
 ```
-Model: "sequential_6"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-dense_1 (Dense)              (None, 64)                50240     
-_________________________________________________________________
-dense_2 (Dense)              (None, 64)                4160      
-_________________________________________________________________
-dense_3 (Dense)              (None, 5)                 325       
-=================================================================
-Total params: 54,725
-Trainable params: 54,725
-Non-trainable params: 0
-_________________________________________________________________
+{'module': None, 'class_name': 'MyDense', 'config': {'name': 'my_dense_1', 'trainable': True, 'dtype': 'float32', 'units': 64, 'kernel_regularizer': None, 'kernel_initializer': None, 'nested_model': {'module': None, 'class_name': 'MyDense', 'config': {'name': 'my_dense', 'trainable': True, 'dtype': 'float32', 'units': 16, 'kernel_regularizer': 'l1', 'kernel_initializer': 'ones', 'nested_model': None}, 'registered_name': 'MyLayers>KernelMult'}}, 'registered_name': 'MyLayers>KernelMult'}
+<MyDense name=my_dense_1, built=False>
 
 ```
 </div>
+Note that overriding `from_config` is unnecessary above for `MyDense` because
+`hidden_units`, `kernel_initializer`, and `kernel_regularizer` are ints, strings, and a
+built-in Keras object, respectively. This means that the default `from_config`
+implementation of `cls(**config)` will work as intended.
+
+For more complex objects, such as layers and models passed to `__init__`, for
+example, you must explicitly deserialize these objects. Let's take a look at an example
+of a model where a `from_config` override is necessary.
+
+**Example:**
+<a name="registration_example"></a>
+
+
+```python
+
+@keras.saving.register_keras_serializable(package="ComplexModels")
+class CustomModel(keras.layers.Layer):
+    def __init__(self, first_layer, second_layer=None, **kwargs):
+        super().__init__(**kwargs)
+        self.first_layer = first_layer
+        if second_layer is not None:
+            self.second_layer = second_layer
+        else:
+            self.second_layer = keras.layers.Dense(8)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update(
+            {
+                "first_layer": self.first_layer,
+                "second_layer": self.second_layer,
+            }
+        )
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        # Note that you can also use `keras.saving.deserialize_keras_object` here
+        config["first_layer"] = keras.layers.deserialize(config["first_layer"])
+        config["second_layer"] = keras.layers.deserialize(config["second_layer"])
+        return cls(**config)
+
+    def call(self, inputs):
+        return self.first_layer(self.second_layer(inputs))
+
+
+# Let's make our first layer the custom layer from the previous example (MyDense)
+inputs = keras.Input((32,))
+outputs = CustomModel(first_layer=layer)(inputs)
+model = keras.Model(inputs, outputs)
+
+config = model.get_config()
+new_model = keras.Model.from_config(config)
+```
+
+<a name="custom_object_serialization"></a>
+#### How custom objects are serialized
+
+The serialization format has a special key for custom objects registered via
+`@keras.saving.register_keras_serializable`. This `registered_name` key allows for easy
+retrieval at loading/deserialization time while also allowing users to add custom naming.
+
+Let's take a look at the config from serializing the custom layer `MyDense` we defined
+above.
+
+**Example**:
+
+
+```python
+layer = MyDense(
+    units=16,
+    kernel_regularizer=keras.regularizers.L1L2(l1=1e-5, l2=1e-4),
+    kernel_initializer="ones",
+)
+config = keras.layers.serialize(layer)
+print(config)
+```
+
+<div class="k-default-codeblock">
+```
+{'module': None, 'class_name': 'MyDense', 'config': {'name': 'my_dense_2', 'trainable': True, 'dtype': 'float32', 'units': 16, 'kernel_regularizer': {'module': 'keras.src.regularizers.regularizers', 'class_name': 'L1L2', 'config': {'l1': 1e-05, 'l2': 0.0001}, 'registered_name': 'L1L2'}, 'kernel_initializer': 'ones', 'nested_model': None}, 'registered_name': 'MyLayers>KernelMult'}
+
+```
+</div>
+As shown, the `registered_name` key contains the lookup information for the Keras master
+list, including the package `MyLayers` and the custom name `KernelMult` that we gave in
+the `@keras.saving.register_keras_serializable` decorator. Take a look again at the custom
+class definition/registration [here](#registration_example).
+
+Note that the `class_name` key contains the original name of the class, allowing for
+proper re-initialization in `from_config`.
+
+Additionally, note that the `module` key is `None` since this is a custom object.

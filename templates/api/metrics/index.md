@@ -3,7 +3,7 @@
 A metric is a function that is used to judge the performance of your model.
 
 Metric functions are similar to loss functions, except that the results from evaluating a metric are not used when training the model.
-Note that you may use any loss functions as a metric function.
+Note that you may use any loss function as a metric.
 
 
 ## Available metrics
@@ -70,7 +70,7 @@ Unlike losses, metrics are stateful. You update their state using the `update_st
 and you query the scalar metric result using the `result()` method:
 
 ```python
-m = tf.keras.metrics.AUC()
+m = keras.metrics.AUC()
 m.update_state([0, 1, 1, 1], [0, 1, 0, 0])
 print('Intermediate result:', float(m.result()))
 
@@ -83,9 +83,9 @@ The internal state can be cleared via `metric.reset_states()`.
 Here's how you would use a metric as part of a simple custom training loop:
 
 ```python
-accuracy = tf.keras.metrics.CategoricalAccuracy()
-loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
-optimizer = tf.keras.optimizers.Adam()
+accuracy = keras.metrics.CategoricalAccuracy()
+loss_fn = keras.losses.CategoricalCrossentropy(from_logits=True)
+optimizer = keras.optimizers.Adam()
 
 # Iterate over the batches of a dataset.
 for step, (x, y) in enumerate(dataset):
@@ -121,9 +121,11 @@ Note that sample weighting is automatically supported for any such metric.
 Here's a simple example:
 
 ```python
+from keras import ops
+
 def my_metric_fn(y_true, y_pred):
-    squared_difference = tf.square(y_true - y_pred)
-    return tf.reduce_mean(squared_difference, axis=-1)  # Note the `axis=-1`
+    squared_difference = ops.square(y_true - y_pred)
+    return ops.mean(squared_difference, axis=-1)  # Note the `axis=-1`
 
 model.compile(optimizer='adam', loss='mean_squared_error', metrics=[my_metric_fn])
 ```
@@ -149,71 +151,39 @@ which can maintain a state across batches. It's easy:
 
 - Create the state variables in `__init__`
 - Update the variables given `y_true` and `y_pred` in `update_state()`
-- Return the metric result in `result()`
+- Return the scalar metric result in `result()`
 - Clear the state in `reset_states()`
 
 Here's a simple example computing binary true positives:
 
 ```python
-class BinaryTruePositives(tf.keras.metrics.Metric):
+class BinaryTruePositives(keras.metrics.Metric):
 
   def __init__(self, name='binary_true_positives', **kwargs):
-    super(BinaryTruePositives, self).__init__(name=name, **kwargs)
+    super().__init__(name=name, **kwargs)
     self.true_positives = self.add_weight(name='tp', initializer='zeros')
 
   def update_state(self, y_true, y_pred, sample_weight=None):
-    y_true = tf.cast(y_true, tf.bool)
-    y_pred = tf.cast(y_pred, tf.bool)
+    y_true = ops.cast(y_true, "bool")
+    y_pred = ops.cast(y_pred, "bool")
 
-    values = tf.logical_and(tf.equal(y_true, True), tf.equal(y_pred, True))
-    values = tf.cast(values, self.dtype)
+    values = ops.logical_and(ops.equal(y_true, True), ops.equal(y_pred, True))
+    values = ops.cast(values, self.dtype)
     if sample_weight is not None:
-      sample_weight = tf.cast(sample_weight, self.dtype)
-      values = tf.multiply(values, sample_weight)
-    self.true_positives.assign_add(tf.reduce_sum(values))
+      sample_weight = ops.cast(sample_weight, self.dtype)
+      values = values * sample_weight
+    self.true_positives.assign_add(ops.sum(values))
 
   def result(self):
     return self.true_positives
 
-  def reset_states(self):
-    self.true_positive.assign(0)
+  def reset_state(self):
+    self.true_positives.assign(0)
 
 m = BinaryTruePositives()
 m.update_state([0, 1, 1, 1], [0, 1, 0, 0])
-print('Intermediate result:', float(m.result()))
+print(f'Intermediate result: {m.result().numpy()}')
 
 m.update_state([1, 1, 1, 1], [0, 1, 1, 0])
-print('Final result:', float(m.result()))
+print(f'Intermediate result: {m.result().numpy()}')
 ```
-
-
----
-
-## The `add_metric()` API
-
-When writing the forward pass of a custom layer or a subclassed model,
-you may sometimes want to log certain quantities on the fly, as metrics.
-In such cases, you can use the `add_metric()` method.
-
-Let's say you want to log as metric the mean of the activations of a Dense-like custom layer.
-You could do the following:
-
-```python
-class DenseLike(Layer):
-  """y = w.x + b"""
-
-  ...
-
-  def call(self, inputs):
-      output = tf.matmul(inputs, self.w) + self.b
-      self.add_metric(tf.reduce_mean(output), aggregation='mean', name='activation_mean')
-      return output
-```
-
-The quantity will then tracked under the name "activation_mean". The value tracked will be
-the average of the per-batch metric metric values (as specified by `aggregation='mean'`).
-
-See [the `add_metric()` documentation](/api/layers/base_layer/#add_metric-method) for more details.
-
-
-

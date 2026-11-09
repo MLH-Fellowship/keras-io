@@ -1,10 +1,12 @@
 """
-Title: BERT (from HuggingFace Transformers) for Text Extraction
+Title: Text Extraction with BERT
 Author: [Apoorv Nandan](https://twitter.com/NandanApoorv)
 Date created: 2020/05/23
 Last modified: 2020/05/23
 Description: Fine tune pretrained BERT from HuggingFace Transformers on SQuAD.
+Accelerator: TPU
 """
+
 """
 ## Introduction
 
@@ -30,7 +32,7 @@ We fine-tune a BERT model to perform this task as follows:
 
 **References:**
 
-- [BERT](https://arxiv.org/pdf/1810.04805.pdf)
+- [BERT](https://arxiv.org/abs/1810.04805)
 - [SQuAD](https://arxiv.org/abs/1606.05250)
 """
 """
@@ -48,7 +50,7 @@ from tokenizers import BertWordPieceTokenizer
 from transformers import BertTokenizer, TFBertModel, BertConfig
 
 max_len = 384
-configuration = BertConfig()  # default paramters and configuration for BERT
+configuration = BertConfig()  # default parameters and configuration for BERT
 
 """
 ## Set-up BERT tokenizer
@@ -256,10 +258,8 @@ With Colab TPUs, each epoch will take 5-6 minutes.
 use_tpu = True
 if use_tpu:
     # Create distribution strategy
-    tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
-    tf.config.experimental_connect_to_cluster(tpu)
-    tf.tpu.experimental.initialize_tpu_system(tpu)
-    strategy = tf.distribute.experimental.TPUStrategy(tpu)
+    tpu = tf.distribute.cluster_resolver.TPUClusterResolver.connect()
+    strategy = tf.distribute.TPUStrategy(tpu)
 
     # Create model
     with strategy.scope():
@@ -345,3 +345,8 @@ model.fit(
     batch_size=64,
     callbacks=[exact_match_callback],
 )
+
+"""
+## Relevant Chapters from Deep Learning with Python
+- [Chapter 15: Language models and the Transformer](https://deeplearningwithpython.io/chapters/chapter15_language-models-and-the-transformer)
+"""
